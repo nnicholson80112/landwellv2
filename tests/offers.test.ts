@@ -24,8 +24,9 @@ test('offers: guardrails keep every discount above the price floor and inside it
   assert.match(checkOfferRules({ kind: 'seasonal', title: 'x', percentOff: 15, months: 1, issuedBy: 'admin' })!, /one owner or one email/);
 });
 
-test('pricing: standard = original + 15%, and original-price offers land exactly on the original', () => {
-  assert.deepEqual(LIST_PRICE, { essentials: { monthly: 1725, contract12: 1495 }, autopilot: { monthly: 4025, contract12: 3450 }, plus: { monthly: 6785, contract12: 5750 } });
+test('pricing: whole $5 prices, and original-price offers land exactly on the original', () => {
+  assert.deepEqual(LIST_PRICE, { essentials: { monthly: 2000, contract12: 1500 }, autopilot: { monthly: 4500, contract12: 3500 }, plus: { monthly: 7000, contract12: 6000 } });
+  for (const plan of ['essentials', 'autopilot', 'plus'] as const) for (const t of ['monthly', 'contract12'] as const) { assert.equal(LIST_PRICE[plan][t] % 500, 0); assert.equal(BASE_PRICE[plan][t] % 500, 0); assert.ok(BASE_PRICE[plan][t] < LIST_PRICE[plan][t]); }
   for (const plan of ['essentials', 'autopilot', 'plus'] as const) for (const t of ['monthly', 'contract12'] as const) assert.equal(offerPrice({ mode: 'base', percentOff: 13 }, plan, t), BASE_PRICE[plan][t]);
 });
 
@@ -73,7 +74,7 @@ test('API: web signup gets a welcome offer and a discounted checkout; admin, off
     const u = String(url);
     if (!u.startsWith('https://api.stripe.com/')) return realFetch(url, init);
     stripeCalls.push(u + ' ' + decodeURIComponent(String(init?.body ?? '')));
-    if (u.includes('/prices')) return new Response(JSON.stringify({ data: [{ id: 'price_x', unit_amount: 4025 }] }));
+    if (u.includes('/prices')) return new Response(JSON.stringify({ data: [{ id: 'price_x', unit_amount: 4500 }] }));
     if (u.includes('/coupons')) return new Response(JSON.stringify({ id: 'coupon_1' }));
     return new Response(JSON.stringify({ id: 'cs_test_1', url: 'https://checkout.stripe.com/c/cs_test_1' }));
   }) as typeof fetch;
@@ -83,7 +84,7 @@ test('API: web signup gets a welcome offer and a discounted checkout; admin, off
     assert.equal(r.status, 200, JSON.stringify(out));
     assert.equal(out.offer.kind, 'web_intro');
     assert.equal(out.quote.firstMonthDueToday, 3 * 3500, 'first month at the original $35/door');
-    assert.ok(stripeCalls.some((c) => c.includes('/coupons') && c.includes('amount_off=1575') && c.includes('max_redemptions=1')), 'single-use coupon worth exactly $5.25 × 3 doors');
+    assert.ok(stripeCalls.some((c) => c.includes('/coupons') && c.includes('amount_off=3000') && c.includes('max_redemptions=1')), 'single-use coupon worth exactly $10 × 3 doors');
     assert.ok(stripeCalls.some((c) => c.includes('discounts[0][coupon]=coupon_1') && !c.includes('allow_promotion_codes')), 'no public promo codes');
     const pat = store.find('owners', (o) => o.email === 'pat@example.com')!;
     assert.equal(pat.source, 'web');

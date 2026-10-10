@@ -10,7 +10,8 @@
 //   • Hulu: deep but time-boxed intro deals, and win-back offers sent only to former
 //     subscribers by personal email link.
 //
-// PRICING MODEL: the STANDARD price (LIST_PRICE) is the original price plus 15%, and
+// PRICING MODEL: the STANDARD price (LIST_PRICE) sits above the original price (about +15%,
+// rounded up to whole $5 steps), and
 // it's what anyone without an offer pays, including every customer once their offer
 // months end. Most offers bring the price back to the ORIGINAL price (BASE_PRICE) for
 // a set number of months. Because offers are private and time-limited, the standard
@@ -28,20 +29,19 @@ import type { Plan } from './stripe.ts';
 
 export const DAY_MS = 86_400_000;
 
-/** The original prices, per door per month, in cents. Offers bring the price back to these. */
+/** Offer prices ("original" prices), per door per month, in cents. Original-price offers bring the price back to these. Whole $5 steps. */
 export const BASE_PRICE: Record<Plan, Record<BillingTerm, number>> = {
-  essentials: { monthly: 1500, contract12: 1300 },
+  essentials: { monthly: 1500, contract12: 1000 },
   autopilot: { monthly: 3500, contract12: 3000 },
-  plus: { monthly: 5900, contract12: 5000 },
+  plus: { monthly: 6000, contract12: 5000 },
 };
 
-/** How much the standard price sits above the original. */
-export const STANDARD_UPLIFT = 0.15;
-
-/** STANDARD prices (what Stripe charges without an offer): original + 15%. Must match the Stripe prices. */
-export const LIST_PRICE: Record<Plan, Record<BillingTerm, number>> = Object.fromEntries(
-  Object.entries(BASE_PRICE).map(([plan, t]) => [plan, { monthly: Math.round(t.monthly * (1 + STANDARD_UPLIFT)), contract12: Math.round(t.contract12 * (1 + STANDARD_UPLIFT)) }]),
-) as Record<Plan, Record<BillingTerm, number>>;
+/** STANDARD prices (what Stripe charges without an offer): the original prices plus about 15%, rounded up to the next $5. Must match the Stripe prices. */
+export const LIST_PRICE: Record<Plan, Record<BillingTerm, number>> = {
+  essentials: { monthly: 2000, contract12: 1500 },
+  autopilot: { monthly: 4500, contract12: 3500 },
+  plus: { monthly: 7000, contract12: 6000 },
+};
 
 /**
  * The lowest per-door price any discount may reach. Set these from real cost to
@@ -85,8 +85,6 @@ export function offerPrice(o: Pick<Offer, 'mode' | 'percentOff'>, plan: Plan, te
   return o.mode === 'base' ? BASE_PRICE[plan][term] : Math.round(LIST_PRICE[plan][term] * (1 - o.percentOff / 100));
 }
 
-/** The saving vs the standard price, as a whole percent, for display. */
-export const baseSavingPercent = () => Math.round((1 - 1 / (1 + STANDARD_UPLIFT)) * 100); // 13%
 
 export interface IssueInput {
   kind: Offer['kind'];
@@ -135,7 +133,7 @@ export function issueOffer(store: Store, i: IssueInput, now: Date): Offer {
   const mode = i.mode ?? 'percent';
   return store.insert('offers', {
     kind: i.kind, mode, ownerId: i.ownerId, email: clean(i.email), title: i.title.trim(),
-    percentOff: mode === 'base' ? baseSavingPercent() : Number(i.percentOff), months: i.months,
+    percentOff: mode === 'base' ? 0 : Number(i.percentOff), months: i.months,
     terms: i.terms?.length ? i.terms : r.terms, plans: i.plans?.length ? i.plans : undefined,
     expiresAt: new Date(now.getTime() + (i.days ?? r.defaultDays) * DAY_MS).toISOString(),
     status: 'issued', issuedBy: i.issuedBy, campaign: i.campaign, note: i.note, referrerOwnerId: i.referrerOwnerId,
@@ -185,7 +183,7 @@ export function pickOffer(store: Store, who: { owner?: Owner; email?: string }, 
 
 export const termLabel = (t: BillingTerm) => (t === 'contract12' ? '12-month agreement' : 'month-to-month');
 
-/** Short description of the deal, e.g. "$35/door for 3 months (standard $40.25)". */
+/** Short description of the deal, e.g. "$35/door for 3 months (standard $45)". */
 export function dealText(o: Offer, plan: Plan, term: BillingTerm): string {
   const d = (c: number) => '$' + (c / 100).toFixed(c % 100 ? 2 : 0);
   return `${d(offerPrice(o, plan, term))}/door for ${o.months} month${o.months > 1 ? 's' : ''} (standard ${d(LIST_PRICE[plan][term])})`;

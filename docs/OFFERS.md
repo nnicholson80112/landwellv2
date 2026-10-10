@@ -4,15 +4,16 @@ Landwell charges owners for Landwell only. It never collects rent.
 
 ## Plans and the pricing model
 
-**Standard price** = original price + 15%. It's what anyone without an offer pays, and what
-every customer pays once their offer months end. **Original-price offers** bring it back to the
-original price for a set number of months (an exact dollar amount off per door, so $40.25 lands on $35.00).
+**Standard price** = about 15% above the original price, rounded up to whole $5 steps. It's what
+anyone without an offer pays, and what every customer pays once their offer months end.
+**Original-price offers** bring it back to the offer price for a set number of months (an exact
+dollar amount off per door, so $45 lands on $35).
 
-| Plan | Standard, month-to-month | Standard, 12-month | Original (offer) month-to-month | Original (offer) 12-month |
+| Plan | Standard, month-to-month | Standard, 12-month | Offer price, month-to-month | Offer price, 12-month |
 | --- | --- | --- | --- | --- |
-| Essentials | $17.25 | $14.95 | $15 | $13 |
-| Autopilot | $40.25 | $34.50 | $35 | $30 |
-| Autopilot Plus | $67.85 | $57.50 | $59 | $50 |
+| Essentials | $20 | $15 | $15 | $10 |
+| Autopilot | $45 | $35 | $35 | $30 |
+| Autopilot Plus | $70 | $60 | $60 | $50 |
 
 Prices are per door per month. The first month is charged at checkout. There's no setup fee.
 Stripe holds the standard prices under lookup keys `landwell_<plan>_<monthly|contract12>`;
@@ -22,7 +23,7 @@ Stripe holds the standard prices under lookup keys `landwell_<plan>_<monthly|con
 > price next to a discount if it's a price you actually charge, openly and in good faith, for a
 > real period of time. That's why offers are private, expire and last a set number of months, and
 > why customers pay standard afterward. Don't hand an offer to everyone forever, and don't put
-> "was $40.25, now $35" on the public site unless people really pay $40.25. Have the attorney
+> "was $45, now $35" on the public site unless people really pay $45. Have the attorney
 > check the pricing copy and the 12-month agreement before launch.
 
 ## What the research showed (Oct 2026)
