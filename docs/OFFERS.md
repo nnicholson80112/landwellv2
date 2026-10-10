@@ -2,20 +2,28 @@
 
 Landwell charges owners for Landwell only. It never collects rent.
 
-## Plans
+## Plans and the pricing model
 
-| Plan | Month-to-month | 12-month agreement (billed monthly) |
-| --- | --- | --- |
-| Essentials | $15 / door | $13 / door |
-| Autopilot | $35 / door | $30 / door |
-| Autopilot Plus | $59 / door | $50 / door |
+**Standard price** = original price + 15%. It's what anyone without an offer pays, and what
+every customer pays once their offer months end. **Original-price offers** bring it back to the
+original price for a set number of months (an exact dollar amount off per door, so $40.25 lands on $35.00).
 
-The first month is charged at checkout. There is no setup fee. Prices live in Stripe
-under lookup keys `landwell_<plan>_<monthly|contract12>`; `LIST_PRICE` in
-`src/billing/offers.ts` must match them (it's used for quotes and the price floor).
+| Plan | Standard, month-to-month | Standard, 12-month | Original (offer) month-to-month | Original (offer) 12-month |
+| --- | --- | --- | --- | --- |
+| Essentials | $17.25 | $14.95 | $15 | $13 |
+| Autopilot | $40.25 | $34.50 | $35 | $30 |
+| Autopilot Plus | $67.85 | $57.50 | $59 | $50 |
 
-> The 12-month agreement needs written terms (early cancellation, renewal, how to cancel)
-> reviewed by an attorney before it's sold. Checkout shows a one-line notice; that is not a contract.
+Prices are per door per month. The first month is charged at checkout. There's no setup fee.
+Stripe holds the standard prices under lookup keys `landwell_<plan>_<monthly|contract12>`;
+`BASE_PRICE` and `LIST_PRICE` in `src/billing/offers.ts` must match them.
+
+> **Keep the standard price real.** US pricing rules (FTC 16 CFR 233.1) only allow a "regular"
+> price next to a discount if it's a price you actually charge, openly and in good faith, for a
+> real period of time. That's why offers are private, expire and last a set number of months, and
+> why customers pay standard afterward. Don't hand an offer to everyone forever, and don't put
+> "was $40.25, now $35" on the public site unless people really pay $40.25. Have the attorney
+> check the pricing copy and the 12-month agreement before launch.
 
 ## What the research showed (Oct 2026)
 
@@ -41,13 +49,16 @@ under lookup keys `landwell_<plan>_<monthly|contract12>`; `LIST_PRICE` in
 
 ## Offer types
 
-| Type | Who issues it | Limit | Use it for |
-| --- | --- | --- | --- |
-| Demo-day | Admin, during/after a live demo | ≤30%, ≤3 months, 12-month only, ≤7 days | Closing on the call |
-| Web intro | Automatic at self-serve signup | ≤15%, ≤2 months | People who buy without a demo |
-| Win-back | Admin, canceled owners only | ≤25%, ≤3 months | Bringing back former customers |
-| Referral | Automatic from a friend's link | ≤20%, ≤2 months; referrer gets $50 credit after the friend's first paid month | Word of mouth |
-| Seasonal event | Admin, to a list of people | ≤20%, ≤2 months, 12-month only, ≤21 days | Named events (Spring Leasing, Year-End) |
+| Type | Who issues it | Default | Limits | Use it for |
+| --- | --- | --- | --- | --- |
+| Demo-day | Admin, during/after a live demo | Original price for the whole 12-month agreement (or 3 months month-to-month) | Expires within 7 days | Closing on the call |
+| Web intro | Automatic at self-serve signup | Original price for month 1 (or 3 months with a 12-month agreement) | Up to 3 months | People who buy without a demo |
+| Win-back | Admin, canceled owners only | Original price for 3 months | Up to 6 months (12-month) | Bringing back former customers |
+| Referral | Automatic from a friend's link | Original price for 3 months; referrer gets $50 credit after the friend's first paid month | Up to 3 months | Word of mouth |
+| Seasonal event | Admin, to a list of people | Original price for 6 months, or a custom % | 12-month only, ≤21 days | Named events (Spring Leasing, Year-End) |
+
+Admins can also pick **Custom % off the standard price**, capped per type (demo/win-back 25%,
+seasonal/referral 20%, web 15%) and never below the price floor. Month-to-month offers last at most 3 months.
 
 ## Where it lives
 

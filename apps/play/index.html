@@ -151,9 +151,12 @@ function priceLine() {
   if (!billing) return;
   const plan = $('#bill-plan').value, term = $('#bill-term').value, doors = Number($('#bill-doors').value) || 1;
   const per = billing.prices[plan][term];
-  const o = billing.offers.find((x) => x.id === $('#bill-offer').value) || billing.offers.filter((x) => x.status === 'issued' && x.terms.includes(term) && (!x.plans || x.plans.includes(plan))).sort((a, b) => b.percentOff * b.months - a.percentOff * a.months)[0];
-  const first = o ? Math.round(per * (1 - o.percentOff / 100)) : per;
-  $('#bill-price').textContent = `$${(per / 100).toFixed(2)}/door/month · due today: $${(first * doors / 100).toFixed(2)}${o ? ` (with "${o.title}")` : ''}`;
+  const fits = (x) => x.status === 'issued' && x.terms.includes(term) && (!x.plans || x.plans.includes(plan));
+  const save = (x) => (per - x.pricePerDoor[plan][term]) * x.months;
+  const picked = billing.offers.find((x) => x.id === $('#bill-offer').value);
+  const o = picked && fits(picked) ? picked : billing.offers.filter(fits).sort((a, b) => save(b) - save(a))[0];
+  const first = o ? o.pricePerDoor[plan][term] : per;
+  $('#bill-price').textContent = `Standard $${(per / 100).toFixed(2)}/door/month${o ? ` · with "${o.title}": $${(first / 100).toFixed(2)}/door for ${o.months} month(s)` : ''} · due today: $${(first * doors / 100).toFixed(2)}`;
 }
 async function loadBilling() {
   billing = await api('/api/billing');

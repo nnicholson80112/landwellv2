@@ -67,8 +67,10 @@ th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute
         <textarea id="emails" placeholder="owner@example.com, another@example.com"></textarea>
         <label for="title">What they'll see</label>
         <input id="title" required maxlength="120">
+        <label for="mode">Price while the offer lasts</label>
+        <select id="mode"><option value="base">Original price (standard − 13%)</option><option value="percent">Custom % off the standard price</option></select>
         <div class="two">
-          <div><label for="pct">% off</label><input id="pct" type="number" min="1" max="100" required></div>
+          <div><label for="pct">% off (custom only)</label><input id="pct" type="number" min="1" max="100" step="1"></div>
           <div><label for="months">For months</label><input id="months" type="number" min="1" max="12" required></div>
         </div>
         <div class="two">
@@ -112,13 +114,14 @@ th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute
   function when(iso) { return iso ? new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''; }
   function guardText() {
     if (!data || !preset) return 'Pick a preset to see its limits.';
-    var p = data.presets[preset], r = data.rules[p.kind];
-    return '<b>' + esc(r.label) + ' limits:</b> up to ' + r.maxPercent + '% off, up to ' + r.maxMonths + ' month(s), must expire within ' + r.maxDays + ' days, ' + (r.terms.length === 1 ? 'only with a 12-month agreement' : 'any billing') + '. Never below the per-door floor (Essentials ' + usd(data.floors.essentials) + ', Autopilot ' + usd(data.floors.autopilot) + ', Plus ' + usd(data.floors.plus) + ').';
+    var p = data.presets[preset], r = data.rules[p.kind], L = data.prices, B = data.basePrices;
+    return '<b>Standard</b> (what people pay without an offer): Essentials ' + usd(L.essentials.monthly) + ', Autopilot ' + usd(L.autopilot.monthly) + ', Plus ' + usd(L.plus.monthly) + ' per door (12-month: ' + usd(L.essentials.contract12) + ' / ' + usd(L.autopilot.contract12) + ' / ' + usd(L.plus.contract12) + '). <b>Original price</b> offers bring it back to ' + usd(B.essentials.monthly) + ' / ' + usd(B.autopilot.monthly) + ' / ' + usd(B.plus.monthly) + ' (12-month: ' + usd(B.essentials.contract12) + ' / ' + usd(B.autopilot.contract12) + ' / ' + usd(B.plus.contract12) + ').<br><b>' + esc(r.label) + ' limits:</b> custom up to ' + r.maxPercent + '% off, up to ' + r.maxMonths + ' months (' + data.maxMonthsMonthly + ' if month-to-month), expires within ' + r.maxDays + ' days' + (r.terms.length === 1 ? ', 12-month agreement only' : '') + '. Never below the floor (' + usd(data.floors.essentials) + ' / ' + usd(data.floors.autopilot) + ' / ' + usd(data.floors.plus) + ').';
   }
   function choose(key) {
     preset = key; var p = data.presets[key];
     document.querySelectorAll('.preset').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.k === key)); });
-    $('#title').value = p.title; $('#pct').value = p.percentOff; $('#months').value = p.months; $('#days').value = p.days || data.rules[p.kind].defaultDays;
+    $('#mode').value = p.mode; $('#pct').value = p.percentOff || ''; $('#pct').disabled = p.mode === 'base';
+    $('#title').value = p.title; $('#months').value = p.months; $('#days').value = p.days || data.rules[p.kind].defaultDays;
     $('#t-monthly').checked = p.terms.indexOf('monthly') >= 0; $('#t-contract12').checked = p.terms.indexOf('contract12') >= 0;
     $('#campaign').value = p.kind === 'seasonal' ? p.title.split(':')[0] : '';
     $('#guard').innerHTML = guardText();
@@ -134,7 +137,7 @@ th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute
     var byId = {}; data.owners.forEach(function (o) { byId[o.id] = o; });
     $('#offers').innerHTML = data.offers.length ? data.offers.map(function (o) {
       var who = o.ownerId && byId[o.ownerId] ? byId[o.ownerId].name : (o.email || '');
-      return '<tr><td><span class="kind">' + esc(o.kindLabel) + '</span><br>' + esc(o.title) + (o.note ? '<br><span class="muted">' + esc(o.note) + '</span>' : '') + '</td><td>' + esc(who) + '</td><td class="num">' + o.percentOff + '% × ' + o.months + ' mo<br><span class="muted">' + o.terms.map(function (t) { return t === 'contract12' ? '12-mo' : 'monthly'; }).join(' / ') + '</span></td><td class="num">' + when(o.expiresAt) + '</td><td><span class="chip s-' + o.status + '">' + o.status + '</span></td><td>' +
+      return '<tr><td><span class="kind">' + esc(o.kindLabel) + '</span><br>' + esc(o.title) + (o.note ? '<br><span class="muted">' + esc(o.note) + '</span>' : '') + '</td><td>' + esc(who) + '</td><td class="num">' + (o.mode === 'base' ? 'Original price' : o.percentOff + '% off') + ' × ' + o.months + ' mo<br><span class="muted">' + o.terms.map(function (t) { return t === 'contract12' ? '12-mo' : 'monthly'; }).join(' / ') + '</span></td><td class="num">' + when(o.expiresAt) + '</td><td><span class="chip s-' + o.status + '">' + o.status + '</span></td><td>' +
         (o.status === 'issued' ? '<div class="row" style="margin:0"><button class="ghost sm" data-copy="' + esc(o.link) + '">Copy link</button><button class="ghost sm" data-revoke="' + o.id + '">Revoke</button></div>' : '') + '</td></tr>';
     }).join('') : '<tr><td colspan="6" class="muted">No offers yet. Issue one on the left.</td></tr>';
     $('#owners').innerHTML = data.owners.map(function (o) {
@@ -154,12 +157,13 @@ th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute
     try { sessionStorage.setItem('lw-admin', token); } catch (e) {}
     try { await load(); toast('Connected'); } catch (e) { if (e.message !== '401') toast(e.message); }
   });
+  $('#mode').addEventListener('change', function () { $('#pct').disabled = $('#mode').value === 'base'; if ($('#mode').value === 'percent' && !$('#pct').value) $('#pct').value = 10; });
   $('#presets').addEventListener('click', function (e) { var b = e.target.closest('.preset'); if (b) choose(b.dataset.k); });
   $('#f').addEventListener('submit', async function (e) {
     e.preventDefault(); $('#err').hidden = true;
     if (!data) return toast('Connect first');
     var terms = ['monthly', 'contract12'].filter(function (t) { return $('#t-' + t).checked; });
-    var body = { preset: preset, title: $('#title').value, percentOff: Number($('#pct').value), months: Number($('#months').value), days: $('#days').value, terms: terms, campaign: $('#campaign').value, note: $('#note').value, ownerId: $('#who').value || undefined, emails: $('#emails').value };
+    var body = { preset: preset, mode: $('#mode').value, title: $('#title').value, percentOff: $('#mode').value === 'percent' ? Number($('#pct').value) : undefined, months: Number($('#months').value), days: $('#days').value, terms: terms, campaign: $('#campaign').value, note: $('#note').value, ownerId: $('#who').value || undefined, emails: $('#emails').value };
     try {
       var made = await api('/api/admin/offers', body);
       toast(made.length === 1 ? 'Offer issued. Link copied.' : made.length + ' offers issued');

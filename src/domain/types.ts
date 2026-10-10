@@ -61,7 +61,9 @@ export interface Offer {
   ownerId?: ID;
   email?: string; // lower-case; used before the person has an account
   title: string;
-  percentOff: number; // 1-100
+  /** 'base' = brings the price back to the original (pre-increase) price exactly; 'percent' = percentOff off the standard price. */
+  mode: 'base' | 'percent';
+  percentOff: number; // 'percent' mode: 1-100. 'base' mode: the equivalent saving, for display only
   months: number; // billing months the discount covers
   terms: BillingTerm[]; // which billing terms it can be used with
   plans?: ('essentials' | 'autopilot' | 'plus')[]; // omitted = any plan

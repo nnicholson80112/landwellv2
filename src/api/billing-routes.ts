@@ -19,7 +19,7 @@ import type { Services } from '../services.ts';
 import type { BillingTerm, Offer, Owner, TableName } from '../domain/types.ts';
 import { verifyStripeSignature } from '../adapters/live.ts';
 import { StripeBilling, applyBillingEvent, PLANS, TERMS, type Plan } from '../billing/stripe.ts';
-import { LIST_PRICE, OFFER_RULES, PRESETS, PRICE_FLOOR, REFERRAL_CREDIT_CENTS, expireOffers, issueOffer, pickOffer, quote, referralCodeFor, termLabel, usableOffers, type IssueInput } from '../billing/offers.ts';
+import { BASE_PRICE, LIST_PRICE, OFFER_RULES, PRESETS, PRICE_FLOOR, MAX_MONTHS_MONTHLY, offerPrice, REFERRAL_CREDIT_CENTS, expireOffers, issueOffer, pickOffer, quote, referralCodeFor, termLabel, usableOffers, type IssueInput } from '../billing/offers.ts';
 import { BRAND } from '../config/brand.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -54,7 +54,8 @@ function isAdmin(req: Req): boolean {
 
 /** Public view of an offer (never internal notes). */
 const offerView = (svc: Services, o: Offer) => ({
-  id: o.id, kind: o.kind, kindLabel: OFFER_RULES[o.kind].label, title: o.title, percentOff: o.percentOff, months: o.months,
+  id: o.id, kind: o.kind, kindLabel: OFFER_RULES[o.kind].label, title: o.title, mode: o.mode ?? 'percent', percentOff: o.percentOff, months: o.months,
+  pricePerDoor: Object.fromEntries(PLANS.map((p) => [p, Object.fromEntries(o.terms.map((t) => [t, offerPrice({ mode: o.mode ?? 'percent', percentOff: o.percentOff }, p, t)]))])),
   terms: o.terms, plans: o.plans ?? null, expiresAt: o.expiresAt, status: o.status, link: `${svc.cfg.publicUrl.replace(/\/$/, '')}/offer/${o.id}`,
 });
 
@@ -85,7 +86,7 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
       enabled: !!process.env.STRIPE_SECRET_KEY, plan: owner.plan, billing: owner.billing ?? null, onboarding: owner.onboarding ?? null,
       offers: svc.store.list('offers', (o) => o.ownerId === owner.id || (!!o.email && o.email === cleanEmail(owner.email))).map((o) => offerView(svc, o)),
       referral: { code: referralCodeFor(svc.store, owner), link: `${svc.cfg.publicUrl.replace(/\/$/, '')}/?ref=${svc.store.get('owners', owner.id)!.referralCode}`, creditPerReferral: REFERRAL_CREDIT_CENTS },
-      prices: LIST_PRICE,
+      prices: LIST_PRICE, basePrices: BASE_PRICE,
     });
   }, true);
 
@@ -160,12 +161,12 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
     const owner = o.ownerId ? svc.store.get('owners', o.ownerId) : undefined;
     const plans = (o.plans ?? PLANS) as Plan[];
     const ends = new Date(o.expiresAt).toLocaleString('en-US', { timeZone: svc.cfg.tz, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-    const rows = plans.map((p) => o.terms.map((t) => `<tr><td>${p[0].toUpperCase() + p.slice(1)} · ${termLabel(t)}</td><td><s class="muted">${usd(LIST_PRICE[p][t])}</s> <b>${usd(Math.round(LIST_PRICE[p][t] * (1 - o.percentOff / 100)))}</b>/door for ${o.months} month${o.months > 1 ? 's' : ''}</td></tr>`).join('')).join('');
+    const rows = plans.map((p) => o.terms.map((t) => `<tr><td>${p[0].toUpperCase() + p.slice(1)} · ${termLabel(t)}</td><td><s class="muted">${usd(LIST_PRICE[p][t])}</s> <b>${usd(offerPrice({ mode: o.mode ?? 'percent', percentOff: o.percentOff }, p, t))}</b>/door for ${o.months} month${o.months > 1 ? 's' : ''}</td></tr>`).join('')).join('');
     html(res, 200, page(`${BRAND.name}: your offer`, `
 <p class="muted">A private offer for ${esc(owner?.name ?? o.email ?? 'you')} · ends ${esc(ends)}</p>
 <h1>${esc(o.title)}</h1>
 <div class="card"><table style="width:100%;border-collapse:collapse">${rows}</table>
-<p class="muted">After ${o.months} month${o.months > 1 ? 's' : ''}, the regular per-door price applies. Your first month is charged today. ${o.terms.includes('contract12') && !o.terms.includes('monthly') ? 'Requires a 12-month agreement, billed monthly.' : ''} This offer is for you only and can't be combined with other offers.</p></div>
+<p class="muted">After ${o.months} month${o.months > 1 ? 's' : ''}, the standard per-door price applies. Your first month is charged today. ${o.terms.includes('contract12') && !o.terms.includes('monthly') ? 'Requires a 12-month agreement, billed monthly.' : ''} This offer is for you only and can't be combined with other offers.</p></div>
 <form class="card" method="post" action="/api/public/signup">
 <input type="hidden" name="offerId" value="${esc(o.id)}">
 <label for="n">Your name</label><input id="n" name="name" required autocomplete="name" value="${esc(owner?.name ?? '')}">
@@ -254,7 +255,7 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
     json(res, 200, {
       owners: svc.store.list('owners').map((o) => ({ id: o.id, name: o.name, email: o.email, phone: o.phone, plan: o.plan, source: o.source ?? 'seed', billing: o.billing ?? null, onboarding: o.onboarding ?? null, referralCode: o.referralCode ?? null })),
       offers: svc.store.list('offers').sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((o) => ({ ...offerView(svc, o), ownerId: o.ownerId ?? null, email: o.email ?? null, issuedBy: o.issuedBy, campaign: o.campaign ?? null, note: o.note ?? null, createdAt: o.createdAt, redeemedAt: o.redeemedAt ?? null })),
-      presets: PRESETS, rules: OFFER_RULES, prices: LIST_PRICE, floors: PRICE_FLOOR, billingEnabled: !!process.env.STRIPE_SECRET_KEY, calendly: !!process.env.CALENDLY_URL, calendlyWebhook: !!(process.env.CALENDLY_TOKEN && process.env.CALENDLY_WEBHOOK_SECRET),
+      presets: PRESETS, rules: OFFER_RULES, prices: LIST_PRICE, basePrices: BASE_PRICE, floors: PRICE_FLOOR, maxMonthsMonthly: MAX_MONTHS_MONTHLY, billingEnabled: !!process.env.STRIPE_SECRET_KEY, calendly: !!process.env.CALENDLY_URL, calendlyWebhook: !!(process.env.CALENDLY_TOKEN && process.env.CALENDLY_WEBHOOK_SECRET),
     });
   });
 
@@ -274,6 +275,7 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
     if (targets.length > 200) return json(res, 400, { error: 'Up to 200 people per batch' });
     const input: Omit<IssueInput, 'ownerId' | 'email'> = {
       kind: (b.kind ?? base?.kind) as Offer['kind'], title: String(b.title || base?.title || '').slice(0, 120),
+      mode: (b.mode === 'base' || b.mode === 'percent' ? b.mode : base?.mode ?? 'percent') as Offer['mode'],
       percentOff: Number(b.percentOff ?? base?.percentOff), months: Number(b.months ?? base?.months),
       terms: (b.terms ?? base?.terms) as BillingTerm[] | undefined, plans: b.plans?.length ? b.plans : undefined,
       days: b.days !== undefined && b.days !== '' ? Number(b.days) : base?.days, campaign: b.campaign ? String(b.campaign).slice(0, 60) : undefined,
@@ -289,7 +291,7 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
         }
         return issueOffer(svc.store, { ...input, ...t }, now);
       });
-      for (const o of made) svc.engine.audit({ ownerId: o.ownerId, actor: 'system', action: 'offer.issued', detail: `${OFFER_RULES[o.kind].label} issued by admin: "${o.title}" (${o.percentOff}% × ${o.months} mo, ends ${o.expiresAt.slice(0, 10)}).` });
+      for (const o of made) svc.engine.audit({ ownerId: o.ownerId, actor: 'system', action: 'offer.issued', detail: `${OFFER_RULES[o.kind].label} issued by admin: "${o.title}" (${o.mode === 'base' ? 'original price' : o.percentOff + '% off'} × ${o.months} mo, ends ${o.expiresAt.slice(0, 10)}).` });
       json(res, 200, made.map((o) => offerView(svc, o)));
     } catch (e) {
       json(res, 400, { error: (e as Error).message });

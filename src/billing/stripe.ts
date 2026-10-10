@@ -4,8 +4,9 @@
 // first month is always paid up front. Rent, deposits and vendor payments never
 // touch Landwell.
 //
-// Prices live in Stripe and are found by lookup key, so a price change is made in
-// the Stripe dashboard (new price, move the lookup key), not in code:
+// Stripe holds the STANDARD prices (original + 15%; see src/billing/offers.ts).
+// Prices are found by lookup key, so a price change is made in the Stripe
+// dashboard (new price, move the lookup key) and in LIST_PRICE/BASE_PRICE:
 //   landwell_<plan>_monthly      month-to-month, per door / month
 //   landwell_<plan>_contract12   12-month agreement, per door / month
 // where <plan> is essentials | autopilot | plus.
@@ -15,6 +16,7 @@
 
 import type { Store } from '../store/store.ts';
 import type { BillingTerm, Offer, Owner, OwnerBilling } from '../domain/types.ts';
+import { BASE_PRICE } from './offers.ts';
 
 export type Plan = 'essentials' | 'autopilot' | 'plus';
 export const PLANS: Plan[] = ['essentials', 'autopilot', 'plus'];
@@ -73,8 +75,14 @@ export class StripeBilling {
     });
     if (i.offer) {
       // One single-use coupon per offer: it can't be reused, shared or found by anyone else.
+      // "Original price" offers take an exact dollar amount off (standard − original, per door),
+      // so the price lands exactly on the original; custom offers take a percent off the standard price.
+      const doors = Math.max(1, i.doors);
+      const off: Record<string, string> = i.offer.mode === 'base'
+        ? { amount_off: String(Math.max(0, price.unit_amount - BASE_PRICE[i.plan][i.term]) * doors), currency: 'usd' }
+        : { percent_off: String(i.offer.percentOff) };
       const c = await this.api('POST', 'coupons', new URLSearchParams({
-        percent_off: String(i.offer.percentOff),
+        ...off,
         duration: 'repeating',
         duration_in_months: String(i.offer.months),
         max_redemptions: '1',

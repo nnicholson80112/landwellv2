@@ -143,6 +143,8 @@ section.band{padding-block:80px}
 .plan h3{font-size:24px}
 .plan .price{font-family:var(--display);font-weight:800;font-size:48px;line-height:1}
 .plan .price span{font-family:var(--body);font-size:15px;font-weight:600;color:var(--muted)}
+.head .demo-deal{margin-top:16px;display:inline-flex;flex-wrap:wrap;gap:6px 10px;align-items:center;background:var(--sun-soft);border:1.5px solid var(--sun);border-radius:14px;padding:12px 16px;font-size:16px;color:var(--ink)}
+.linkish{background:none;border:0;padding:0;color:var(--brand);font-weight:800;text-decoration:underline;cursor:pointer;font-size:16px}
 .plan .term{margin-top:-6px;color:var(--muted);font-size:15px}
 .plan .term b{color:var(--ink)}
 .plan ul{list-style:none;padding:0;margin:0;display:grid;gap:8px;font-size:15px}
@@ -279,7 +281,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
             <div class="f"><label for="rent">Average monthly rent ($)</label><input id="rent" type="number" min="0" step="25" value="2000" inputmode="numeric"></div>
             <div class="f"><label for="mgmt">Management fee (%)</label><input id="mgmt" type="number" min="0" max="20" step="0.5" value="9" inputmode="decimal"><small>Average: 9% of rent</small></div>
             <div class="f"><label for="lease">Leasing fee (% of a month's rent)</label><input id="lease" type="number" min="0" max="150" step="5" value="75" inputmode="numeric"><small>Average: 75% of one month</small></div>
-            <div class="f" style="grid-column:1/-1"><label for="plan">Compare with</label><select id="plan"><option value="ess">Essentials · $15 per door</option><option value="auto" selected>Autopilot · $35 per door</option><option value="plus">Autopilot Plus · $59 per door</option></select></div>
+            <div class="f" style="grid-column:1/-1"><label for="plan">Compare with</label><select id="plan"><option value="ess">Essentials · $17.25 per door</option><option value="auto" selected>Autopilot · $40.25 per door</option><option value="plus">Autopilot Plus · $67.85 per door</option></select></div>
           </div>
           <p class="disc">Based on averages and a new tenant in each home about every two years. For the most accurate results, put your current or estimated management and leasing fees in the boxes above.</p>
         </form>
@@ -299,11 +301,11 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 
   <section class="band" id="pricing" style="background:var(--surface);border-block:1px solid var(--line)">
     <div class="wrap">
-      <div class="head"><span class="eyebrow">Pricing</span><h2>One price per door. Never a cut of your rent.</h2><p>Software only on every plan. Go month-to-month, or save with a 12-month agreement. First month paid up front, no setup fee.</p></div>
+      <div class="head"><span class="eyebrow">Pricing</span><h2>One price per door. Never a cut of your rent.</h2><p>Software only on every plan. Go month-to-month, or save with a 12-month agreement. First month paid up front, no setup fee.</p><p class="demo-deal"><b>Demo-day pricing:</b> book a 30-minute demo and lock in $13 / $30 / $50 per door for your whole 12-month agreement. <button class="linkish" data-open="demo">Book a demo</button></p></div>
       <div class="plans">
-        <div class="plan"><h3>Essentials</h3><div class="price num">$15<span> per door / month</span></div><p class="term num">or <b>$13</b> with a 12-month agreement</p><ul><li>Rent reminders and late notices</li><li>Repair requests and vendor list</li><li>Your lease, filled in and e-signed</li><li>Income and expense books</li></ul><button class="cta ghost" data-open="start" data-plan="Essentials">Choose Essentials</button></div>
-        <div class="plan pop"><span class="tag">Most popular</span><h3>Autopilot</h3><div class="price num">$35<span> per door / month</span></div><p class="term num">or <b>$30</b> with a 12-month agreement</p><ul><li>Everything in Essentials</li><li>AI receptionist for texts and email, 24/7</li><li>Automatic vendor booking</li><li>Renewals, move-outs and deposit statements</li><li>Monthly owner statements</li></ul><button class="cta primary" data-open="start" data-plan="Autopilot">Choose Autopilot</button></div>
-        <div class="plan"><h3>Autopilot Plus</h3><div class="price num">$59<span> per door / month</span></div><p class="term num">or <b>$50</b> with a 12-month agreement</p><ul><li>Everything in Autopilot</li><li>24/7 emergency repair dispatch</li><li>Smart-lock self-showings</li><li>Listings on Zillow and more</li><li>Priority support</li></ul><button class="cta ghost" data-open="start" data-plan="Autopilot Plus">Choose Plus</button></div>
+        <div class="plan"><h3>Essentials</h3><div class="price num">$17.25<span> per door / month</span></div><p class="term num">or <b>$14.95</b> with a 12-month agreement</p><ul><li>Rent reminders and late notices</li><li>Repair requests and vendor list</li><li>Your lease, filled in and e-signed</li><li>Income and expense books</li></ul><button class="cta ghost" data-open="start" data-plan="Essentials">Choose Essentials</button></div>
+        <div class="plan pop"><span class="tag">Most popular</span><h3>Autopilot</h3><div class="price num">$40.25<span> per door / month</span></div><p class="term num">or <b>$34.50</b> with a 12-month agreement</p><ul><li>Everything in Essentials</li><li>AI receptionist for texts and email, 24/7</li><li>Automatic vendor booking</li><li>Renewals, move-outs and deposit statements</li><li>Monthly owner statements</li></ul><button class="cta primary" data-open="start" data-plan="Autopilot">Choose Autopilot</button></div>
+        <div class="plan"><h3>Autopilot Plus</h3><div class="price num">$67.85<span> per door / month</span></div><p class="term num">or <b>$57.50</b> with a 12-month agreement</p><ul><li>Everything in Autopilot</li><li>24/7 emergency repair dispatch</li><li>Smart-lock self-showings</li><li>Listings on Zillow and more</li><li>Priority support</li></ul><button class="cta ghost" data-open="start" data-plan="Autopilot Plus">Choose Plus</button></div>
       </div>
     </div>
   </section>
@@ -355,7 +357,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 (function(){
   var $=function(s){return document.querySelector(s)};
   var money=function(n){return '$'+Math.round(n).toLocaleString('en-US')};
-  var PLANS={ess:['Essentials',15],auto:['Autopilot',35],plus:['Autopilot Plus',59]};
+  var PLANS={ess:['Essentials',17.25],auto:['Autopilot',40.25],plus:['Autopilot Plus',67.85]};
   function calc(){
     var d=Math.max(1,+$('#doors').value||1),r=Math.max(0,+$('#rent').value||0),m=Math.max(0,+$('#mgmt').value||0),l=Math.max(0,+$('#lease').value||0),p=PLANS[$('#plan').value];
     var pm=d*r*12*m/100+d*0.5*r*l/100, lw=d*p[1]*12, s=Math.max(0,pm-lw);

@@ -8,18 +8,25 @@ import { createServices } from '../src/services.ts';
 import { install } from '../src/workflows/index.ts';
 import { seed } from '../src/sim/seed.ts';
 import { createApp } from '../src/api/server.ts';
-import { checkOfferRules, issueOffer, pickOffer, canUse, PRESETS } from '../src/billing/offers.ts';
+import { checkOfferRules, issueOffer, pickOffer, canUse, offerPrice, LIST_PRICE, BASE_PRICE, PRESETS } from '../src/billing/offers.ts';
 import { applyBillingEvent } from '../src/billing/stripe.ts';
 
 const now = new Date('2026-10-10T18:00:00Z');
 
 test('offers: guardrails keep every discount above the price floor and inside its type limits', () => {
   for (const [k, p] of Object.entries(PRESETS)) assert.equal(checkOfferRules({ ...p, email: 'a@b.co', issuedBy: p.kind === 'web_intro' || p.kind === 'referral' ? 'system' : 'admin' }), undefined, `preset ${k} is valid`);
-  assert.match(checkOfferRules({ kind: 'demo', title: 'x', percentOff: 50, months: 1, email: 'a@b.co', issuedBy: 'admin' })!, /1–30%/);
-  assert.match(checkOfferRules({ kind: 'demo', title: 'x', percentOff: 20, months: 1, terms: ['monthly'], email: 'a@b.co', issuedBy: 'admin' })!, /12-month agreement/);
+  assert.match(checkOfferRules({ kind: 'demo', title: 'x', percentOff: 50, months: 1, email: 'a@b.co', issuedBy: 'admin' })!, /1–25%/);
+  assert.match(checkOfferRules({ kind: 'demo', mode: 'base', title: 'x', months: 6, terms: ['monthly'], email: 'a@b.co', issuedBy: 'admin' })!, /1–3 months/);
+  assert.equal(checkOfferRules({ kind: 'demo', mode: 'base', title: 'x', months: 12, terms: ['contract12'], email: 'a@b.co', issuedBy: 'admin' }), undefined);
+  assert.match(checkOfferRules({ kind: 'seasonal', mode: 'base', title: 'x', months: 2, terms: ['monthly'], email: 'a@b.co', issuedBy: 'admin' })!, /12-month agreement/);
   assert.match(checkOfferRules({ kind: 'winback', title: 'x', percentOff: 25, months: 1, plans: ['plus'], email: 'a@b.co', issuedBy: 'admin' }) ?? 'ok', /ok/);
   assert.match(checkOfferRules({ kind: 'web_intro', title: 'x', percentOff: 10, months: 1, email: 'a@b.co', issuedBy: 'admin' })!, /automatically/);
   assert.match(checkOfferRules({ kind: 'seasonal', title: 'x', percentOff: 15, months: 1, issuedBy: 'admin' })!, /one owner or one email/);
+});
+
+test('pricing: standard = original + 15%, and original-price offers land exactly on the original', () => {
+  assert.deepEqual(LIST_PRICE, { essentials: { monthly: 1725, contract12: 1495 }, autopilot: { monthly: 4025, contract12: 3450 }, plus: { monthly: 6785, contract12: 5750 } });
+  for (const plan of ['essentials', 'autopilot', 'plus'] as const) for (const t of ['monthly', 'contract12'] as const) assert.equal(offerPrice({ mode: 'base', percentOff: 13 }, plan, t), BASE_PRICE[plan][t]);
 });
 
 test('offers: private to one person, best one wins, never stacked, win-back only for former customers', () => {
@@ -66,7 +73,7 @@ test('API: web signup gets a welcome offer and a discounted checkout; admin, off
     const u = String(url);
     if (!u.startsWith('https://api.stripe.com/')) return realFetch(url, init);
     stripeCalls.push(u + ' ' + decodeURIComponent(String(init?.body ?? '')));
-    if (u.includes('/prices')) return new Response(JSON.stringify({ data: [{ id: 'price_x', unit_amount: 3500 }] }));
+    if (u.includes('/prices')) return new Response(JSON.stringify({ data: [{ id: 'price_x', unit_amount: 4025 }] }));
     if (u.includes('/coupons')) return new Response(JSON.stringify({ id: 'coupon_1' }));
     return new Response(JSON.stringify({ id: 'cs_test_1', url: 'https://checkout.stripe.com/c/cs_test_1' }));
   }) as typeof fetch;
@@ -75,8 +82,8 @@ test('API: web signup gets a welcome offer and a discounted checkout; admin, off
     const out = await r.json();
     assert.equal(r.status, 200, JSON.stringify(out));
     assert.equal(out.offer.kind, 'web_intro');
-    assert.equal(out.quote.firstMonthDueToday, 3 * 3150);
-    assert.ok(stripeCalls.some((c) => c.includes('/coupons') && c.includes('max_redemptions=1')), 'single-use coupon');
+    assert.equal(out.quote.firstMonthDueToday, 3 * 3500, 'first month at the original $35/door');
+    assert.ok(stripeCalls.some((c) => c.includes('/coupons') && c.includes('amount_off=1575') && c.includes('max_redemptions=1')), 'single-use coupon worth exactly $5.25 × 3 doors');
     assert.ok(stripeCalls.some((c) => c.includes('discounts[0][coupon]=coupon_1') && !c.includes('allow_promotion_codes')), 'no public promo codes');
     const pat = store.find('owners', (o) => o.email === 'pat@example.com')!;
     assert.equal(pat.source, 'web');
@@ -100,7 +107,7 @@ test('API: web signup gets a welcome offer and a discounted checkout; admin, off
     // Admin: locked without the token; issues a demo offer by email; the personal link works; revoke works.
     assert.equal((await fetch(`${base}/api/admin/overview`)).status, 401);
     const auth = { authorization: 'Bearer admin-secret', 'content-type': 'application/json' };
-    const bad = await fetch(`${base}/api/admin/offers`, { method: 'POST', headers: auth, body: JSON.stringify({ preset: 'demo-day', percentOff: 60, email: 'lead@example.com' }) });
+    const bad = await fetch(`${base}/api/admin/offers`, { method: 'POST', headers: auth, body: JSON.stringify({ preset: 'demo-day', mode: 'percent', percentOff: 60, email: 'lead@example.com' }) });
     assert.equal(bad.status, 400);
     const made = await (await fetch(`${base}/api/admin/offers`, { method: 'POST', headers: auth, body: JSON.stringify({ preset: 'demo-day', email: 'lead@example.com' }) })).json();
     assert.equal(made.length, 1);
