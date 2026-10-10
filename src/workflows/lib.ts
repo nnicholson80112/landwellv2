@@ -88,6 +88,7 @@ export function buildFacts(store: Store, ownerId: string, propertyId?: string, p
   for (const h of homes) {
     const name = h.address;
     if (h.status === 'listed' || h.status === 'vacant') {
+      facts.push({ label: `Availability of ${name}`, value: h.status === 'vacant' ? 'Available now' : `Available${h.facts['Available from'] ? ` from ${h.facts['Available from']}` : ' now'}; taking applications` });
       facts.push({ label: `Rent for ${name}`, value: `${money(h.rent)}/month, all-in` });
       facts.push({ label: `Security deposit for ${name}`, value: money(h.deposit) });
       facts.push({ label: `Size of ${name}`, value: `${h.beds} bed / ${h.baths} bath` });
