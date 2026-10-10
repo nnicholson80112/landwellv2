@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Landwell Test Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: left = send box + quick events + approvals; right = live conversation and activity */
+:root{--bg:#F6F9FF;--surface:#fff;--ink:#0E1B33;--muted:#4A5A78;--line:#D8E1F2;--brand:#1B4DFF;--brand-ink:#fff;--sun:#FFC83D;--sun-soft:#FFF3CF;--mint:#0E9F6E;--mint-soft:#DDF6EC;--tint:#E8EFFF;--display:'Bricolage Grotesque',system-ui,sans-serif;--body:'Figtree',system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root{--bg:#0B1324;--surface:#121D33;--ink:#EEF3FF;--muted:#A9B7D3;--line:#24365C;--brand:#5B82FF;--brand-ink:#08112A;--sun-soft:#3A3115;--mint-soft:#123A2D;--tint:#17264A;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
+.wrap{max-width:1200px;margin:0 auto;padding:20px 16px 40px}
+h1{font:800 26px var(--display);margin:0}
+h2{font:700 18px var(--display);margin:0 0 10px}
+.top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.top input{flex:1;min-width:200px}
+.grid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:16px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px}
+label{display:block;font-weight:700;font-size:13px;margin:10px 0 4px}
+input,select,textarea{width:100%;font:inherit;color:inherit;background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px}
+textarea{min-height:80px;resize:vertical}
+button{font:700 14px var(--body);border:0;border-radius:10px;padding:10px 14px;min-height:42px;cursor:pointer;background:var(--brand);color:var(--brand-ink)}
+button.ghost{background:var(--surface);color:var(--ink);border:1.5px solid var(--line)}
+button.sun{background:var(--sun);color:#0E1B33}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.chk{display:flex;gap:8px;align-items:center;font-weight:500;margin-top:10px}.chk input{width:auto;min-height:0}
+.feed{display:flex;flex-direction:column;gap:8px;max-height:70vh;overflow-y:auto}
+.m{max-width:85%;display:flex;flex-direction:column;gap:2px}
+.m .w{font-size:12px;font-weight:700;color:var(--muted)}
+.m .b{padding:9px 13px;border-radius:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.m.in{align-self:flex-start}.m.in .b{background:var(--tint);border-bottom-left-radius:4px}
+.m.out{align-self:flex-end}.m.out .w{text-align:right}.m.out .b{background:var(--brand);color:var(--brand-ink);border-bottom-right-radius:4px}
+.m.out.owner .b{background:var(--sun);color:#0E1B33}
+.ap{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px;background:var(--sun-soft)}
+.ap b{display:block}.ap p{margin:6px 0 0;font-size:14px;color:var(--muted);white-space:pre-wrap}
+.log{font-size:13px;color:var(--muted);display:grid;gap:6px;max-height:300px;overflow-y:auto}
+.log b{color:var(--ink)}
+.muted{color:var(--muted);font-size:13px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:700}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><h1>Landwell test console</h1><input id="token" type="password" placeholder="Owner API token" autocomplete="off"><button id="connect">Connect</button></div>
+  <p class="muted">Send messages as anyone, decide approvals, and fire partner events. Everything runs through the real workflows. Texts only reach real phones once Twilio is connected; until then, replies show up here.</p>
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Send a message</h2>
+        <label for="as">Send as</label><select id="as"></select>
+        <label for="custom" id="customL" hidden>Prospect phone number</label><input id="custom" hidden placeholder="+13035550123">
+        <label for="msg">Message</label><textarea id="msg" placeholder="The kitchen faucet is leaking"></textarea>
+        <label class="chk"><input type="checkbox" id="photo"> Attach a sample photo</label>
+        <div class="row"><button id="send">Send</button></div>
+        <div class="row" id="samples"></div>
+      </div>
+      <div class="card">
+        <h2>Partner events</h2>
+        <p class="muted">Things that normally arrive from ID-check, screening and Stripe webhooks.</p>
+        <div class="row"><button class="ghost" id="ev-id">Prospect finished ID check</button><button class="ghost" id="ev-screen">Screening report arrives</button><button class="ghost" id="ev-pay">Oldest rent charge gets paid</button></div>
+      </div>
+      <div class="card"><h2>Waiting for you</h2><div id="approvals" class="muted">Connect to load.</div></div>
+    </div>
+    <div>
+      <div class="card"><h2>Conversation</h2><div class="feed" id="feed"></div></div>
+      <div class="card"><h2>In progress</h2><div class="log" id="runs"></div></div>
+      <div class="card"><h2>Activity</h2><div class="log" id="activity"></div></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+let token = ''; try { token = localStorage.getItem('lw-token') || ''; } catch (e) {}
+$('#token').value = token;
+let people = {}; let ownerPhone = '';
+const toast = (t) => { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => el.hidden = true, 2500); };
+async function api(path, body) {
+  const r = await fetch(path, { method: body ? 'POST' : 'GET', headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  if (r.status === 401) { toast('That token was not accepted'); throw new Error('401'); }
+  return r.json();
+}
+const norm = (p) => { const d = String(p || '').replace(/[^\d+]/g, ''); return d.startsWith('+') ? d : d.length === 10 ? '+1' + d : d; };
+async function loadPeople() {
+  const [dash, tenants, vendors] = await Promise.all([api('/api/dashboard'), api('/api/tenants'), api('/api/vendors')]);
+  ownerPhone = norm(dash.owner.phone);
+  people = {};
+  const opts = [];
+  const add = (phone, label) => { const k = norm(phone); people[k] = people[k] ? people[k] + ' / ' + label : label; };
+  add(dash.owner.phone, 'You (owner)');
+  opts.push([dash.owner.phone, 'You (owner) — approve with "YES CODE"']);
+  for (const t of tenants.filter((t) => t.status !== 'former')) { add(t.phone, 'Tenant ' + t.name); opts.push([t.phone, 'Tenant · ' + t.name]); }
+  for (const v of vendors) { add(v.phone, v.name); if (norm(v.phone) !== ownerPhone) opts.push([v.phone, 'Vendor · ' + v.name]); else opts[0][1] = 'You (owner) + ' + v.name + ' — same phone'; }
+  opts.push(['custom', 'New prospect (enter a number)']);
+  $('#as').innerHTML = opts.map(([p, l]) => `<option value="${esc(p)}">${esc(l)}</option>`).join('');
+}
+$('#as').addEventListener('change', () => { const c = $('#as').value === 'custom'; $('#custom').hidden = !c; $('#customL').hidden = !c; });
+const SAMPLES = ['The back bedroom window screen is torn and the windows are filthy', 'YES Wed 10-12 $180', 'Done, all set. $180', 'Is the place still available? Do you allow dogs?', 'Can I tour it this weekend?', 'Is it a safe neighborhood?', 'I smell gas in the kitchen', 'When is rent due?'];
+$('#samples').innerHTML = SAMPLES.map((s) => `<button class="ghost" data-s="${esc(s)}">${esc(s.length > 28 ? s.slice(0, 26) + '…' : s)}</button>`).join('');
+$('#samples').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) $('#msg').value = b.dataset.s; });
+$('#send').addEventListener('click', async () => {
+  const from = $('#as').value === 'custom' ? $('#custom').value : $('#as').value;
+  const body = $('#msg').value.trim();
+  if (!from || !body) return toast('Pick a sender and type a message');
+  $('#send').disabled = true;
+  try { await api('/api/dev/inbound', { from, body, media: $('#photo').checked ? ['https://placehold.co/600x400?text=Tenant+photo'] : [] }); $('#msg').value = ''; $('#photo').checked = false; await refresh(); }
+  finally { $('#send').disabled = false; }
+});
+async function decide(id, decision) { await api('/api/approvals/' + id, { decision }); toast('Decision recorded'); refresh(); }
+$('#approvals').addEventListener('click', (e) => { const b = e.target.closest('button[data-ap]'); if (b) decide(b.dataset.ap, b.dataset.d); });
+$('#ev-id').addEventListener('click', async () => {
+  const s = (await api('/api/showings')).filter((x) => x.status === 'requested' && !x.idVerified).pop();
+  if (!s) return toast('No showing is waiting on an ID check');
+  await api('/api/dev/event', { event: 'identity.verified', payload: { refId: s.id } }); toast('ID verified'); refresh();
+});
+$('#ev-screen').addEventListener('click', async () => {
+  const a = (await api('/api/applications')).filter((x) => x.status === 'screening').pop();
+  if (!a) return toast('No application is waiting on screening. Apply at /apply/<home id> first.');
+  await api('/api/dev/event', { event: 'screening.completed', payload: { applicationId: a.id, report: { provider: 'Sample Screening Co', monthlyIncome: 900000, evictionsLast: { years: 5, count: 0 }, collectionsLast: { years: 2, count: 0 }, referencesConfirmed: 2, pets: 'None', agencyContact: 'Sample Screening Co, Denver CO, 800-555-0100' } } });
+  toast('Screening report delivered'); refresh();
+});
+$('#ev-pay').addEventListener('click', async () => {
+  const c = (await api('/api/charges')).filter((x) => x.status === 'open').sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
+  if (!c) return toast('No open charges right now');
+  await api('/api/dev/event', { event: 'payment.received', payload: { chargeId: c.id, amount: c.amount - c.paid, method: 'ach', providerRef: 'test_' + Date.now() } }); toast('Payment recorded'); refresh();
+});
+async function refresh() {
+  if (!token) return;
+  const [msgs, dash] = await Promise.all([api('/api/messages'), api('/api/dashboard')]);
+  msgs.sort((a, b) => a.at.localeCompare(b.at));
+  const feed = $('#feed'); const atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 40;
+  feed.innerHTML = msgs.slice(-150).map((m) => {
+    const who = people[norm(m.direction === 'in' ? m.from : m.to)] || (m.direction === 'in' ? m.from : m.to) || 'Prospect';
+    const owner = m.direction === 'out' && norm(m.to) === ownerPhone;
+    const when = new Date(m.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    return `<div class="m ${m.direction}${owner ? ' owner' : ''}"><div class="w">${m.direction === 'in' ? esc(who) : 'Landwell → ' + esc(who)} · ${m.channel} · ${when}</div><div class="b">${esc(m.body)}${m.media?.length ? ' [photo]' : ''}</div></div>`;
+  }).join('') || '<p class="muted">No messages yet. Send one on the left.</p>';
+  if (atBottom) feed.scrollTop = feed.scrollHeight;
+  $('#approvals').innerHTML = dash.approvals.length ? dash.approvals.map((a) => `<div class="ap"><b>${esc(a.title)}</b><p>${esc(a.body)}</p><p>Text code: <b style="display:inline">${esc(a.id.slice(-3).toUpperCase())}</b></p><div class="row">${a.options.map((o, i) => `<button class="${i ? 'ghost' : 'sun'}" data-ap="${a.id}" data-d="${esc(o)}">${esc(o.replace(/_/g, ' '))}</button>`).join('')}</div></div>`).join('') : '<p class="muted">Nothing is waiting on you.</p>';
+  $('#runs').innerHTML = dash.inProgress.map((r) => `<div><b>${esc(r.workflow)}</b>: ${esc(r.waitingFor)}</div>`).join('') || 'Nothing in progress.';
+  $('#activity').innerHTML = dash.activity.slice(0, 40).map((a) => `<div><b>${esc(new Date(a.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}</b> ${esc(a.detail)}</div>`).join('');
+}
+$('#connect').addEventListener('click', async () => {
+  token = $('#token').value.trim(); try { localStorage.setItem('lw-token', token); } catch (e) {}
+  try { await loadPeople(); await refresh(); toast('Connected'); } catch (e) {}
+});
+if (token) $('#connect').click();
+setInterval(() => { refresh().catch(() => {}); }, 5000);
+</script>
+</body>
+</html>

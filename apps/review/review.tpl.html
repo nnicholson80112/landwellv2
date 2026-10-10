@@ -1,0 +1,213 @@
+<title>Landwell Build Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* Layout: status header → how a message flows → 15 workflow cards → demo replay as phone threads → real vs mocked → next steps */
+:root{
+  --bg:#F6F9FF; --surface:#FFFFFF; --tint:#E8EFFF; --ink:#0E1B33; --muted:#4A5A78; --line:#D8E1F2;
+  --brand:#1B4DFF; --brand-ink:#FFFFFF; --sun:#FFC83D; --sun-soft:#FFF3CF; --mint:#0E9F6E; --mint-soft:#DDF6EC; --coral:#C2410C; --coral-soft:#FFE7DA;
+  --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif; --body:'Figtree','Segoe UI',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0B1324;--surface:#121D33;--tint:#17264A;--ink:#EEF3FF;--muted:#A9B7D3;--line:#24365C;--brand:#5B82FF;--brand-ink:#08112A;--sun:#FFC83D;--sun-soft:#3A3115;--mint:#3DD39B;--mint-soft:#123A2D;--coral:#FF9B6B;--coral-soft:#3D2416;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0B1324;--surface:#121D33;--tint:#17264A;--ink:#EEF3FF;--muted:#A9B7D3;--line:#24365C;--brand:#5B82FF;--brand-ink:#08112A;--sun:#FFC83D;--sun-soft:#3A3115;--mint:#3DD39B;--mint-soft:#123A2D;--coral:#FF9B6B;--coral-soft:#3D2416;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55}
+h1,h2,h3{font-family:var(--display);letter-spacing:-0.02em;text-wrap:balance;margin:0;line-height:1.1}
+p{margin:0}
+code{font-family:var(--mono);font-size:.88em;background:var(--tint);border-radius:6px;padding:1px 5px}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:20px}
+section{padding-block:44px}
+.eyebrow{font-weight:800;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--brand);margin-bottom:10px}
+.lead{color:var(--muted);font-size:18px;max-width:62ch;margin-top:12px}
+header{padding-block:48px 28px}
+header h1{font-size:clamp(34px,5vw,56px);font-weight:800}
+.status{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:28px}
+.st{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px 20px;display:flex;flex-direction:column;gap:6px}
+.st .chip{align-self:flex-start}
+.st b{font-family:var(--display);font-size:22px}
+.st span{color:var(--muted);font-size:14px}
+.chip{display:inline-flex;align-items:center;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:3px 10px}
+.chip.done{background:var(--mint-soft);color:var(--mint)}
+.chip.next{background:var(--sun-soft);color:var(--ink);border:1px solid var(--sun)}
+.chip.mock{background:var(--coral-soft);color:var(--coral)}
+h2{font-size:clamp(26px,3.4vw,38px);font-weight:800}
+.flow{margin-top:24px;background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:20px;overflow-x:auto}
+.flow svg{display:block;min-width:760px;width:100%;height:auto}
+.wfs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:24px}
+.wf{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.wf .tr{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.wf h3{font-size:19px}
+.wf ol{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.wf li{font-size:12.5px;font-weight:600;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted)}
+.wf li.you{background:var(--sun-soft);border-color:var(--sun);color:var(--ink)}
+.wf li.law{background:var(--tint);border-color:var(--tint);color:var(--brand)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.legend i{width:14px;height:14px;border-radius:5px;display:inline-block}
+.replay{display:grid;grid-template-columns:minmax(0,280px) minmax(0,1fr);gap:18px;margin-top:24px;align-items:start}
+.tabs{display:flex;flex-direction:column;gap:6px}
+.tabs button{text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 14px;font:inherit;font-weight:600;font-size:14px;color:var(--ink);cursor:pointer;min-height:44px}
+.tabs button[aria-selected="true"]{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand)}
+.tabs button small{display:block;color:var(--muted);font-weight:500;font-size:12px}
+.thread{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:20px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.thread h3{font-size:20px;margin-bottom:6px}
+.m{max-width:88%;display:flex;flex-direction:column;gap:3px}
+.m .w{font-size:12px;font-weight:700;color:var(--muted)}
+.m .b{padding:10px 14px;border-radius:16px;font-size:14.5px;white-space:pre-wrap;overflow-wrap:anywhere}
+.m.in{align-self:flex-start}.m.in .b{background:var(--bg);border-bottom-left-radius:5px}
+.m.out{align-self:flex-end;text-align:left}.m.out .b{background:var(--brand);color:var(--brand-ink);border-bottom-right-radius:5px}
+.m.out.owner .b{background:var(--sun);color:#0E1B33}
+.m.out .w{text-align:right}
+.note{align-self:center;font-size:13px;font-weight:700;background:var(--tint);color:var(--brand);border-radius:999px;padding:5px 12px;text-align:center}
+.tbl{margin-top:24px;overflow-x:auto;border:1px solid var(--line);border-radius:18px;background:var(--surface)}
+table{width:100%;border-collapse:collapse;font-size:15px;min-width:560px}
+th,td{text-align:left;padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+.next{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:24px}
+.next .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px}
+.next h3{font-size:19px;margin-bottom:10px}
+.next ul{margin:0;padding-left:20px;display:grid;gap:6px;color:var(--muted)}
+.next li b{color:var(--ink)}
+footer{padding-block:28px;color:var(--muted);font-size:13px;border-top:1px solid var(--line)}
+@media (max-width:900px){.wfs{grid-template-columns:repeat(2,minmax(0,1fr))}.replay,.next{grid-template-columns:minmax(0,1fr)}.tabs{flex-direction:row;overflow-x:auto}.tabs button{flex:none;max-width:220px}}
+@media (max-width:600px){.status,.wfs{grid-template-columns:minmax(0,1fr)}}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">Landwell · build review · {{DATE}}</div>
+  <h1>The website and the workflow engine are built and working.</h1>
+  <p class="lead">Fifteen workflows run the business end to end on sample data: repairs, rent, late rent, applications, leases, showings, renewals, move-outs and owner reports. Next comes the owner app that sits on top.</p>
+  <div class="status">
+    <div class="st"><span class="chip done">Done</span><b>Website</b><span>Mobile and desktop, savings calculator, pricing, get-started form</span></div>
+    <div class="st"><span class="chip done">Done</span><b>Workflows + AI plug-in</b><span>15 workflows, {{TESTS}} automated tests passing, API, webhooks, phone line and <code>/play</code> test console, {{LINES}} lines of code</span></div>
+    <div class="st"><span class="chip next">Next</span><b>Owner app</b><span>Phone and browser app on top of the API that's already built</span></div>
+  </div>
+</header>
+
+<section>
+  <div class="eyebrow">How every message is handled</div>
+  <h2>One front desk, guardrails on both sides of the AI</h2>
+  <p class="lead">Texts, emails and voice calls all enter the same way. Sensitive topics never reach the AI, and nothing the AI writes goes out unchecked.</p>
+  <div class="flow" role="img" aria-label="Message flow: text, email or voice comes in, guardrails check it, the AI drafts a reply using only owner facts, guardrails check the draft, then the reply is sent and the right workflow starts; sensitive topics go straight to the owner.">
+    <svg viewBox="0 0 980 250" aria-hidden="true" font-family="Figtree, system-ui, sans-serif">
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs>
+      <g fill="none" stroke="var(--muted)" stroke-width="1.5">
+        <path d="M150 80H188" marker-end="url(#ar)"/><path d="M340 80H378" marker-end="url(#ar)"/><path d="M530 80H568" marker-end="url(#ar)"/><path d="M720 80H758" marker-end="url(#ar)"/>
+        <path d="M265 118V178H378" marker-end="url(#ar)"/>
+      </g>
+      <g>
+        <rect x="10" y="44" width="140" height="72" rx="14" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="80" y="76" text-anchor="middle" font-weight="700" font-size="15" fill="var(--ink)">Text · email</text>
+        <text x="80" y="96" text-anchor="middle" font-size="13" fill="var(--muted)">or voice turn</text>
+        <rect x="190" y="44" width="150" height="72" rx="14" fill="var(--tint)" stroke="var(--brand)" stroke-width="1.5"/>
+        <text x="265" y="76" text-anchor="middle" font-weight="700" font-size="15" fill="var(--ink)">Guardrails</text>
+        <text x="265" y="96" text-anchor="middle" font-size="13" fill="var(--muted)">emergency, fair housing</text>
+        <rect x="380" y="44" width="150" height="72" rx="14" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="455" y="76" text-anchor="middle" font-weight="700" font-size="15" fill="var(--ink)">AI drafts</text>
+        <text x="455" y="96" text-anchor="middle" font-size="13" fill="var(--muted)">owner's facts only</text>
+        <rect x="570" y="44" width="150" height="72" rx="14" fill="var(--tint)" stroke="var(--brand)" stroke-width="1.5"/>
+        <text x="645" y="76" text-anchor="middle" font-weight="700" font-size="15" fill="var(--ink)">Guardrails</text>
+        <text x="645" y="96" text-anchor="middle" font-size="13" fill="var(--muted)">check the draft</text>
+        <rect x="760" y="44" width="210" height="72" rx="14" fill="var(--mint-soft)" stroke="var(--mint)" stroke-width="1.5"/>
+        <text x="865" y="76" text-anchor="middle" font-weight="700" font-size="15" fill="var(--ink)">Reply + start workflow</text>
+        <text x="865" y="96" text-anchor="middle" font-size="13" fill="var(--muted)">repair, showing, renewal…</text>
+        <rect x="380" y="146" width="300" height="64" rx="14" fill="var(--sun-soft)" stroke="var(--sun)" stroke-width="1.5"/>
+        <text x="530" y="174" text-anchor="middle" font-weight="700" font-size="15" fill="var(--ink)">Owner gets a to-do and a text</text>
+        <text x="530" y="194" text-anchor="middle" font-size="13" fill="var(--muted)">accommodations, area questions, complaints</text>
+        <text x="282" y="168" font-size="12.5" fill="var(--muted)">sensitive</text>
+      </g>
+    </svg>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">The 15 workflows</div>
+  <h2>What runs on its own, and the only steps that need you</h2>
+  <div class="legend"><span><i style="background:var(--sun)"></i>You decide</span><span><i style="background:var(--tint);border:1px solid var(--brand)"></i>Colorado rule enforced</span><span><i style="background:var(--bg);border:1px solid var(--line)"></i>Automatic</span></div>
+  <div class="wfs" id="wfs"></div>
+</section>
+
+<section>
+  <div class="eyebrow">Demo replay</div>
+  <h2>Every text from the end-to-end run</h2>
+  <p class="lead">Simulated month at 7610 S Rosemary Cir (3 bed, 2 bath, $2,750) and 88 Aspen Ct, with GlassHouse Exteriors as the vendor. Yellow bubbles are texts to you. {{RUNS}} workflow runs, {{FAILED}} failures.</p>
+  <div class="replay"><div class="tabs" role="tablist" aria-label="Demo scenes" id="tabs"></div><div class="thread" id="thread" role="tabpanel"></div></div>
+</section>
+
+<section>
+  <div class="eyebrow">Honest status</div>
+  <h2>What's real and what's still a stand-in</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Piece</th><th>Status</th><th>To go live</th></tr></thead>
+    <tbody>
+      <tr><td>Workflow engine, 15 workflows, guardrails, lease templates, signing page, API</td><td><span class="chip done">Working</span></td><td>Attorney review of Colorado rules and guardrail lists</td></tr>
+      <tr><td>Communication AI</td><td><span class="chip done">Plug-in ready</span></td><td>Rule-based runs today. Add a Claude key, or point it at your in-house AI or voice agent</td></tr>
+      <tr><td>Texting, email, rent by ACH, smart locks</td><td><span class="chip next">Written, untested live</span></td><td>Twilio (plus carrier registration), Postmark, Stripe, Seam accounts in test mode</td></tr>
+      <tr><td>ID check, screening, Zillow posting</td><td><span class="chip mock">Mock</span></td><td>Choose partners; each is one small adapter</td></tr>
+      <tr><td>Login and database</td><td><span class="chip mock">MVP</span></td><td>Real sign-in and Postgres before many owners</td></tr>
+      <tr><td>Owner app</td><td><span class="chip next">Next phase</span></td><td>Built on the existing API</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="eyebrow">Where we are</div>
+  <h2>Decided, and what's next</h2>
+  <div class="next">
+    <div class="card"><h3>Decided</h3><ul>
+      <li><b>Name:</b> Landwell (trademark search before Twilio registration and domain)</li>
+      <li><b>Look:</b> sky white, Landwell blue, sunny yellow</li>
+      <li><b>Demo home:</b> 7610 S Rosemary Cir, Centennial · vendor GlassHouse Exteriors</li>
+      <li><b>AI:</b> in-house AI service on Railway, Claude underneath, rules as backup</li>
+    </ul></div>
+    <div class="card"><h3>Next, in order</h3><ul>
+      <li><b>Private GitHub repo</b> with folders intact</li>
+      <li><b>Railway:</b> <code>api</code> + <code>ai</code> services, fresh secrets, then check <code>/health</code> and <code>/play</code></li>
+      <li><b>Stripe sandbox</b> key and webhook · <b>Postmark</b> · <b>Twilio</b> + A2P 10DLC (start now, takes weeks)</li>
+      <li><b>Then:</b> the owner app, phone and browser</li>
+    </ul></div>
+  </div>
+</section>
+</div>
+<footer><div class="wrap">Landwell is a working name. Sample data only. Not legal advice.</div></footer>
+
+<script>
+const WF = [
+  ['Front desk','every text, email, voice turn',['Identify sender','Guardrails','AI drafts','Check draft','Reply','Start workflow']],
+  ['Repair request','maintenance.requested',['Photo','Urgency','~Colorado 24/72h clock','Text vendors','!Over your limit','Booked','Done + invoice','!Invoice off quote','Paid']],
+  ['Daily rent check','6:00 AM daily',['Charge 5 days before','Pay link','Due-day reminder','Late after grace']],
+  ['Payment received','Stripe webhook',['ACH settles','Receipt','Stops late notices']],
+  ['Late rent','after grace period',['Friendly reminder','~Fee only 7+ days late, capped','!Demand, plan or wait']],
+  ['Rental application','application submitted',['Screening link','Report vs your criteria','No AI score','!Approve or deny','~Adverse-action notice']],
+  ['Lease and move-in','application approved',['Your lease filled in','~1 increase per 12 months','Tenant signs','!You sign','Deposit + rent links','Move-in texts']],
+  ['Showing','prospect asks to tour',['ID check','Pick 1 of 3 times','One-time door code','Code revoked','Feedback + apply link']],
+  ['Listing','vacancy coming',['~All-in rent','Fair-housing wording check','!Publish','Old leads re-matched']],
+  ['Renewal check','7:00 AM daily',['Lease hits lead time','Starts renewal']],
+  ['Renewal','120 days out',['!Set rent and term','~For-cause reason if not renewing','Offer to tenant','Renew or move out']],
+  ['Move-out and deposit','tenant gives notice',['Confirm date','List early','!Walkthrough','!Deductions','~Refund within 30 days']],
+  ['Tenant welcome','tenant added',['How to text repairs','Autopay link','Opt-out']],
+  ['Monday report','Mondays 7:00 AM',['Rent collected','Repairs','Messages','What needs you']],
+  ['New owner setup','owner signs up',['6-step checklist','Welcome text','Nudges day 2 and 7']],
+];
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+document.getElementById('wfs').innerHTML = WF.map(([t, tr, steps]) => `<div class="wf"><div class="tr">${esc(tr)}</div><h3>${esc(t)}</h3><ol>${steps.map((s) => s[0] === '!' ? `<li class="you">${esc(s.slice(1))}</li>` : s[0] === '~' ? `<li class="law">${esc(s.slice(1))}</li>` : `<li>${esc(s)}</li>`).join('')}</ol></div>`).join('');
+
+const SCENES = /*SCENES*/[];
+const tabs = document.getElementById('tabs'), thread = document.getElementById('thread');
+function show(i) {
+  const s = SCENES[i];
+  tabs.querySelectorAll('button').forEach((b, j) => b.setAttribute('aria-selected', String(i === j)));
+  thread.innerHTML = `<h3>${esc(s.title.replace(/^\d+\.\s*/, ''))}</h3>` + s.items.map((m) => {
+    if (m.k === 'note') return `<div class="note">${esc(m.t)}</div>`;
+    const owner = /^OWNER/.test(m.who);
+    const who = m.who.replace(/^(OWNER|TENANT|VENDOR) /, (x) => x === 'OWNER ' ? 'You · ' : x === 'TENANT ' ? 'Tenant · ' : 'Vendor · ').replace(/^\+1720555\d{4}$/, 'Prospect');
+    return `<div class="m ${m.k}${owner && m.k === 'out' ? ' owner' : ''}"><div class="w">${m.k === 'in' ? esc(who) : 'Landwell → ' + esc(who)}</div><div class="b">${esc(m.t)}</div></div>`;
+  }).join('');
+}
+tabs.innerHTML = SCENES.map((s, i) => `<button role="tab" id="tab${i}">${esc(s.title)}<small>${esc(s.time)}</small></button>`).join('');
+tabs.querySelectorAll('button').forEach((b, i) => b.addEventListener('click', () => show(i)));
+show(0);
+</script>

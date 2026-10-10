@@ -1,0 +1,378 @@
+<title>Landwell</title>
+<meta name="description" content="Landwell runs your rentals for a flat price per door: rent, repairs, tenant messages and leases, handled. You just approve.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: one bright column of bands; hero = promise + live phone feed; every band ends in a CTA path */
+:root{
+  --bg:#F6F9FF;          /* airy sky white */
+  --surface:#FFFFFF;
+  --tint:#E8EFFF;        /* blue wash */
+  --sun:#FFC83D;         /* sunny highlight */
+  --sun-soft:#FFF3CF;
+  --ink:#0E1B33;         /* navy ink */
+  --muted:#4A5A78;
+  --line:#D8E1F2;
+  --brand:#1B4DFF;       /* Landwell blue: primary CTA */
+  --brand-ink:#FFFFFF;
+  --brand-deep:#1238C2;
+  --mint:#0E9F6E; --mint-soft:#DDF6EC;
+  --coral:#C2410C; --coral-soft:#FFE7DA;
+  --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --body:'Figtree','Segoe UI',system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0B1324; --surface:#121D33; --tint:#17264A; --sun:#FFC83D; --sun-soft:#3A3115; --ink:#EEF3FF; --muted:#A9B7D3; --line:#24365C;
+  --brand:#5B82FF; --brand-ink:#08112A; --brand-deep:#7C9BFF; --mint:#3DD39B; --mint-soft:#123A2D; --coral:#FF9B6B; --coral-soft:#3D2416; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0B1324; --surface:#121D33; --tint:#17264A; --sun:#FFC83D; --sun-soft:#3A3115; --ink:#EEF3FF; --muted:#A9B7D3; --line:#24365C;
+  --brand:#5B82FF; --brand-ink:#08112A; --brand-deep:#7C9BFF; --mint:#3DD39B; --mint-soft:#123A2D; --coral:#FF9B6B; --coral-soft:#3D2416; color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55}
+h1,h2,h3{font-family:var(--display);letter-spacing:-0.025em;text-wrap:balance;margin:0;line-height:1.05}
+p{margin:0}
+a{color:var(--brand)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px}
+.num{font-variant-numeric:tabular-nums}
+
+/* nav */
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:20px;padding-block:12px}
+.logo{display:flex;align-items:center;gap:9px;font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:-0.03em;color:var(--ink);text-decoration:none}
+.links{display:flex;gap:22px;margin-left:auto;font-weight:600;font-size:15px}
+.links a{color:var(--muted);text-decoration:none}
+.links a:hover{color:var(--ink)}
+.cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:14px;padding:14px 22px;font-weight:700;font-size:16px;min-height:50px;cursor:pointer;text-decoration:none;transition:transform .15s, box-shadow .15s, background .15s}
+.cta.primary{background:var(--brand);color:var(--brand-ink);box-shadow:0 8px 22px -10px var(--brand)}
+.cta.primary:hover{background:var(--brand-deep);transform:translateY(-1px)}
+.cta.sun{background:var(--sun);color:#0E1B33;box-shadow:0 8px 22px -12px #C78E00}
+.cta.sun:hover{transform:translateY(-1px)}
+.cta.ghost{background:var(--surface);color:var(--ink);border:1.5px solid var(--line)}
+.cta.ghost:hover{border-color:var(--brand)}
+.cta.sm{min-height:42px;padding:9px 16px;font-size:15px;border-radius:12px}
+
+/* hero */
+.hero{position:relative;overflow:hidden;padding-block:64px 72px}
+.hero::before{content:"";position:absolute;width:520px;height:520px;border-radius:50%;background:var(--sun-soft);right:-140px;top:-160px;z-index:0}
+.hero::after{content:"";position:absolute;width:380px;height:380px;border-radius:50%;background:var(--tint);left:-160px;bottom:-200px;z-index:0}
+.hero .wrap{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:48px;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 14px 6px 8px;font-weight:600;font-size:14px;color:var(--muted)}
+.pill b{background:var(--mint-soft);color:var(--mint);border-radius:999px;padding:2px 9px;font-size:12px;letter-spacing:.03em}
+.hero h1{font-size:clamp(42px,6.4vw,76px);font-weight:800;margin:20px 0 18px}
+.hero h1 .hl{background:linear-gradient(transparent 62%,var(--sun) 62%);padding-inline:4px}
+.hero .lead{font-size:clamp(17px,1.6vw,20px);color:var(--muted);max-width:50ch}
+.hero .ctas{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+.hero .fine{margin-top:16px;font-size:14px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap}
+.hero .fine span::before{content:"✓ ";color:var(--mint);font-weight:800}
+
+.phone{justify-self:center;width:min(360px,100%);background:var(--surface);border:1px solid var(--line);border-radius:34px;padding:16px;box-shadow:0 30px 60px -30px rgba(14,27,51,.45)}
+.phone .bar{display:flex;justify-content:space-between;align-items:center;padding:6px 8px 14px;font-weight:700}
+.phone .bar small{font-weight:600;color:var(--muted);font-size:12px}
+.feed{display:flex;flex-direction:column;gap:10px}
+.ev{display:flex;gap:12px;align-items:flex-start;background:var(--bg);border-radius:16px;padding:12px}
+.ev .ic{flex:none;width:36px;height:36px;border-radius:11px;display:grid;place-items:center}
+.ev .ic svg{width:19px;height:19px}
+.ev b{display:block;font-size:14px;line-height:1.3}
+.ev span{font-size:13px;color:var(--muted)}
+.ev.need{background:var(--sun-soft)}
+.ev .go{margin-top:8px;display:flex;gap:6px}
+.ev .go button{border:0;border-radius:9px;padding:7px 12px;font-weight:700;font-size:13px;cursor:pointer;min-height:36px}
+.ev .go .y{background:var(--brand);color:var(--brand-ink)}
+.ev .go .n{background:var(--surface);border:1px solid var(--line)}
+@media (prefers-reduced-motion:no-preference){.ev{animation:pop .5s both}.ev:nth-child(2){animation-delay:.15s}.ev:nth-child(3){animation-delay:.3s}.ev:nth-child(4){animation-delay:.45s}@keyframes pop{from{transform:translateY(8px)}to{transform:none}}}
+
+/* bands */
+section.band{padding-block:80px}
+.head{max-width:680px;margin-bottom:36px}
+.eyebrow{display:inline-block;font-weight:800;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--brand);margin-bottom:12px}
+.head h2{font-size:clamp(32px,4.2vw,50px);font-weight:800}
+.head p{color:var(--muted);font-size:18px;margin-top:14px}
+.trust{background:var(--surface);border-block:1px solid var(--line)}
+.trust .wrap{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;padding-block:22px}
+.trust div{display:flex;gap:10px;align-items:center;font-weight:600;font-size:15px}
+.trust svg{flex:none;width:22px;height:22px;color:var(--brand)}
+
+.jobs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.job{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:10px}
+.job .k{width:44px;height:44px;border-radius:13px;background:var(--sun);display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:20px;color:#0E1B33}
+.job h3{font-size:22px}
+.job p{color:var(--muted);font-size:15px}
+
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px;align-items:center}
+.flows{display:grid;gap:12px}
+.flow{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px 20px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:start}
+.flow .ic{width:42px;height:42px;border-radius:12px;background:var(--tint);color:var(--brand);display:grid;place-items:center}
+.flow .ic svg{width:22px;height:22px}
+.flow h3{font-size:19px;margin-bottom:4px}
+.flow p{color:var(--muted);font-size:15px}
+.steps{list-style:none;padding:0;margin:14px 0 0;display:flex;flex-wrap:wrap;gap:6px}
+.steps li{font-size:12.5px;font-weight:700;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--muted)}
+.steps li.you{background:var(--sun-soft);border-color:var(--sun);color:var(--ink)}
+
+.chat{background:var(--surface);border:1px solid var(--line);border-radius:26px;padding:20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 24px 50px -32px rgba(14,27,51,.4)}
+.chat .who{font-weight:700;font-size:14px;color:var(--muted);margin-bottom:4px}
+.msg{max-width:86%;padding:10px 14px;border-radius:18px;font-size:15px}
+.msg.in{background:var(--bg);align-self:flex-start;border-bottom-left-radius:6px}
+.msg.out{background:var(--brand);color:var(--brand-ink);align-self:flex-end;border-bottom-right-radius:6px}
+.msg.note{align-self:center;background:var(--sun-soft);color:var(--ink);font-size:13px;font-weight:700;border-radius:999px;padding:6px 12px}
+
+.calc{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:20px;align-items:stretch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:28px}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.f label{display:block;font-weight:700;font-size:14px;margin-bottom:6px}
+.f input,.f select{width:100%;min-height:50px;border:1.5px solid var(--line);border-radius:12px;padding:10px 14px;background:var(--bg);font-size:17px}
+.f input:focus,.f select:focus{border-color:var(--brand);outline:none}
+.f small{display:block;margin-top:5px;color:var(--muted);font-size:13px}
+.disc{margin-top:18px;padding-top:16px;border-top:1px dashed var(--line);font-size:14px;color:var(--muted)}
+.save{background:var(--brand);color:var(--brand-ink);border:0;display:flex;flex-direction:column;gap:6px}
+.save .lbl{font-weight:700;opacity:.85}
+.save .big{font-family:var(--display);font-weight:800;font-size:clamp(46px,6vw,68px);line-height:1}
+.save table{width:100%;border-collapse:collapse;margin-top:16px;font-size:15px}
+.save td{padding:9px 0;border-top:1px solid color-mix(in srgb,var(--brand-ink) 22%,transparent)}
+.save td:last-child{text-align:right;font-weight:700}
+.save .cta{margin-top:auto;align-self:flex-start}
+
+.plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
+.plan{background:var(--surface);border:1.5px solid var(--line);border-radius:24px;padding:28px;display:flex;flex-direction:column;gap:14px;position:relative}
+.plan.pop{border:2.5px solid var(--brand);box-shadow:0 24px 50px -30px var(--brand)}
+.plan .tag{position:absolute;top:-14px;left:24px;background:var(--sun);color:#0E1B33;font-weight:800;font-size:13px;border-radius:999px;padding:4px 12px}
+.plan h3{font-size:24px}
+.plan .price{font-family:var(--display);font-weight:800;font-size:48px;line-height:1}
+.plan .price span{font-family:var(--body);font-size:15px;font-weight:600;color:var(--muted)}
+.plan ul{list-style:none;padding:0;margin:0;display:grid;gap:8px;font-size:15px}
+.plan li{display:flex;gap:8px}
+.plan li::before{content:"";flex:none;width:18px;height:18px;margin-top:3px;border-radius:50%;background:var(--mint-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M5 9.5l2.5 2.5L13 6.5' fill='none' stroke='%230E9F6E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/18px no-repeat}
+.plan .cta{margin-top:auto}
+
+.faq{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+details{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px 20px}
+summary{font-weight:700;font-size:17px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:12px}
+summary::after{content:"+";font-family:var(--display);font-size:22px;line-height:1;color:var(--brand)}
+details[open] summary::after{content:"–"}
+details p{color:var(--muted);margin-top:10px;font-size:15px}
+
+.final{background:var(--sun);color:#0E1B33}
+.final .wrap{display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap;padding-block:56px}
+.final h2{font-size:clamp(30px,4vw,46px);font-weight:800;max-width:18ch}
+.final .cta.primary{background:#0E1B33;color:#FFFFFF;box-shadow:none}
+footer{padding-block:36px;color:var(--muted);font-size:14px}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+/* modal */
+.modal{position:fixed;inset:0;z-index:60;background:rgba(14,27,51,.5);display:grid;place-items:center;padding:16px}
+.sheet{background:var(--surface);border-radius:24px;padding:28px;width:min(520px,100%);max-height:calc(100% - 32px);overflow:auto;display:grid;gap:14px}
+.sheet h3{font-size:28px}
+.sheet .row{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+
+@media (max-width:960px){
+  .hero .wrap,.split,.calc{grid-template-columns:minmax(0,1fr)}
+  .jobs{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .trust .wrap{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .plans,.faq{grid-template-columns:minmax(0,1fr)}
+  .links{display:none}
+  .nav .cta{margin-left:auto}
+}
+@media (max-width:560px){
+  .jobs,.fields,.trust .wrap{grid-template-columns:minmax(0,1fr)}
+  section.band{padding-block:56px}
+  .hero{padding-block:40px 56px}
+}
+</style>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="Landwell home">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="10" fill="var(--brand)"/><circle cx="24.5" cy="10" r="4" fill="var(--sun)"/><path d="M8 18.5 15.5 11.5 23 18.5M10.5 16.5V25h10v-8.5" fill="none" stroke="var(--brand-ink)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Landwell
+    </a>
+    <nav class="links" aria-label="Sections"><a href="#how">How it works</a><a href="#workflows">What it handles</a><a href="#savings">Savings</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></nav>
+    <button class="cta primary sm" data-open="start">Get started</button>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <span class="pill"><b>NEW</b> Built for Colorado owners with 1–50 rentals</span>
+        <h1>Your rentals, <span class="hl">handled.</span> You just approve.</h1>
+        <p class="lead">Landwell collects rent, books repairs, answers every tenant text and fills in your leases, around the clock. You pay a flat price per door, not 9% of your rent.</p>
+        <div class="ctas">
+          <button class="cta primary" data-open="start">Get started</button>
+          <a class="cta ghost" href="#savings">See what you'd save</a>
+        </div>
+        <div class="fine"><span>Rent goes straight to your bank</span><span>Your vendors, your rules</span><span>Cancel anytime</span></div>
+      </div>
+      <div class="phone" aria-label="Example: what Landwell handled this morning">
+        <div class="bar"><span>This morning</span><small>Sample</small></div>
+        <div class="feed">
+          <div class="ev"><div class="ic" style="background:var(--mint-soft);color:var(--mint)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10.5l4 4L17 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><b>Rent collected · 4 of 4 homes</b><span>$8,250 on its way to your bank</span></div></div>
+          <div class="ev"><div class="ic" style="background:var(--tint);color:var(--brand)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3c3 4 5 6.5 5 9a5 5 0 0 1-10 0c0-2.5 2-5 5-9z" fill="none" stroke="currentColor" stroke-width="2"/></svg></div><div><b>Leak reported at 7:42 AM</b><span>Your plumber booked for Tue 9–11. $140, under your limit.</span></div></div>
+          <div class="ev"><div class="ic" style="background:var(--tint);color:var(--brand)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14v9H8l-4 3v-3H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></div><div><b>Prospect asked about pets</b><span>Answered from your policy, sent the application link.</span></div></div>
+          <div class="ev need"><div class="ic" style="background:var(--sun);color:#0E1B33"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v7M10 14.5v.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></div><div><b>Water heater quote: $1,240</b><span>Over your $500 limit, so it's your call.</span><div class="go"><button class="y" data-toast="Approved. Plumber booked, tenant notified.">Approve</button><button class="n" data-toast="Asking for two more quotes.">More quotes</button></div></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="trust">
+    <div class="wrap">
+      <div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z" fill="none" stroke="currentColor" stroke-width="2"/></svg>You stay the landlord</div>
+      <div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10h18M5 10v8M10 10v8M14 10v8M19 10v8M3 20h18M12 3l9 5H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>Rent paid straight to you</div>
+      <div><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Answers tenants 24/7</div>
+      <div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 16 0 8 8 0 0 0-16 0M8 12h8M12 8v8" fill="none" stroke="currentColor" stroke-width="2"/></svg>Fair-housing safe by design</div>
+    </div>
+  </div>
+
+  <section class="band" id="how">
+    <div class="wrap">
+      <div class="head"><span class="eyebrow">How it works</span><h2>Four jobs stay yours. Landwell does the rest.</h2><p>Set your rules once. From then on, Landwell runs the day-to-day and only taps you for the decisions that matter.</p></div>
+      <div class="jobs">
+        <div class="job"><div class="k">1</div><h3>Approve applicants</h3><p>See each screening report next to the criteria you wrote. You decide. Landwell never scores people.</p></div>
+        <div class="job"><div class="k">2</div><h3>Set up self-showings</h3><p>Add a smart lock or lockbox once. Verified visitors get a one-time code.</p></div>
+        <div class="job"><div class="k">3</div><h3>OK the big repairs</h3><p>Anything over your spending limit lands on your phone with the quote attached.</p></div>
+        <div class="job"><div class="k">4</div><h3>Sign the lease</h3><p>Upload your own lease once. Every new tenant and renewal fills in automatically.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="workflows" style="background:var(--surface);border-block:1px solid var(--line)">
+    <div class="wrap split">
+      <div>
+        <div class="head" style="margin-bottom:24px"><span class="eyebrow">What it handles</span><h2>The whole job, start to finish</h2><p>Each one runs on its own. The yellow step is the only one that needs you.</p></div>
+        <div class="flows">
+          <div class="flow"><div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-.5-.5-2.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></div><div><h3>Repairs</h3><p>Tenant texts a photo. Landwell sorts the urgency and books your vendor.</p><ul class="steps"><li>Request</li><li>Triage</li><li>Book vendor</li><li class="you">You OK if over limit</li><li>Invoice checked</li><li>Paid</li></ul></div></div>
+          <div class="flow"><div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M7 15h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div><div><h3>Rent</h3><p>Free bank transfer or autopay. Reminders and Colorado-compliant late notices go out on their own.</p><ul class="steps"><li>Reminder</li><li>Collected</li><li>Deposited</li><li>Late notice if needed</li></ul></div></div>
+          <div class="flow"><div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z M14 3v5h5M9 13h7M9 17h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></div><div><h3>Leasing</h3><p>From the first inquiry to keys, with your lease filled in for every new tenant.</p><ul class="steps"><li>Inquiry</li><li>Self-showing</li><li>Application</li><li class="you">You approve</li><li>Lease filled</li><li class="you">You sign</li><li>Move-in</li></ul></div></div>
+          <div class="flow"><div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h3>Renewals and move-outs</h3><p>Offers go out months early. Deposits are itemized and returned before the legal deadline.</p><ul class="steps"><li class="you">You set the rent</li><li>Offer sent</li><li>Signed or relisted</li><li>Deposit returned</li></ul></div></div>
+        </div>
+      </div>
+      <div class="chat" aria-label="Example text conversation with Landwell">
+        <div class="who">Tenant · 603 Spruce Dr · 7:42 AM</div>
+        <div class="msg in">Hi, the kitchen faucet's been dripping a couple days and it's getting worse.</div>
+        <div class="msg out">Thanks for letting us know! Is water pooling under the sink, or is it just the drip?</div>
+        <div class="msg in">Just the drip.</div>
+        <div class="msg out">Got it. Your plumber can come Tuesday 9–11 AM. Does that work?</div>
+        <div class="msg in">Perfect, thank you!</div>
+        <div class="msg note">Work order booked · $140, under your limit</div>
+        <div class="who" style="margin-top:10px">Prospect · 9:10 PM</div>
+        <div class="msg in">Is it a family-friendly neighborhood?</div>
+        <div class="msg out">I can share facts about the home itself, like price, size and availability. For the area, the city's website is a great resource. Want a self-tour time?</div>
+        <div class="msg note">Fair-housing safe answer · owner notified</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="savings">
+    <div class="wrap">
+      <div class="head"><span class="eyebrow">Savings calculator</span><h2>What a manager costs you, and what Landwell does</h2></div>
+      <div class="calc">
+        <form class="card" id="calc" autocomplete="off">
+          <div class="fields">
+            <div class="f"><label for="doors">Rental homes</label><input id="doors" type="number" min="1" max="50" value="5" inputmode="numeric"></div>
+            <div class="f"><label for="rent">Average monthly rent ($)</label><input id="rent" type="number" min="0" step="25" value="2000" inputmode="numeric"></div>
+            <div class="f"><label for="mgmt">Management fee (%)</label><input id="mgmt" type="number" min="0" max="20" step="0.5" value="9" inputmode="decimal"><small>Average: 9% of rent</small></div>
+            <div class="f"><label for="lease">Leasing fee (% of a month's rent)</label><input id="lease" type="number" min="0" max="150" step="5" value="75" inputmode="numeric"><small>Average: 75% of one month</small></div>
+            <div class="f" style="grid-column:1/-1"><label for="plan">Compare with</label><select id="plan"><option value="ess">Essentials · $15 per door</option><option value="auto" selected>Autopilot · $35 per door</option><option value="plus">Autopilot Plus · $59 per door</option></select></div>
+          </div>
+          <p class="disc">Based on averages and a new tenant in each home about every two years. For the most accurate results, put your current or estimated management and leasing fees in the boxes above.</p>
+        </form>
+        <div class="card save" aria-live="polite">
+          <div class="lbl">You'd keep about</div>
+          <div class="big num" id="s-big">$0</div>
+          <div class="lbl num" id="s-sub">a year</div>
+          <table>
+            <tr><td>Manager fees per year</td><td class="num" id="s-pm"></td></tr>
+            <tr><td id="s-plan">Landwell per year</td><td class="num" id="s-lw"></td></tr>
+          </table>
+          <button class="cta sun" data-open="start" style="margin-top:20px">Start saving</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="pricing" style="background:var(--surface);border-block:1px solid var(--line)">
+    <div class="wrap">
+      <div class="head"><span class="eyebrow">Pricing</span><h2>One price per door. Never a cut of your rent.</h2><p>Software only on every plan. No setup fees, no long contracts.</p></div>
+      <div class="plans">
+        <div class="plan"><h3>Essentials</h3><div class="price num">$15<span> per door / month</span></div><ul><li>Rent collection and autopay</li><li>Repair requests and vendor list</li><li>Your lease, filled in and e-signed</li><li>Income and expense books</li></ul><button class="cta ghost" data-open="start" data-plan="Essentials">Choose Essentials</button></div>
+        <div class="plan pop"><span class="tag">Most popular</span><h3>Autopilot</h3><div class="price num">$35<span> per door / month</span></div><ul><li>Everything in Essentials</li><li>AI receptionist for texts and email, 24/7</li><li>Automatic vendor booking</li><li>Renewals, move-outs and deposit returns</li><li>Monthly owner statements</li></ul><button class="cta primary" data-open="start" data-plan="Autopilot">Choose Autopilot</button></div>
+        <div class="plan"><h3>Autopilot Plus</h3><div class="price num">$59<span> per door / month</span></div><ul><li>Everything in Autopilot</li><li>24/7 emergency repair dispatch</li><li>Smart-lock self-showings</li><li>Listings on Zillow and more</li><li>Priority support</li></ul><button class="cta ghost" data-open="start" data-plan="Autopilot Plus">Choose Plus</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="faq">
+    <div class="wrap">
+      <div class="head"><span class="eyebrow">Questions</span><h2>Before you switch</h2></div>
+      <div class="faq">
+        <details><summary>Does anyone come to my property?</summary><p>No. Landwell is software. Showings are self-guided through a lock you control, or you show the home yourself. Repairs go to your own vendors.</p></details>
+        <details><summary>Who decides which applicant gets the home?</summary><p>You do. Landwell collects applications and shows the screening report next to your written criteria, the same way for everyone. It never scores, ranks or recommends people.</p></details>
+        <details><summary>Can I use my own lease?</summary><p>Yes. Upload it once. Landwell fills in each new tenant's names, dates, rent and deposit and sends it for e-signature. Your wording stays yours.</p></details>
+        <details><summary>Where does the rent go?</summary><p>Straight to your bank account. Tenants always have a free way to pay, as Colorado law requires.</p></details>
+        <details><summary>What if a tenant has an emergency at 2 AM?</summary><p>Landwell answers right away, dispatches your emergency vendor and texts you. If anyone is in danger, it tells them to call 911 first.</p></details>
+        <details><summary>I already have a property manager. How do I switch?</summary><p>We give you a letter to end your current agreement and a checklist for getting tenant records and deposits back. Most owners are running in about a week.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="final">
+    <div class="wrap">
+      <h2>Keep the rent. Lose the busywork.</h2>
+      <div style="display:flex;gap:12px;flex-wrap:wrap"><button class="cta primary" data-open="start">Get started</button><button class="cta ghost" data-open="demo" style="background:transparent;border-color:#0E1B33;color:#0E1B33">Book a 30-minute demo</button></div>
+    </div>
+  </section>
+</main>
+
+<footer><div class="wrap"><span>© 2026 Landwell (working name) · Colorado</span><span>Landwell is software, not a property management company or real estate broker. Not legal advice.</span></div></footer>
+
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="m-title">
+  <form class="sheet" id="m-form" autocomplete="on">
+    <h3 id="m-title">Get started with Landwell</h3>
+    <p id="m-sub" style="color:var(--muted)">Tell us about your rentals. We'll set up your account and walk you through it.</p>
+    <div class="f"><label for="m-name">Your name</label><input id="m-name" required autocomplete="name"></div>
+    <div class="f"><label for="m-email">Email</label><input id="m-email" type="email" required autocomplete="email"></div>
+    <div class="fields">
+      <div class="f"><label for="m-doors">Rental homes</label><input id="m-doors" type="number" min="1" max="50" value="5"></div>
+      <div class="f"><label for="m-plan">Plan</label><select id="m-plan"><option>Essentials</option><option selected>Autopilot</option><option>Autopilot Plus</option></select></div>
+    </div>
+    <p id="m-done" hidden style="background:var(--mint-soft);color:var(--ink);border-radius:12px;padding:12px 14px;font-weight:600">Thanks! We'll email you within one business day. (Demo site: this form isn't connected yet.)</p>
+    <div class="row"><button type="button" class="cta ghost sm" id="m-close">Close</button><button type="submit" class="cta primary sm" id="m-submit">Continue</button></div>
+  </form>
+</div>
+<div id="toast" role="status" hidden style="position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:700;z-index:70;max-width:calc(100% - 32px)"></div>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s)};
+  var money=function(n){return '$'+Math.round(n).toLocaleString('en-US')};
+  var PLANS={ess:['Essentials',15],auto:['Autopilot',35],plus:['Autopilot Plus',59]};
+  function calc(){
+    var d=Math.max(1,+$('#doors').value||1),r=Math.max(0,+$('#rent').value||0),m=Math.max(0,+$('#mgmt').value||0),l=Math.max(0,+$('#lease').value||0),p=PLANS[$('#plan').value];
+    var pm=d*r*12*m/100+d*0.5*r*l/100, lw=d*p[1]*12, s=Math.max(0,pm-lw);
+    $('#s-big').textContent=money(s);$('#s-sub').textContent='a year · about '+money(s/12)+' a month';
+    $('#s-pm').textContent=money(pm);$('#s-plan').textContent=p[0]+' per year';$('#s-lw').textContent=money(lw);
+  }
+  $('#calc').addEventListener('input',calc);$('#calc').addEventListener('submit',function(e){e.preventDefault()});calc();
+
+  var modal=$('#modal'),last=null;
+  function open(kind,plan){
+    last=document.activeElement;modal.hidden=false;$('#m-done').hidden=true;$('#m-submit').hidden=false;
+    $('#m-title').textContent=kind==='demo'?'Book a 30-minute demo':'Get started with Landwell';
+    $('#m-sub').textContent=kind==='demo'?"We'll show you Landwell running on a real home, then answer your questions.":"Tell us about your rentals. We'll set up your account and walk you through it.";
+    if(plan)$('#m-plan').value=plan;$('#m-name').focus();
+  }
+  function close(){modal.hidden=true;if(last)last.focus()}
+  document.querySelectorAll('[data-open]').forEach(function(b){b.addEventListener('click',function(){open(b.dataset.open,b.dataset.plan)})});
+  $('#m-close').addEventListener('click',close);
+  modal.addEventListener('click',function(e){if(e.target===modal)close()});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!modal.hidden)close()});
+  $('#m-form').addEventListener('submit',function(e){e.preventDefault();$('#m-done').hidden=false;$('#m-submit').hidden=true});
+  var t=$('#toast');
+  document.querySelectorAll('[data-toast]').forEach(function(b){b.addEventListener('click',function(){t.textContent=b.dataset.toast;t.hidden=false;clearTimeout(t._h);t._h=setTimeout(function(){t.hidden=true},2400)})});
+})();
+</script>

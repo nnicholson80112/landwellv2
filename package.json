@@ -1,0 +1,23 @@
+{
+  "name": "landwell",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Landwell (working name): software that runs small-landlord property management. Workflow engine, integrations and pluggable communication AI.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "scripts": {
+    "start": "node scripts/build-site.mjs && node --experimental-strip-types --no-warnings src/api/server.ts",
+    "demo": "node --experimental-strip-types --no-warnings src/sim/demo.ts",
+    "test": "node --experimental-strip-types --no-warnings --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "build:site": "node scripts/build-site.mjs",
+    "ai": "node --experimental-strip-types --no-warnings src/ai-service/server.ts",
+    "build:review": "node scripts/build-review.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^6.0.0"
+  }
+}
