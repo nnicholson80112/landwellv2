@@ -17,6 +17,9 @@ export interface Owner {
   lineNumber?: string; // the Landwell phone number tenants text for this owner
   lineEmail?: string; // the Landwell inbox address for this owner
   billing?: OwnerBilling; // the owner's Landwell subscription (Stripe)
+  onboarding?: OwnerOnboarding;
+  referralCode?: string; // their personal code for referring other owners
+  source?: 'demo' | 'web' | 'seed';
   createdAt: ISO;
 }
 
@@ -24,10 +27,52 @@ export interface Owner {
 export interface OwnerBilling {
   status: 'checkout_started' | 'active' | 'past_due' | 'canceled';
   plan?: 'essentials' | 'autopilot' | 'plus';
+  term?: BillingTerm;
   doors?: number;
   customerId?: string;
   subscriptionId?: string;
+  checkoutSessionId?: string;
+  offerId?: ID; // the one private offer applied to this subscription, if any
+  startedAt?: ISO;
+  contractEndsAt?: ISO; // 12-month agreements only
+  canceledAt?: ISO;
   updatedAt: ISO;
+}
+
+/** month-to-month, or a 12-month agreement billed monthly at a lower price. First month is always paid up front. */
+export type BillingTerm = 'monthly' | 'contract12';
+
+/** Onboarding call booked through Calendly after purchase. */
+export interface OwnerOnboarding {
+  status: 'not_booked' | 'booked' | 'canceled';
+  startTime?: ISO;
+  eventUri?: string;
+  updatedAt: ISO;
+}
+
+/**
+ * A PRIVATE offer: issued to one owner (or one email before they sign up), applied
+ * automatically at checkout, never a public code. Admin-issued (demo, win-back,
+ * seasonal) or system-issued (web intro, referral). See src/billing/offers.ts.
+ */
+export interface Offer {
+  id: ID; // also the unguessable part of the personal offer link /offer/:id
+  kind: 'demo' | 'web_intro' | 'winback' | 'referral' | 'seasonal';
+  ownerId?: ID;
+  email?: string; // lower-case; used before the person has an account
+  title: string;
+  percentOff: number; // 1-100
+  months: number; // billing months the discount covers
+  terms: BillingTerm[]; // which billing terms it can be used with
+  plans?: ('essentials' | 'autopilot' | 'plus')[]; // omitted = any plan
+  expiresAt: ISO;
+  status: 'issued' | 'redeemed' | 'expired' | 'revoked';
+  issuedBy: string; // 'admin' or 'system'
+  campaign?: string; // seasonal campaign name
+  referrerOwnerId?: ID; // referral offers: who referred them (gets a credit after the first paid month)
+  note?: string; // internal only
+  redeemedAt?: ISO;
+  createdAt: ISO;
 }
 
 /** The owner's standing instructions. Workflows read these instead of guessing. */
@@ -304,5 +349,6 @@ export interface Tables {
   approvals: Approval;
   audit: AuditEntry;
   tasks: Task;
+  offers: Offer;
 }
 export type TableName = keyof Tables;

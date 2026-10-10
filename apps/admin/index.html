@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Landwell Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: left = issue an offer (presets first, then fine-tune); right = live offers ledger, then customers */
+:root{--bg:#F6F9FF;--surface:#fff;--ink:#0E1B33;--muted:#4A5A78;--line:#D8E1F2;--brand:#1B4DFF;--brand-ink:#fff;--sun:#FFC83D;--sun-soft:#FFF3CF;--mint:#0E9F6E;--mint-soft:#DDF6EC;--coral:#C2410C;--coral-soft:#FFE7DA;--tint:#E8EFFF;--display:'Bricolage Grotesque',system-ui,sans-serif;--body:'Figtree',system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0B1324;--surface:#121D33;--ink:#EEF3FF;--muted:#A9B7D3;--line:#24365C;--brand:#5B82FF;--brand-ink:#08112A;--sun-soft:#3A3115;--mint:#3DD39B;--mint-soft:#123A2D;--coral:#FF9B6B;--coral-soft:#3D2416;--tint:#17264A;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0B1324;--surface:#121D33;--ink:#EEF3FF;--muted:#A9B7D3;--line:#24365C;--brand:#5B82FF;--brand-ink:#08112A;--sun-soft:#3A3115;--mint:#3DD39B;--mint-soft:#123A2D;--coral:#FF9B6B;--coral-soft:#3D2416;--tint:#17264A;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 16px 40px}
+h1{font:800 26px var(--display);margin:0}
+h2{font:700 18px var(--display);margin:0 0 10px}
+.top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.top input{flex:1;min-width:200px}
+.grid{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:16px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px;min-width:0}
+label{display:block;font-weight:700;font-size:13px;margin:10px 0 4px}
+input,select,textarea{width:100%;font:inherit;color:inherit;background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px}
+textarea{min-height:64px;resize:vertical}
+button{font:700 14px var(--body);border:0;border-radius:10px;padding:10px 14px;min-height:42px;cursor:pointer;background:var(--brand);color:var(--brand-ink)}
+button.ghost{background:var(--surface);color:var(--ink);border:1.5px solid var(--line)}
+button.sm{min-height:34px;padding:6px 10px;font-size:13px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chk{display:flex;gap:8px;align-items:center;font-weight:500;margin-top:6px}.chk input{width:auto;min-height:0}
+.presets{display:grid;gap:8px}
+.preset{text-align:left;background:var(--bg);color:var(--ink);border:1.5px solid var(--line);display:grid;gap:2px}
+.preset[aria-pressed="true"]{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand)}
+.preset b{font-size:14px}.preset span{font-weight:500;font-size:12.5px;color:var(--muted)}
+.kind{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:999px;padding:2px 8px;background:var(--tint);color:var(--brand)}
+.guard{background:var(--sun-soft);border:1px solid var(--sun);border-radius:12px;padding:10px 12px;font-size:13px;margin-top:10px}
+.err{background:var(--coral-soft);color:var(--coral);border-radius:10px;padding:8px 12px;font-weight:600;font-size:14px;margin-top:10px}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:640px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.chip{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px}
+.s-issued{background:var(--tint);color:var(--brand)}.s-redeemed,.s-active,.s-booked{background:var(--mint-soft);color:var(--mint)}
+.s-expired,.s-revoked,.s-canceled,.s-not_booked{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.s-past_due,.s-checkout_started{background:var(--sun-soft);color:var(--ink)}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted);font-size:13px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:700;max-width:calc(100% - 32px)}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><h1>Landwell admin</h1><input id="token" type="password" placeholder="Admin token (ADMIN_API_TOKEN)" autocomplete="off" aria-label="Admin token"><button id="connect">Connect</button></div>
+  <p class="muted">Private offers only. Each offer belongs to one person, is applied automatically at their checkout, expires, and can't be combined. Nobody can find or type these as codes.</p>
+  <div class="grid">
+    <div>
+      <form class="card" id="f">
+        <h2>Issue an offer</h2>
+        <div class="presets" id="presets"><p class="muted">Connect to load presets.</p></div>
+        <label for="who">Who it's for</label>
+        <select id="who"><option value="">Type emails below…</option></select>
+        <label for="emails">Or emails (one or more, for a campaign)</label>
+        <textarea id="emails" placeholder="owner@example.com, another@example.com"></textarea>
+        <label for="title">What they'll see</label>
+        <input id="title" required maxlength="120">
+        <div class="two">
+          <div><label for="pct">% off</label><input id="pct" type="number" min="1" max="100" required></div>
+          <div><label for="months">For months</label><input id="months" type="number" min="1" max="12" required></div>
+        </div>
+        <div class="two">
+          <div><label for="days">Expires in (days)</label><input id="days" type="number" min="1" max="60"></div>
+          <div><label for="campaign">Campaign name</label><input id="campaign" maxlength="60" placeholder="Optional"></div>
+        </div>
+        <label>Billing it works with</label>
+        <label class="chk"><input type="checkbox" id="t-monthly" value="monthly"> Month-to-month</label>
+        <label class="chk"><input type="checkbox" id="t-contract12" value="contract12"> 12-month agreement</label>
+        <label for="note">Internal note</label>
+        <input id="note" maxlength="300" placeholder="Only admins see this">
+        <div class="guard" id="guard">Pick a preset to see its limits.</div>
+        <div class="err" id="err" hidden></div>
+        <div class="row"><button type="submit">Issue offer</button></div>
+      </form>
+    </div>
+    <div>
+      <div class="card"><h2>Offers</h2><div class="tbl"><table><thead><tr><th>Offer</th><th>For</th><th>Deal</th><th>Ends</th><th>Status</th><th></th></tr></thead><tbody id="offers"><tr><td colspan="6" class="muted">Connect to load.</td></tr></tbody></table></div></div>
+      <div class="card"><h2>Setup</h2><p class="muted" id="setup">Connect to load.</p><div class="row"><button class="ghost" id="cal-connect">Connect Calendly bookings</button></div></div>
+      <div class="card"><h2>Customers</h2><div class="tbl"><table><thead><tr><th>Owner</th><th>Came from</th><th>Subscription</th><th>Onboarding</th></tr></thead><tbody id="owners"><tr><td colspan="4" class="muted">Connect to load.</td></tr></tbody></table></div></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<script>
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var usd = function (c) { return '$' + (c / 100).toFixed(c % 100 ? 2 : 0); };
+  var token = '', data = null, preset = '';
+  try { token = sessionStorage.getItem('lw-admin') || ''; } catch (e) {}
+  $('#token').value = token;
+  function toast(t) { var el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(el._h); el._h = setTimeout(function () { el.hidden = true; }, 2600); }
+  async function api(path, body) {
+    var r = await fetch(path, { method: body ? 'POST' : 'GET', headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+    var j = await r.json().catch(function () { return {}; });
+    if (r.status === 401) { toast('That admin token was not accepted'); throw new Error('401'); }
+    if (!r.ok) throw new Error(j.error || ('Error ' + r.status));
+    return j;
+  }
+  function when(iso) { return iso ? new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''; }
+  function guardText() {
+    if (!data || !preset) return 'Pick a preset to see its limits.';
+    var p = data.presets[preset], r = data.rules[p.kind];
+    return '<b>' + esc(r.label) + ' limits:</b> up to ' + r.maxPercent + '% off, up to ' + r.maxMonths + ' month(s), must expire within ' + r.maxDays + ' days, ' + (r.terms.length === 1 ? 'only with a 12-month agreement' : 'any billing') + '. Never below the per-door floor (Essentials ' + usd(data.floors.essentials) + ', Autopilot ' + usd(data.floors.autopilot) + ', Plus ' + usd(data.floors.plus) + ').';
+  }
+  function choose(key) {
+    preset = key; var p = data.presets[key];
+    document.querySelectorAll('.preset').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.k === key)); });
+    $('#title').value = p.title; $('#pct').value = p.percentOff; $('#months').value = p.months; $('#days').value = p.days || data.rules[p.kind].defaultDays;
+    $('#t-monthly').checked = p.terms.indexOf('monthly') >= 0; $('#t-contract12').checked = p.terms.indexOf('contract12') >= 0;
+    $('#campaign').value = p.kind === 'seasonal' ? p.title.split(':')[0] : '';
+    $('#guard').innerHTML = guardText();
+  }
+  function render() {
+    var manual = Object.keys(data.presets).filter(function (k) { return data.rules[data.presets[k].kind].who === 'admin'; });
+    $('#presets').innerHTML = manual.map(function (k) { var p = data.presets[k]; return '<button type="button" class="preset" data-k="' + k + '" aria-pressed="false"><span class="kind">' + esc(data.rules[p.kind].label) + '</span><b>' + esc(p.title) + '</b></button>'; }).join('') +
+      '<p class="muted">Web intro and referral offers are issued automatically: self-serve buyers get a small welcome offer, and referred owners get theirs from a friend\'s link.</p>';
+    if (!preset && manual.length) choose(manual[0]); else if (preset) choose(preset);
+    var sel = $('#who'), keep = sel.value;
+    sel.innerHTML = '<option value="">Type emails below…</option>' + data.owners.map(function (o) { return '<option value="' + o.id + '">' + esc(o.name) + ' · ' + esc(o.email) + (o.billing ? ' · ' + esc(o.billing.status.replace('_', ' ')) : '') + '</option>'; }).join('');
+    sel.value = keep;
+    var byId = {}; data.owners.forEach(function (o) { byId[o.id] = o; });
+    $('#offers').innerHTML = data.offers.length ? data.offers.map(function (o) {
+      var who = o.ownerId && byId[o.ownerId] ? byId[o.ownerId].name : (o.email || '');
+      return '<tr><td><span class="kind">' + esc(o.kindLabel) + '</span><br>' + esc(o.title) + (o.note ? '<br><span class="muted">' + esc(o.note) + '</span>' : '') + '</td><td>' + esc(who) + '</td><td class="num">' + o.percentOff + '% × ' + o.months + ' mo<br><span class="muted">' + o.terms.map(function (t) { return t === 'contract12' ? '12-mo' : 'monthly'; }).join(' / ') + '</span></td><td class="num">' + when(o.expiresAt) + '</td><td><span class="chip s-' + o.status + '">' + o.status + '</span></td><td>' +
+        (o.status === 'issued' ? '<div class="row" style="margin:0"><button class="ghost sm" data-copy="' + esc(o.link) + '">Copy link</button><button class="ghost sm" data-revoke="' + o.id + '">Revoke</button></div>' : '') + '</td></tr>';
+    }).join('') : '<tr><td colspan="6" class="muted">No offers yet. Issue one on the left.</td></tr>';
+    $('#owners').innerHTML = data.owners.map(function (o) {
+      var b = o.billing, ob = o.onboarding;
+      return '<tr><td><b>' + esc(o.name) + '</b><br><span class="muted">' + esc(o.email) + '</span></td><td>' + esc(o.source) + '</td><td>' + (b ? '<span class="chip s-' + b.status + '">' + b.status.replace('_', ' ') + '</span><br><span class="muted">' + esc((b.plan || '') + (b.term ? ' · ' + (b.term === 'contract12' ? '12-mo agreement' + (b.contractEndsAt ? ' to ' + b.contractEndsAt.slice(0, 10) : '') : 'month-to-month') : '') + (b.doors ? ' · ' + b.doors + ' door(s)' : '')) + '</span>' : '<span class="muted">none</span>') + '</td><td>' + (ob ? '<span class="chip s-' + ob.status + '">' + ob.status.replace('_', ' ') + '</span>' + (ob.startTime ? '<br><span class="muted">' + when(ob.startTime) + '</span>' : '') : '<span class="muted">—</span>') + '</td></tr>';
+    }).join('');
+  }
+  async function load() {
+    data = await api('/api/admin/overview'); render();
+    $('#setup').innerHTML = 'Stripe billing: <b>' + (data.billingEnabled ? 'on' : 'off (add STRIPE_SECRET_KEY)') + '</b> · Calendly after purchase: <b>' + (data.calendly ? 'on' : 'off (add CALENDLY_URL)') + '</b> · Booking tracking: <b>' + (data.calendlyWebhook ? 'ready to connect' : 'off (add CALENDLY_TOKEN + CALENDLY_WEBHOOK_SECRET)') + '</b>';
+  }
+  $('#cal-connect').addEventListener('click', async function () {
+    try { var r = await api('/api/admin/calendly/connect', {}); toast(r.already ? 'Calendly was already connected' : 'Calendly connected'); } catch (e) { if (e.message !== '401') toast(e.message); }
+  });
+  $('#connect').addEventListener('click', async function () {
+    token = $('#token').value.trim();
+    try { sessionStorage.setItem('lw-admin', token); } catch (e) {}
+    try { await load(); toast('Connected'); } catch (e) { if (e.message !== '401') toast(e.message); }
+  });
+  $('#presets').addEventListener('click', function (e) { var b = e.target.closest('.preset'); if (b) choose(b.dataset.k); });
+  $('#f').addEventListener('submit', async function (e) {
+    e.preventDefault(); $('#err').hidden = true;
+    if (!data) return toast('Connect first');
+    var terms = ['monthly', 'contract12'].filter(function (t) { return $('#t-' + t).checked; });
+    var body = { preset: preset, title: $('#title').value, percentOff: Number($('#pct').value), months: Number($('#months').value), days: $('#days').value, terms: terms, campaign: $('#campaign').value, note: $('#note').value, ownerId: $('#who').value || undefined, emails: $('#emails').value };
+    try {
+      var made = await api('/api/admin/offers', body);
+      toast(made.length === 1 ? 'Offer issued. Link copied.' : made.length + ' offers issued');
+      if (made.length === 1) { try { await navigator.clipboard.writeText(made[0].link); } catch (er) {} }
+      $('#emails').value = ''; $('#note').value = '';
+      await load();
+    } catch (er) { $('#err').textContent = er.message; $('#err').hidden = false; }
+  });
+  document.addEventListener('click', async function (e) {
+    var c = e.target.closest('[data-copy]'), r = e.target.closest('[data-revoke]');
+    if (c) { try { await navigator.clipboard.writeText(c.dataset.copy); toast('Link copied'); } catch (er) { toast(c.dataset.copy); } }
+    if (r) { try { await api('/api/admin/offers/' + r.dataset.revoke + '/revoke', {}); toast('Offer revoked'); await load(); } catch (er) { toast(er.message); } }
+  });
+  if (token) load().catch(function () {});
+})();
+</script>
+</body>
+</html>

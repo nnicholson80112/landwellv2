@@ -148,6 +148,8 @@ section.band{padding-block:80px}
 .plan h3{font-size:24px}
 .plan .price{font-family:var(--display);font-weight:800;font-size:48px;line-height:1}
 .plan .price span{font-family:var(--body);font-size:15px;font-weight:600;color:var(--muted)}
+.plan .term{margin-top:-6px;color:var(--muted);font-size:15px}
+.plan .term b{color:var(--ink)}
 .plan ul{list-style:none;padding:0;margin:0;display:grid;gap:8px;font-size:15px}
 .plan li{display:flex;gap:8px}
 .plan li::before{content:"";flex:none;width:18px;height:18px;margin-top:3px;border-radius:50%;background:var(--mint-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M5 9.5l2.5 2.5L13 6.5' fill='none' stroke='%230E9F6E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/18px no-repeat}
@@ -305,11 +307,11 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 
   <section class="band" id="pricing" style="background:var(--surface);border-block:1px solid var(--line)">
     <div class="wrap">
-      <div class="head"><span class="eyebrow">Pricing</span><h2>One price per door. Never a cut of your rent.</h2><p>Software only on every plan. A one-time setup fee, then a flat monthly price. No long contracts.</p></div>
+      <div class="head"><span class="eyebrow">Pricing</span><h2>One price per door. Never a cut of your rent.</h2><p>Software only on every plan. Go month-to-month, or save with a 12-month agreement. First month paid up front, no setup fee.</p></div>
       <div class="plans">
-        <div class="plan"><h3>Essentials</h3><div class="price num">$15<span> per door / month</span></div><ul><li>Rent reminders and late notices</li><li>Repair requests and vendor list</li><li>Your lease, filled in and e-signed</li><li>Income and expense books</li></ul><button class="cta ghost" data-open="start" data-plan="Essentials">Choose Essentials</button></div>
-        <div class="plan pop"><span class="tag">Most popular</span><h3>Autopilot</h3><div class="price num">$35<span> per door / month</span></div><ul><li>Everything in Essentials</li><li>AI receptionist for texts and email, 24/7</li><li>Automatic vendor booking</li><li>Renewals, move-outs and deposit statements</li><li>Monthly owner statements</li></ul><button class="cta primary" data-open="start" data-plan="Autopilot">Choose Autopilot</button></div>
-        <div class="plan"><h3>Autopilot Plus</h3><div class="price num">$59<span> per door / month</span></div><ul><li>Everything in Autopilot</li><li>24/7 emergency repair dispatch</li><li>Smart-lock self-showings</li><li>Listings on Zillow and more</li><li>Priority support</li></ul><button class="cta ghost" data-open="start" data-plan="Autopilot Plus">Choose Plus</button></div>
+        <div class="plan"><h3>Essentials</h3><div class="price num">$15<span> per door / month</span></div><p class="term num">or <b>$13</b> with a 12-month agreement</p><ul><li>Rent reminders and late notices</li><li>Repair requests and vendor list</li><li>Your lease, filled in and e-signed</li><li>Income and expense books</li></ul><button class="cta ghost" data-open="start" data-plan="Essentials">Choose Essentials</button></div>
+        <div class="plan pop"><span class="tag">Most popular</span><h3>Autopilot</h3><div class="price num">$35<span> per door / month</span></div><p class="term num">or <b>$30</b> with a 12-month agreement</p><ul><li>Everything in Essentials</li><li>AI receptionist for texts and email, 24/7</li><li>Automatic vendor booking</li><li>Renewals, move-outs and deposit statements</li><li>Monthly owner statements</li></ul><button class="cta primary" data-open="start" data-plan="Autopilot">Choose Autopilot</button></div>
+        <div class="plan"><h3>Autopilot Plus</h3><div class="price num">$59<span> per door / month</span></div><p class="term num">or <b>$50</b> with a 12-month agreement</p><ul><li>Everything in Autopilot</li><li>24/7 emergency repair dispatch</li><li>Smart-lock self-showings</li><li>Listings on Zillow and more</li><li>Priority support</li></ul><button class="cta ghost" data-open="start" data-plan="Autopilot Plus">Choose Plus</button></div>
       </div>
     </div>
   </section>
@@ -344,11 +346,14 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
     <p id="m-sub" style="color:var(--muted)">Tell us about your rentals. We'll set up your account and walk you through it.</p>
     <div class="f"><label for="m-name">Your name</label><input id="m-name" required autocomplete="name"></div>
     <div class="f"><label for="m-email">Email</label><input id="m-email" type="email" required autocomplete="email"></div>
+    <div class="f" id="m-phone-row"><label for="m-phone">Mobile phone</label><input id="m-phone" type="tel" autocomplete="tel" placeholder="720-555-0123"></div>
     <div class="fields">
       <div class="f"><label for="m-doors">Rental homes</label><input id="m-doors" type="number" min="1" max="50" value="5"></div>
       <div class="f"><label for="m-plan">Plan</label><select id="m-plan"><option>Essentials</option><option selected>Autopilot</option><option>Autopilot Plus</option></select></div>
     </div>
-    <p id="m-done" hidden style="background:var(--mint-soft);color:var(--ink);border-radius:12px;padding:12px 14px;font-weight:600">Thanks! We'll email you within one business day. (Demo site: this form isn't connected yet.)</p>
+    <div class="f" id="m-term-row"><label for="m-term">Billing</label><select id="m-term"><option value="monthly">Month-to-month, cancel anytime</option><option value="contract12">12-month agreement (lower price)</option></select><small>Your first month is charged today. Then you'll pick a time for your setup call.</small></div>
+    <p id="m-done" hidden style="background:var(--mint-soft);color:var(--ink);border-radius:12px;padding:12px 14px;font-weight:600">Thanks! We'll email you within one business day.</p>
+    <p id="m-err" hidden style="background:var(--coral-soft);color:var(--coral);border-radius:12px;padding:12px 14px;font-weight:600"></p>
     <div class="row"><button type="button" class="cta ghost sm" id="m-close">Close</button><button type="submit" class="cta primary sm" id="m-submit">Continue</button></div>
   </form>
 </div>
@@ -367,9 +372,13 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
   }
   $('#calc').addEventListener('input',calc);$('#calc').addEventListener('submit',function(e){e.preventDefault()});calc();
 
-  var modal=$('#modal'),last=null;
+  var modal=$('#modal'),last=null,mode='start',ref='';
+  try{ref=new URLSearchParams(location.search).get('ref')||''}catch(e){}
+  var PLANKEY={'Essentials':'essentials','Autopilot':'autopilot','Autopilot Plus':'plus'};
   function open(kind,plan){
     last=document.activeElement;modal.hidden=false;$('#m-done').hidden=true;$('#m-submit').hidden=false;
+    mode=kind;$('#m-err').hidden=true;$('#m-phone-row').hidden=kind==='demo';$('#m-term-row').hidden=kind==='demo';$('#m-phone').required=kind!=='demo';
+    $('#m-submit').textContent=kind==='demo'?'Request a demo':'Continue to checkout';
     $('#m-title').textContent=kind==='demo'?'Book a 30-minute demo':'Get started with Landwell';
     $('#m-sub').textContent=kind==='demo'?"We'll show you Landwell running on a real home, then answer your questions.":"Tell us about your rentals. We'll set up your account and walk you through it.";
     if(plan)$('#m-plan').value=plan;$('#m-name').focus();
@@ -379,7 +388,15 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
   $('#m-close').addEventListener('click',close);
   modal.addEventListener('click',function(e){if(e.target===modal)close()});
   document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!modal.hidden)close()});
-  $('#m-form').addEventListener('submit',function(e){e.preventDefault();$('#m-done').hidden=false;$('#m-submit').hidden=true});
+  $('#m-form').addEventListener('submit',function(e){
+    e.preventDefault();$('#m-err').hidden=true;
+    if(mode==='demo'){$('#m-done').hidden=false;$('#m-submit').hidden=true;return}
+    var btn=$('#m-submit');btn.disabled=true;btn.textContent='Opening secure checkout…';
+    fetch('/api/public/signup',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:$('#m-name').value,email:$('#m-email').value,phone:$('#m-phone').value,doors:+$('#m-doors').value||1,plan:PLANKEY[$('#m-plan').value]||'autopilot',term:$('#m-term').value,ref:ref})})
+      .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
+      .then(function(x){if(x.ok&&x.j.url){location.href=x.j.url;return}throw new Error(x.j.error||'Checkout is not available right now.')})
+      .catch(function(err){$('#m-err').textContent=(err&&err.message&&err.message!=='Failed to fetch'&&!/JSON|Unexpected/.test(err.message))?err.message:"Checkout isn't connected on this preview. On the live site this goes straight to secure checkout.";$('#m-err').hidden=false;btn.disabled=false;btn.textContent='Continue to checkout'});
+  });
   var t=$('#toast');
   document.querySelectorAll('[data-toast]').forEach(function(b){b.addEventListener('click',function(){t.textContent=b.dataset.toast;t.hidden=false;clearTimeout(t._h);t._h=setTimeout(function(){t.hidden=true},2400)})});
 })();

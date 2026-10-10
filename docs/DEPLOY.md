@@ -60,12 +60,18 @@ Never paste keys into chat or commit them. Set them only in Railway's Variables 
 | Postmark inbound | Server → Inbound stream → webhook | `https://<api>/webhooks/email?key=<EMAIL_WEBHOOK_SECRET>` |
 | Stripe (Landwell billing only) | Developers → Webhooks → add endpoint, events `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed` | `https://<api>/webhooks/stripe` |
 
-## Stripe prices
+## Stripe prices, offers and Calendly
 
-Checkout finds prices by lookup key, so prices are changed in Stripe, not in code:
-`landwell_essentials_monthly`, `landwell_autopilot_monthly`, `landwell_plus_monthly` (recurring, per door) and
-`landwell_setup_fee` (one-time; skipped if it doesn't exist). To change a price, create a new one in Stripe and
-move the lookup key to it.
+See `docs/OFFERS.md`. Checkout finds prices by lookup key `landwell_<plan>_<monthly|contract12>`
+(already created in the sandbox). To change a price, create a new one in Stripe and move the lookup key.
+
+More `api` variables:
+```
+ADMIN_API_TOKEN=<long random string>     # opens /admin (private offers, customers)
+CALENDLY_URL=https://calendly.com/<you>/<onboarding-event>
+CALENDLY_TOKEN=<Calendly personal access token>       # optional: booking tracking
+CALENDLY_WEBHOOK_SECRET=<long random string>          # optional: booking tracking
+```
 
 ## Heads-up about the demo data
 

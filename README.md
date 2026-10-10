@@ -7,7 +7,7 @@ decision is theirs.
 
 > **Landwell never collects, holds or moves rent, deposits or vendor payments.**
 > Tenants pay the owner directly and the owner marks rent received. The only money
-> Landwell charges is its own subscription (per door per month + a setup fee),
+> Landwell charges is its own subscription (per door per month, month-to-month or 12-month),
 > billed through Stripe (`src/billing/stripe.ts`).
 
 > "Landwell" is a placeholder. Run a trademark search before using it. The name
@@ -57,7 +57,8 @@ curl localhost:8787/api/dashboard -H 'authorization: Bearer dev-token'
 | `src/adapters/` | Outside services: mock versions plus Twilio, Postmark, Seam, built-in e-sign |
 | `src/config/` | Brand, and `colorado.ts`: every Colorado rule the workflows enforce, with citations |
 | `src/api/server.ts` | HTTP API, webhooks (texts, email, phone calls, Stripe billing), application form, lease signing page |
-| `src/billing/` | Landwell's own subscription billing (Stripe Checkout + webhook). Never rent |
+| `src/billing/` | Landwell's own subscription billing (Stripe Checkout + webhook) and private offers. Never rent. See `docs/OFFERS.md` |
+| `apps/admin/` | `/admin`: issue private offers, see customers and onboarding |
 | `src/ai-service/` | Landwell AI: the in-house AI service (separate Railway service) |
 | `src/leases/` | Turns an owner's own lease into a fill-in template |
 | `src/sim/` | Demo data and the end-to-end demo |
@@ -81,6 +82,6 @@ curl localhost:8787/api/dashboard -H 'authorization: Bearer dev-token'
 
 1. Colorado landlord-tenant attorney reviews `src/config/colorado.ts`, `src/ai/guardrails.ts`, the sample lease and the signing page.
 2. Twilio A2P 10DLC registration approved (US carriers block unregistered business texting).
-3. Stripe live mode for Landwell's own subscription (plan prices and the setup fee, found by lookup key).
+3. Stripe live mode for Landwell's own subscription (month-to-month and 12-month prices, found by lookup key), plus an attorney-reviewed 12-month agreement.
 4. Real login, Postgres, backups, error alerts.
 5. Run the founding client for one full month on text and email before turning on voice.
