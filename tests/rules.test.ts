@@ -14,6 +14,13 @@ test('guardrails route sensitive topics to the owner', () => {
   assert.equal(precheck('I will call my lawyer about this').intent, 'complaint_or_legal');
   assert.equal(precheck('I smell gas').emergency, true);
   assert.equal(precheck('The faucet drips').route, false);
+  // Everyday words that must NOT be mistaken for legal or accommodation topics.
+  assert.equal(precheck('Is the Aspen Court place still available, and do you allow dogs?').route, false, 'street names with Court');
+  assert.equal(precheck('This is Sue from unit B, the dryer is broken').route, false, 'a tenant named Sue');
+  assert.equal(precheck("I'm hearing a weird noise from the furnace").route, false, 'hearing a noise');
+  assert.equal(precheck('I am going to take you to court').intent, 'complaint_or_legal');
+  assert.equal(precheck("I'm going to sue the landlord").intent, 'complaint_or_legal');
+  assert.equal(precheck('I wear a hearing aid, could you add a doorbell light?').intent, 'accommodation_request');
 });
 
 test('postcheck blocks invented amounts and steering language', () => {

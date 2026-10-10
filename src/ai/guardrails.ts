@@ -13,10 +13,10 @@ export interface PreCheck {
 }
 
 const EMERGENCY = /\b(gas (smell|leak)|smell(s)? (like )?gas|carbon monoxide|co alarm|fire|smoke|sparks?|flood(ing|ed)?|burst pipe|water (everywhere|pouring|gushing)|sewage|no heat|furnace (is )?out|heat (is )?out|locked out|break[- ]?in|broken (front |back )?door|power (is )?out|electrical burning)\b/i;
-const ACCOMMODATION = /\b(disab\w*|accommodat\w*|modification|service (dog|animal)|assistance animal|support animal|\besa\b|emotional support|wheelchair|ramp|grab bar|hearing|deaf|blind|sign language|medical (need|condition))\b/i;
+const ACCOMMODATION = /\b(disab\w*|accommodat\w*|modification|service (dog|animal)|assistance animal|support animal|\besa\b|emotional support|wheelchair|ramp|grab bar|hearing (impair\w*|aid|loss)|hard of hearing|deaf|blind|sign language|medical (need|condition))\b/i;
 const FAIR_HOUSING = /\b(neighbou?rhood|area) (like|safe|good)|\bsafe (area|neighbou?rhood|for)|\bcrime\b|\bschools?\b|family[- ]friendly|good for (kids|families|singles|couples|seniors)|\b(kids|children)\b.*\b(allowed|ok|okay)\b|\b(church|mosque|synagogue|temple)\b|\b(race|racial|ethnic\w*|religio\w*|national origin|immigra\w*|citizen\w*)\b|who (lives|are the neighbors)|what kind of (people|neighbors)|\bdiverse\b|\bsection 8\b|\bvoucher\b/i;
 const SCREENING = /\b(will i (get|be) (approved|accepted)|why (was|were) (i|we) (denied|rejected|declined)|(denied|rejected|declined) (my|our) application|application (was |been |got )?(denied|rejected|declined)|my (credit score|chances)|do i qualify|am i (approved|qualified))\b/i;
-const LEGAL = /\b(lawyer|attorney|sue|lawsuit|court|hud\b|discriminat\w*|retaliat\w*|harass\w*|complaint|code enforcement|habitability|withhold(ing)? rent|escrow)\b/i;
+const LEGAL = /\b(lawyer|attorney|su(e|ing) (you|them|him|her|the|my|your|landlord|owner|management)|lawsuit|small claims|(take|taking|took) (you|them|him|her|it|this) to court|(go|going) to court|court (date|case|order|hearing|filing)|legal action|hud\b|discriminat\w*|retaliat\w*|harass\w*|complaint|code enforcement|habitability|withhold(ing)? rent|escrow)\b/i;
 
 export function precheck(message: string, extraOwnerKeywords: string[] = []): PreCheck {
   if (EMERGENCY.test(message)) return { intent: 'emergency', route: false, emergency: true };
