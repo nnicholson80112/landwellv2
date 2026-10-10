@@ -79,7 +79,7 @@ export function buildFacts(store: Store, ownerId: string, propertyId?: string, p
   const facts: Fact[] = [];
   if (rules) {
     facts.push({ label: 'Rent due date', value: `on the ${ordinal(rules.rentDueDay)} of each month` });
-    facts.push({ label: 'How to pay rent', value: 'Pay in the tenant app by free bank transfer, or turn on autopay.' });
+    facts.push({ label: 'How to pay rent', value: rules.howToPay || 'Rent is paid to your landlord directly, the way you normally pay. Ask your landlord if you are unsure.' });
     if (rules.petPolicy) facts.push({ label: 'Pet policy', value: rules.petPolicy });
     for (const [k, v] of Object.entries(rules.facts)) facts.push({ label: k, value: v });
   }

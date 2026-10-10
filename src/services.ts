@@ -3,8 +3,8 @@
 // safe mock. See .env.example.
 
 import type { Adapters } from './adapters/types.ts';
-import { ManualListings, MockIdentity, MockLocks, MockPayments, MockScreening, OutboxMessaging } from './adapters/mock.ts';
-import { ChannelRouter, PostmarkEmail, SeamLocks, StripePayments, TwilioSMS } from './adapters/live.ts';
+import { ManualListings, MockIdentity, MockLocks, MockScreening, OutboxMessaging } from './adapters/mock.ts';
+import { ChannelRouter, PostmarkEmail, SeamLocks, TwilioSMS } from './adapters/live.ts';
 import { NativeESign } from './adapters/esign-native.ts';
 import type { CommunicationAI } from './ai/types.ts';
 import { RuleBasedAI } from './ai/rules.ts';
@@ -58,7 +58,6 @@ export function createServices(o: {
 
   const adapters = {
     messaging,
-    payments: env.STRIPE_SECRET_KEY ? new StripePayments({ secretKey: env.STRIPE_SECRET_KEY, publicUrl: cfg.publicUrl }) : new MockPayments(),
     esign: new NativeESign({ store: o.store, publicUrl: cfg.publicUrl }),
     locks: env.SEAM_API_KEY ? new SeamLocks({ apiKey: env.SEAM_API_KEY }) : new MockLocks(),
     identity: new MockIdentity(),

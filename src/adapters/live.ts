@@ -6,7 +6,7 @@
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { BRAND } from '../config/brand.ts';
-import type { LockProvider, MessagingProvider, OutboundMessage, PaymentsProvider } from './types.ts';
+import type { LockProvider, MessagingProvider, OutboundMessage } from './types.ts';
 
 async function call(url: string, init: RequestInit): Promise<any> {
   const res = await fetch(url, init);
@@ -80,51 +80,7 @@ export class ChannelRouter implements MessagingProvider {
   }
 }
 
-/* ---------------- Stripe (rent by ACH) ---------------- */
-// Rent is collected with Stripe Checkout using US bank accounts (ACH), and
-// paid to the owner's Stripe Connect account so money never sits with us.
-export class StripePayments implements PaymentsProvider {
-  name = 'stripe';
-  private key: string;
-  private successUrl: string;
-  constructor(o: { secretKey: string; publicUrl: string }) {
-    this.key = o.secretKey;
-    this.successUrl = o.publicUrl.replace(/\/$/, '') + '/paid';
-  }
-  private form(path: string, params: Record<string, string>) {
-    return call('https://api.stripe.com/v1/' + path, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${this.key}`, 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(params),
-    });
-  }
-  async createPaymentLink(i: { chargeId: string; amount: number; description: string; ownerAccountId?: string; tenantEmail?: string }) {
-    const p: Record<string, string> = {
-      mode: 'payment',
-      'payment_method_types[0]': 'us_bank_account',
-      'line_items[0][quantity]': '1',
-      'line_items[0][price_data][currency]': 'usd',
-      'line_items[0][price_data][unit_amount]': String(i.amount),
-      'line_items[0][price_data][product_data][name]': i.description,
-      'metadata[charge_id]': i.chargeId,
-      'payment_intent_data[metadata][charge_id]': i.chargeId,
-      success_url: this.successUrl,
-    };
-    if (i.tenantEmail) p.customer_email = i.tenantEmail;
-    if (i.ownerAccountId) p['payment_intent_data[transfer_data][destination]'] = i.ownerAccountId;
-    const s = await this.form('checkout/sessions', p);
-    return { url: s.url as string, providerRef: s.id as string };
-  }
-  // Vendor payouts and deposit refunds are recorded as manual in the MVP:
-  // the owner pays from their own bank and Landwell records it.
-  async payVendor(i: { vendorId: string }) {
-    return { providerRef: 'manual_' + i.vendorId, manual: true };
-  }
-  async refundDeposit(i: { leaseId: string }) {
-    return { providerRef: 'manual_' + i.leaseId, manual: true };
-  }
-}
-
+/* ---------------- Stripe webhooks (Landwell's own billing; see src/billing/) ---------------- */
 /** Stripe-Signature header: t=timestamp,v1=HMAC-SHA256(timestamp.payload). */
 export function verifyStripeSignature(secret: string, payload: string, header: string, toleranceSec = 300): boolean {
   const parts = Object.fromEntries(header.split(',').map((kv) => kv.split('=') as [string, string]));

@@ -2,7 +2,7 @@
 // when an integration has no credentials yet. They never contact anyone.
 
 import { randomInt } from 'node:crypto';
-import type { ESignProvider, IdentityProvider, ListingsProvider, LockProvider, MessagingProvider, OutboundMessage, PaymentsProvider, ScreeningProvider } from './types.ts';
+import type { ESignProvider, IdentityProvider, ListingsProvider, LockProvider, MessagingProvider, OutboundMessage, ScreeningProvider } from './types.ts';
 
 export class OutboxMessaging implements MessagingProvider {
   name = 'outbox';
@@ -15,19 +15,6 @@ export class OutboxMessaging implements MessagingProvider {
     this.sent.push({ ...msg, at: new Date().toISOString() });
     if (this.log) console.log(`  ↗ ${msg.channel.toUpperCase()} to ${msg.to}: ${msg.body}`);
     return { providerId: 'outbox_' + this.sent.length };
-  }
-}
-
-export class MockPayments implements PaymentsProvider {
-  name = 'mock-payments';
-  async createPaymentLink(i: { chargeId: string }) {
-    return { url: `https://pay.example.test/c/${i.chargeId}`, providerRef: 'mock_' + i.chargeId };
-  }
-  async payVendor(i: { vendorId: string }) {
-    return { providerRef: 'manual_' + i.vendorId, manual: true };
-  }
-  async refundDeposit(i: { leaseId: string }) {
-    return { providerRef: 'manual_' + i.leaseId, manual: true };
   }
 }
 

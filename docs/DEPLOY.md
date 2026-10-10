@@ -25,7 +25,7 @@ OWNER_API_TOKEN=<long random string>
 AI_PROVIDER=http
 AI_HTTP_URL=http://ai.railway.internal:8788/respond
 AI_HTTP_TOKEN=<same value as AI_SERVICE_TOKEN below>
-STRIPE_SECRET_KEY=sk_test_...          # sandbox first
+STRIPE_SECRET_KEY=sk_test_...          # sandbox first. Landwell's own subscription billing only
 STRIPE_WEBHOOK_SECRET=whsec_...
 POSTMARK_TOKEN=...
 EMAIL_FROM=Landwell <hello@your-domain>
@@ -58,7 +58,14 @@ Never paste keys into chat or commit them. Set them only in Railway's Variables 
 | Twilio, texts | Phone number → Messaging → "A message comes in" | `https://<api>/webhooks/twilio/sms` |
 | Twilio, calls | Phone number → Voice → "A call comes in" | `https://<api>/webhooks/twilio/voice` |
 | Postmark inbound | Server → Inbound stream → webhook | `https://<api>/webhooks/email?key=<EMAIL_WEBHOOK_SECRET>` |
-| Stripe | Developers → Webhooks → add endpoint, events `checkout.session.completed`, `checkout.session.async_payment_succeeded` | `https://<api>/webhooks/stripe` |
+| Stripe (Landwell billing only) | Developers → Webhooks → add endpoint, events `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed` | `https://<api>/webhooks/stripe` |
+
+## Stripe prices
+
+Checkout finds prices by lookup key, so prices are changed in Stripe, not in code:
+`landwell_essentials_monthly`, `landwell_autopilot_monthly`, `landwell_plus_monthly` (recurring, per door) and
+`landwell_setup_fee` (one-time; skipped if it doesn't exist). To change a price, create a new one in Stripe and
+move the lookup key to it.
 
 ## Heads-up about the demo data
 

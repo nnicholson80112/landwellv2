@@ -1,9 +1,14 @@
 # Landwell (working name)
 
 Software that runs small-landlord property management. Tenants, prospects and
-vendors text one number; Landwell answers, books repairs, collects rent, fills
-leases and keeps Colorado deadlines, and texts the owner only when a decision is
-theirs.
+vendors text one number; Landwell answers, books repairs, sends rent reminders,
+fills leases and keeps Colorado deadlines, and texts the owner only when a
+decision is theirs.
+
+> **Landwell never collects, holds or moves rent, deposits or vendor payments.**
+> Tenants pay the owner directly and the owner marks rent received. The only money
+> Landwell charges is its own subscription (per door per month + a setup fee),
+> billed through Stripe (`src/billing/stripe.ts`).
 
 > "Landwell" is a placeholder. Run a trademark search before using it. The name
 > and colors live in `src/config/brand.ts` and `apps/site/site.body.html`.
@@ -41,7 +46,7 @@ curl localhost:8787/api/dashboard -H 'authorization: Bearer dev-token'
             Workflow engine (durable: waits for vendors, owners, dates; survives restarts)
               │                     │                        │
         Adapters (Twilio,     Owner approvals         Store (records, audit log,
-        Stripe, Seam, e-sign)  by text "YES 4F2"       workflow runs)
+        Seam, e-sign)          by text "YES 4F2"       workflow runs)
 ```
 
 | Folder | What's in it |
@@ -49,9 +54,10 @@ curl localhost:8787/api/dashboard -H 'authorization: Bearer dev-token'
 | `src/engine/` | The durable workflow engine (`engine.ts`) and clock helpers |
 | `src/workflows/` | Every business workflow. Start with `inbound-message.ts` and `maintenance.ts` |
 | `src/ai/` | The communication-AI plug-in point, rule-based fallback, Claude and HTTP providers, fair-housing guardrails |
-| `src/adapters/` | Outside services: mock versions plus Twilio, Postmark, Stripe, Seam, built-in e-sign |
+| `src/adapters/` | Outside services: mock versions plus Twilio, Postmark, Seam, built-in e-sign |
 | `src/config/` | Brand, and `colorado.ts`: every Colorado rule the workflows enforce, with citations |
-| `src/api/server.ts` | HTTP API, webhooks (texts, email, phone calls, Stripe), application form, lease signing page |
+| `src/api/server.ts` | HTTP API, webhooks (texts, email, phone calls, Stripe billing), application form, lease signing page |
+| `src/billing/` | Landwell's own subscription billing (Stripe Checkout + webhook). Never rent |
 | `src/ai-service/` | Landwell AI: the in-house AI service (separate Railway service) |
 | `src/leases/` | Turns an owner's own lease into a fill-in template |
 | `src/sim/` | Demo data and the end-to-end demo |
@@ -65,7 +71,7 @@ curl localhost:8787/api/dashboard -H 'authorization: Bearer dev-token'
 | --- | --- |
 | Workflow engine, all 15 workflows, guardrails, lease templating, API, signing page | Working and tested |
 | AI | Rule-based works offline. Claude and in-house HTTP providers are written; add a key to turn them on |
-| Twilio SMS, Postmark email, Stripe ACH, Seam locks | Written against each vendor's API; **not yet run against live accounts**. Test in each vendor's sandbox first |
+| Twilio SMS, Postmark email, Stripe subscription billing, Seam locks | Written against each vendor's API; **not yet run against live accounts**. Test in each vendor's sandbox first |
 | ID verification, screening, listing syndication | Mock links today. Pick partners (e.g. Stripe Identity, a screening company, the Zillow rental feed) and implement the adapter interface |
 | Owner app (dashboard UI) | Next phase. The API it will use is done (`/api/dashboard`, `/api/approvals`, …) |
 | Login | MVP bearer token. Replace with a real auth provider before launch |
@@ -75,6 +81,6 @@ curl localhost:8787/api/dashboard -H 'authorization: Bearer dev-token'
 
 1. Colorado landlord-tenant attorney reviews `src/config/colorado.ts`, `src/ai/guardrails.ts`, the sample lease and the signing page.
 2. Twilio A2P 10DLC registration approved (US carriers block unregistered business texting).
-3. Stripe account with ACH enabled; owners connect through Stripe Connect.
+3. Stripe live mode for Landwell's own subscription (plan prices and the setup fee, found by lookup key).
 4. Real login, Postgres, backups, error alerts.
 5. Run the founding client for one full month on text and email before turning on voice.

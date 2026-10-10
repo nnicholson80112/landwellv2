@@ -20,7 +20,7 @@ This Lease is made on ________ between ______________________ ("Landlord") and _
 
 6. PETS. Pet terms: ______________________________. Assistance animals are not pets.
 
-7. REPAIRS. Tenant shall report needed repairs through the tenant app or by text. Landlord will respond within the time required by Colorado law.
+7. REPAIRS. Tenant shall report needed repairs by text or email. Landlord will respond within the time required by Colorado law.
 
 8. UTILITIES. Tenant pays: ____________________.
 
@@ -36,6 +36,7 @@ export function seed(store: Store, env: Record<string, string | undefined> = pro
   });
   store.insert('rules', {
     id: owner.id, ownerId: owner.id, repairSpendLimit: 15_000, emergencySpendLimit: 100_000, rentDueDay: 1, graceDays: 5, lateFee: 5_000, autoLateNotice: true,
+    howToPay: 'Pay the owner by Zelle to nate@example.com (free), or mail a check.',
     petPolicy: 'One dog under 50 lb or up to two cats, with a $300 pet deposit. Assistance animals are not pets and have no pet fees.',
     screeningCriteria: [
       { key: 'income_multiple', label: 'Monthly income at least 3x rent', value: 3 },

@@ -55,7 +55,7 @@ export const renewal: WorkflowDef<Services, { leaseId: string; ownerId: string }
     const terms = await ctx.approval({
       kind: 'renewal_terms',
       title: `Renewal: ${address} (lease ends ${lease.endDate})`,
-      body: `${tenants.map((t) => t.name).join(' and ')} pay ${money(lease.rent)}/month. Offer a renewal? You can set the new rent and term in the app (default: same rent, 12 months).${canRaise ? '' : ' Note: Colorado allows one rent increase per 12 months, so the rent must stay the same this time.'}`,
+      body: `Current rent: ${money(lease.rent)}/month (${tenants.map((t) => t.name).join(' and ')}). Offer a renewal? You can set the new rent and term in the app (default: same rent, 12 months).${canRaise ? '' : ' Note: Colorado allows one rent increase per 12 months, so the rent must stay the same this time.'}`,
       options: ['offer_renewal', 'do_not_renew'],
       data: { rent: lease.rent, months: 12 },
     });
@@ -98,7 +98,7 @@ export const renewal: WorkflowDef<Services, { leaseId: string; ownerId: string }
 export const moveOut: WorkflowDef<Services, { ownerId: string; tenantId: string; date?: string }> = {
   name: 'move-out',
   title: 'Move-out and deposit',
-  description: 'Confirms the date, lists the home early, prompts the owner walkthrough, and returns the itemized deposit within Colorado\'s deadline.',
+  description: 'Confirms the date, lists the home early, prompts the owner walkthrough, and gets the itemized deposit statement out before Colorado\'s deadline (the owner sends the refund).',
   trigger: { event: 'moveout.notice', dedupeKey: (p) => p.tenantId },
 
   async run(ctx, input) {
@@ -109,7 +109,7 @@ export const moveOut: WorkflowDef<Services, { ownerId: string; tenantId: string;
     const address = propertyName(store, lease.propertyId);
     const date = input.date && input.date <= lease.endDate ? input.date : lease.endDate;
 
-    await tellTenant(ctx, 'confirm', tenant, `Got it: move-out from ${address} on ${date}. Before then: clean, remove all belongings, and return keys. Please reply with your forwarding address so we can send your deposit.`);
+    await tellTenant(ctx, 'confirm', tenant, `Got it: move-out from ${address} on ${date}. Before then: clean, remove all belongings, and return keys. Please reply with your forwarding address so your landlord can send your deposit statement and refund.`);
     await tellOwner(ctx, 'owner', input.ownerId, `${tenant.name} is moving out of ${address} on ${date}. We'll prepare the listing so it's ready to go.`);
     await ctx.emit('listing.requested', { ownerId: input.ownerId, propertyId: lease.propertyId, availableFrom: addDays(date, 3) });
     await ctx.step('walkthrough-task', () => store.insert('tasks', { ownerId: input.ownerId, title: `Move-out walkthrough: ${address}`, detail: `Do the walkthrough on ${date} and take photos of every room. Compare with move-in photos. Normal wear and tear can't be charged.`, dueAt: date + 'T17:00:00Z', status: 'open' }));
@@ -135,10 +135,11 @@ export const moveOut: WorkflowDef<Services, { ownerId: string; tenantId: string;
     const deductions = (d?.data.deductions as { reason: string; amount: number }[] | undefined) ?? [];
     const total = deductions.reduce((s, x) => s + x.amount, 0);
     const refund = Math.max(0, held - total);
-    await ctx.step('refund', () => ctx.svc.adapters.payments.refundDeposit({ leaseId: lease.id, amount: refund, memo: `Deposit return ${address}` }));
+    // The owner holds the deposit and sends the refund; Landwell sends the statement and tracks the deadline.
+    await ctx.step('refund-task', () => store.insert('tasks', { ownerId: input.ownerId, title: `Send deposit refund of ${money(refund)}: ${address}`, detail: `Send ${money(refund)} to ${tenant.name} at their forwarding address by ${deadline} (Colorado deadline). The itemized statement has been sent to them.`, dueAt: deadline + 'T17:00:00Z', status: 'open' }));
     const lines = deductions.map((x) => `• ${x.reason}: ${money(x.amount)}`).join('\n');
-    await tellTenant(ctx, 'statement', tenant, `Deposit statement for ${address}: deposit ${money(held)}${deductions.length ? `\nDeductions:\n${lines}` : ', no deductions'}\nRefund: ${money(refund)}. Questions? Reply here.`);
-    await ctx.log('deposit.returned', `Deposit for ${address}: ${money(refund)} refunded, ${money(total)} deducted. Deadline was ${deadline}.`);
+    await tellTenant(ctx, 'statement', tenant, `Deposit statement for ${address}: deposit ${money(held)}${deductions.length ? `\nDeductions:\n${lines}` : ', no deductions'}\nRefund: ${money(refund)}, sent to you by your landlord by ${deadline}. Questions? Reply here.`);
+    await ctx.log('deposit.statement', `Deposit statement for ${address}: ${money(refund)} to refund, ${money(total)} deducted. Owner reminded to send it by ${deadline}.`);
     return { refund, deducted: total };
   },
 };
@@ -146,13 +147,13 @@ export const moveOut: WorkflowDef<Services, { ownerId: string; tenantId: string;
 export const tenantWelcome: WorkflowDef<Services, { tenantId: string }> = {
   name: 'tenant-welcome',
   title: 'Tenant welcome',
-  description: 'Welcomes a tenant added by the owner: how to pay, how to request repairs, autopay.',
+  description: 'Welcomes a tenant added by the owner: how to request repairs and reach the landlord.',
   trigger: { event: 'tenant.added', dedupeKey: (p) => p.tenantId },
   async run(ctx, { tenantId }) {
     const t = ctx.store.get('tenants', tenantId)!;
     ctx.setOwner(t.ownerId);
     const address = propertyName(ctx.store, t.propertyId);
-    await tellTenant(ctx, 'welcome', t, `Hi ${t.name.split(' ')[0]}! Your landlord now uses ${ctx.svc.brand.name} for ${address}. Text this number anytime for repairs (send a photo), rent questions or anything else. Set up free autopay here: ${ctx.svc.cfg.publicUrl}/t/${t.id}. Reply STOP to opt out of texts.`);
+    await tellTenant(ctx, 'welcome', t, `Hi ${t.name.split(' ')[0]}! Your landlord now uses ${ctx.svc.brand.name} for ${address}. Text this number anytime for repairs (send a photo) or questions. You'll keep paying rent to your landlord the same way; we'll just send you a reminder before it's due. Reply STOP to opt out of texts.`);
     await ctx.log('tenant.welcomed', `${t.name} invited.`);
     return { ok: true };
   },

@@ -35,14 +35,14 @@ The owner decides from the app or by texting back the code in each request, for 
 10. Record the expense, mark paid, tell owner and tenant.
 
 ## 3. Daily rent check (`rent-cycle`) — every day 6:00 AM
-5 days before the due date: create the charge and text the pay link (or an autopay heads-up). Due date: reminder. After the grace period: start **Late rent**. Never charges for past months when an owner first joins.
+**Landwell never collects rent.** Tenants pay the owner directly (the owner's own method, quoted from their rules). 5 days before the due date: start the month's rent record and text a heads-up. Due date: reminder. After the grace period: start **Late rent**. Never chases past months when an owner first joins.
 
-## 4. Payment received (`payment-received`)
-**Starts:** Stripe webhook when ACH actually settles. Records the payment, texts a receipt, stops late notices. Webhook retries can't double-count.
+## 4. Rent marked received (`payment-received`)
+**Starts:** the owner marks rent (or a deposit) received in the app, or answers YES to "Did rent arrive?". Records it in the books, thanks the tenant, stops late notices. Double taps can't double-count.
 
 ## 5. Late rent (`late-rent`)
-1. Friendly reminder to tenant; heads-up to owner.
-2. Rent 7+ days late → late fee capped at the greater of $50 or 5% (SB21-173), only if the owner set one.
+1. **Owner** confirms whether rent arrived (Landwell can't see the owner's bank). Only if NO: a polite late notice to the tenant.
+2. Rent 7+ days late → **Owner** decides whether to apply the lease's late fee, capped at the greater of $50 or 5% (SB21-173). Landwell only tells the tenant; they pay the owner.
 3. Day 12 unpaid → **Owner** picks: send the 10-day demand (we prepare it; the owner has it delivered properly), offer a payment plan, or keep waiting. Landwell never files anything.
 
 ## 6. Rental application (`application`)
@@ -56,7 +56,7 @@ The owner decides from the app or by texting back the code in each request, for 
 2. Anything left blank → **Owner** fills it in the app.
 3. Colorado check: only one rent increase per 12 months.
 4. Each tenant signs on the built-in signing page (document hash, time, IP and consent recorded), then **Owner** signs.
-5. New tenancy: deposit and first-month pay links, other applicants told the home is leased, listing taken down, move-in details 2 days before, tenant active on day one.
+5. New tenancy: tenant told the deposit and first month are due to the owner (owner gets a to-do to mark them received), other applicants told the home is leased, listing taken down, move-in details 2 days before, tenant active on day one.
 
 ## 8. Showing (`showing`)
 Self-showing: ID check link → 3 time choices → one-time door code 15 min before (works for 1 hour) → code revoked → feedback and apply link. Owner-led showing (or no smart lock): **Owner** confirms a time.
@@ -68,13 +68,13 @@ Listing copy with one all-in rent (HB25-1090) and an Equal Housing line → fair
 At the owner's lead time (default 120 days): **Owner** sets rent and term, or chooses not to renew and must pick a Colorado for-cause reason (HB24-1098, generally 90 days' notice). Tenant replies YES → renewal lease (workflow 7); NO → move-out.
 
 ## 12. Move-out and deposit (`move-out`)
-Confirm the date, ask for a forwarding address, start the listing early, walkthrough to-do for the owner, reminders. After move-out: **Owner** returns the full deposit or enters deductions. Escalates at day 21; itemized statement and refund before the 30-day deadline (HB25-1249).
+Confirm the date, ask for a forwarding address, start the listing early, walkthrough to-do for the owner, reminders. After move-out: **Owner** chooses full return or enters deductions; Landwell sends the itemized statement and gives the owner a to-do to send the refund by the deadline. Escalates at day 21; itemized statement and refund before the 30-day deadline (HB25-1249).
 
 ## 13. Tenant welcome (`tenant-welcome`)
-When the owner adds a tenant: how to text repairs, autopay link, STOP to opt out.
+When the owner adds a tenant: how to text repairs, that rent is still paid to the owner as before, STOP to opt out.
 
 ## 14. Monday owner report (`weekly-report`) — Mondays 7:00 AM
-Rent collected, repairs, messages handled, decisions and to-dos waiting.
+Rent marked received, repairs, messages handled, decisions and to-dos waiting.
 
 ## 15. New owner setup (`onboarding`)
 Six-step checklist, welcome text, nudges at day 2 and day 7 until homes, lease, tenants, vendors, rules and bank are in.

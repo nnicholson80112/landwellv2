@@ -16,7 +16,18 @@ export interface Owner {
   timezone: string; // e.g. America/Denver
   lineNumber?: string; // the Landwell phone number tenants text for this owner
   lineEmail?: string; // the Landwell inbox address for this owner
+  billing?: OwnerBilling; // the owner's Landwell subscription (Stripe)
   createdAt: ISO;
+}
+
+/** The owner's Landwell subscription. This is the ONLY money Landwell ever charges or handles. */
+export interface OwnerBilling {
+  status: 'checkout_started' | 'active' | 'past_due' | 'canceled';
+  plan?: 'essentials' | 'autopilot' | 'plus';
+  doors?: number;
+  customerId?: string;
+  subscriptionId?: string;
+  updatedAt: ISO;
 }
 
 /** The owner's standing instructions. Workflows read these instead of guessing. */
@@ -27,7 +38,8 @@ export interface OwnerRules {
   emergencySpendLimit: Cents; // emergencies at or under this go ahead without waiting for the owner
   rentDueDay: number; // 1-28
   graceDays: number; // days after due date before rent counts as late
-  lateFee: Cents; // requested late fee; engine caps it to Colorado limits
+  lateFee: Cents; // the late fee in the owner's lease; Landwell only tells the owner the Colorado cap, never charges it
+  howToPay?: string; // how tenants pay the owner directly, quoted in reminders (Landwell never handles rent)
   autoLateNotice: boolean;
   petPolicy: string; // plain words, quoted to prospects verbatim
   screeningCriteria: ScreeningCriterion[];
@@ -133,6 +145,8 @@ export interface WorkOrder {
   createdAt: ISO;
 }
 
+/** A rent record for reminders and the owner's books. Landwell never collects
+ *  money: the owner marks it received when the tenant pays them directly. */
 export interface Charge {
   id: ID;
   ownerId: ID;
@@ -144,7 +158,6 @@ export interface Charge {
   status: 'open' | 'paid' | 'void';
   period?: string; // '2026-11'
   notices: string[]; // which reminders/notices already went out for this charge
-  payUrl?: string;
 }
 
 export interface Payment {
@@ -153,7 +166,7 @@ export interface Payment {
   leaseId: ID;
   chargeId?: ID;
   amount: Cents;
-  method: 'ach' | 'card' | 'other';
+  method: 'owner_recorded'; // the owner confirms rent arrived; Landwell never moves rent money
   providerRef?: string;
   receivedAt: ISO;
 }

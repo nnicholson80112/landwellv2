@@ -112,17 +112,23 @@ export async function runDemo(opts: { quiet?: boolean } = {}) {
   await advance(3 * HOUR);
   await text(s.plumber.phone!, 'Done. Loose fitting on the stove line, tightened and tested. $250');
 
-  /* 8 */ scene('8. Rent: reminders, one payment, late notice with Colorado-capped fee');
+  /* 8 */ scene('8. Rent: reminders, owner confirms, late notice, owner OKs the Colorado-capped fee');
   await advance(15 * DAY); // through Nov 1
-  const jordanRent = store.list('charges', (c) => c.leaseId === newLease.id && c.kind === 'rent').pop();
-  if (jordanRent) {
-    say(`   ${C.mag}(Stripe webhook: Jordan's first month settles)${C.r}`);
-    svc.engine.emit('payment.received', { chargeId: jordanRent.id, amount: jordanRent.amount, method: 'ach', providerRef: 'pi_demo_1' });
+  const jordanMoney = store.list('charges', (c) => c.leaseId === newLease.id && c.status === 'open');
+  if (jordanMoney.length) {
+    say(`   ${C.mag}(owner marks Jordan's deposit and first month received in the app; Jordan paid the owner directly)${C.r}`);
+    for (const c of jordanMoney) svc.engine.emit('payment.received', { chargeId: c.id, amount: c.amount, method: 'owner_recorded', providerRef: `owner_${c.id}` });
     await svc.engine.drain();
     flush();
   }
   say(`   ${C.dim}(Lisa hasn't paid November rent yet…)${C.r}`);
-  await advance(8 * DAY); // late notice after the 5-day grace, fee once 7 days late
+  await advance(6.5 * DAY); // past the 5-day grace: Landwell asks the owner before anyone is told it's late
+  say(`   ${C.mag}(owner checks their account: not there)${C.r}`);
+  await text(owner, `NO ${code('rent_check')}`);
+  await advance(1 * DAY); // 7 days late: owner decides on the late fee
+  say(`   ${C.mag}(owner chooses to apply the lease's late fee)${C.r}`);
+  await text(owner, `YES ${code('late_fee')}`);
+  await advance(0.5 * DAY);
 
   /* 9 */ scene('9. Renewal season for Lisa (lease ends Feb 14; the owner was asked on Oct 17)');
   const ren = store.list('approvals', (a) => a.kind === 'renewal_terms' && a.status === 'pending').pop();

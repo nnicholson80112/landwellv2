@@ -74,7 +74,7 @@ export class RuleBasedAI implements CommunicationAI {
       if (/\b(done|finished|complete\w*|fixed|all set|wrapped up)\b/i.test(t)) { e.vendorDone = true; e.vendorInvoice = dollars(t); }
       else e.vendorQuote = dollars(t);
       e.vendorWindow = window(t);
-      reply = e.vendorDone ? 'Thanks! Logged as complete. Payment will follow once the invoice is checked.' : e.vendorAccept === false ? 'No problem, thanks for letting us know.' : e.vendorAccept ? 'Great, thank you. We\'ll confirm with the resident.' : '';
+      reply = e.vendorDone ? 'Thanks! Logged as complete. The owner will pay you directly once the invoice is checked.' : e.vendorAccept === false ? 'No problem, thanks for letting us know.' : e.vendorAccept ? 'Great, thank you. We\'ll confirm with the resident.' : '';
       return { intent, confidence: 0.7, reply, entities: e, handoff: false, provider: this.name };
     }
 
@@ -102,7 +102,7 @@ export class RuleBasedAI implements CommunicationAI {
       intent = 'rent_question';
       const due = pick(input.facts, 'rent due', 'due date');
       const how = pick(input.facts, 'how to pay', 'payment');
-      reply = [how?.value ?? 'You can pay in the tenant app by free bank transfer or turn on autopay.', due ? `Rent is due ${due.value}.` : ''].filter(Boolean).join(' ');
+      reply = [how?.value ?? 'Rent is paid to your landlord directly, the way you normally pay.', due ? `Rent is due ${due.value}.` : ''].filter(Boolean).join(' ');
     } else if (/\b(tour|show(ing)?|see (it|the (place|home|house|unit))|view(ing)?|visit|walk ?through|open house)\b/i.test(t)) {
       intent = 'showing_request';
       e.preferredTimes = window(t) ? [window(t)!] : [];

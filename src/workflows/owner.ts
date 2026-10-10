@@ -10,19 +10,19 @@ import { addressKey, money, tellOwner } from './lib.ts';
 export const weeklyReport: WorkflowDef<Services, { localDate: string }> = {
   name: 'weekly-report',
   title: 'Monday owner report',
-  description: 'Every Monday at 7 AM: rent collected, repairs, messages handled and anything waiting on the owner.',
+  description: 'Every Monday at 7 AM: rent you marked received, repairs, messages handled and anything waiting on you.',
   trigger: { schedule: { every: 'week', weekday: 1, at: '07:00' } },
   async run(ctx, { localDate }) {
     const store = ctx.store;
     const since = new Date((await ctx.now()).getTime() - 7 * DAY).toISOString();
     for (const o of store.list('owners')) {
       const audit = store.list('audit', (a) => a.ownerId === o.id && a.at >= since);
-      const paid = store.list('payments', (p) => p.ownerId === o.id && p.receivedAt >= since).reduce((s, p) => s + p.amount, 0);
+      const paid = store.list('payments', (p) => p.ownerId === o.id && p.receivedAt >= since && (!p.chargeId || store.get('charges', p.chargeId)?.kind !== 'deposit')).reduce((s, p) => s + p.amount, 0);
       const repairs = store.list('workOrders', (w) => w.ownerId === o.id && w.createdAt >= since).length;
       const msgs = audit.filter((a) => a.action === 'message.answered').length;
       const pending = store.list('approvals', (a) => a.ownerId === o.id && a.status === 'pending');
       const tasks = store.list('tasks', (t) => t.ownerId === o.id && t.status === 'open');
-      const body = `Your week with ${ctx.svc.brand.name} (to ${localDate}): ${money(paid)} rent collected, ${repairs} repair${repairs === 1 ? '' : 's'} handled, ${msgs} message${msgs === 1 ? '' : 's'} answered. ${pending.length ? `${pending.length} decision${pending.length > 1 ? 's' : ''} waiting for you.` : 'Nothing waiting on you.'}${tasks.length ? ` ${tasks.length} open to-do${tasks.length > 1 ? 's' : ''}.` : ''}`;
+      const body = `Your week with ${ctx.svc.brand.name} (to ${localDate}): ${money(paid)} rent marked received, ${repairs} repair${repairs === 1 ? '' : 's'} handled, ${msgs} message${msgs === 1 ? '' : 's'} answered. ${pending.length ? `${pending.length} decision${pending.length > 1 ? 's' : ''} waiting for you.` : 'Nothing waiting on you.'}${tasks.length ? ` ${tasks.length} open to-do${tasks.length > 1 ? 's' : ''}.` : ''}`;
       await tellOwner(ctx, `report:${o.id}`, o.id, body);
     }
     return { owners: store.list('owners').length };
@@ -38,7 +38,7 @@ export const onboarding: WorkflowDef<Services, { ownerId: string }> = {
     const store = ctx.store;
     ctx.setOwner(ownerId);
     const o = store.get('owners', ownerId)!;
-    const checklist = ['Add your homes', 'Upload your lease', 'Add your tenants', 'Add your vendors', 'Set your rules (spending limit, pets, screening criteria)', 'Connect your bank for rent deposits'];
+    const checklist = ['Add your homes', 'Upload your lease', 'Add your tenants', 'Add your vendors', 'Set your rules (spending limit, pets, screening criteria)', 'Tell us how tenants pay you (Zelle, check, your bank portal) so reminders say the right thing'];
     await ctx.step('tasks', () => checklist.map((title) => store.insert('tasks', { ownerId, title, detail: 'Setup step', status: 'open' })));
     await tellOwner(ctx, 'welcome', ownerId, `Welcome to ${ctx.svc.brand.name}, ${o.name.split(' ')[0]}! Six quick setup steps are in your app. Most owners finish in under an hour. Reply here anytime if you get stuck.`);
     for (const [i, wait] of [2, 5].entries()) {

@@ -24,7 +24,7 @@ const VENDOR_REPLY_WINDOW: Record<Urgency, number> = { emergency: 20 * MIN, urge
 export const maintenance: WorkflowDef<Services, RepairInput> = {
   name: 'maintenance',
   title: 'Repair request',
-  description: 'Triage, vendor booking, owner approval over the spending limit, invoice check and payment.',
+  description: 'Triage, vendor booking, owner approval over the spending limit, invoice check, and the expense in the books (owner pays the vendor).',
   trigger: { event: 'maintenance.requested' },
 
   async run(ctx, input) {
@@ -160,11 +160,10 @@ export const maintenance: WorkflowDef<Services, RepairInput> = {
       }
     }
 
-    // 8. Pay and record.
-    const pay = await ctx.step('pay', () => ctx.svc.adapters.payments.payVendor({ vendorId: vendor!.id, amount: invoice ?? 0, memo: `${wo.id} ${wo.summary}` }));
+    // 8. Record it. The owner pays the vendor directly; Landwell never moves money.
     await ctx.step('expense', () => store.insert('expenses', { ownerId: input.ownerId, propertyId: input.propertyId, category: 'repairs', amount: invoice ?? 0, vendorId: vendor!.id, workOrderId: wo.id, date: ctx.svc.clock.now().toISOString().slice(0, 10), memo: `${vendor!.name}: ${wo.summary}` }));
     await upd({ status: 'paid' }, 'paid');
-    await tellOwner(ctx, 'owner-done', input.ownerId, `Repair done at ${address}: "${wo.summary}" by ${vendor.name}, ${money(invoice)}.${pay.manual ? ' Please pay the vendor from your account; it\'s already in your books.' : ' Paid and recorded.'}`);
+    await tellOwner(ctx, 'owner-done', input.ownerId, `Repair done at ${address}: "${wo.summary}" by ${vendor.name}, ${money(invoice)}.Please pay ${vendor.name} directly; it's already in your books.`);
     if (tenant) await tellTenant(ctx, 'tenant-done', tenant, `Your repair is marked complete. If anything still isn't right, just reply here.`);
     await ctx.log('repair.closed', `${wo.id} closed: ${money(invoice)} to ${vendor.name}.`);
     return { status: 'paid', invoice };

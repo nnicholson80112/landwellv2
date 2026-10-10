@@ -60,8 +60,14 @@ button.sun{background:var(--sun);color:#0E1B33}
       </div>
       <div class="card">
         <h2>Partner events</h2>
-        <p class="muted">Things that normally arrive from ID-check, screening and Stripe webhooks.</p>
-        <div class="row"><button class="ghost" id="ev-id">Prospect finished ID check</button><button class="ghost" id="ev-screen">Screening report arrives</button><button class="ghost" id="ev-pay">Oldest rent charge gets paid</button></div>
+        <p class="muted">Things that normally arrive from the ID-check and screening partners, plus the owner marking rent received (tenants pay the owner directly; Landwell never touches rent).</p>
+        <div class="row"><button class="ghost" id="ev-id">Prospect finished ID check</button><button class="ghost" id="ev-screen">Screening report arrives</button><button class="ghost" id="ev-pay">Owner marks oldest rent received</button></div>
+      </div>
+      <div class="card">
+        <h2>Landwell subscription</h2>
+        <p class="muted" id="bill-status">Connect to load.</p>
+        <div class="row"><select id="bill-plan" aria-label="Plan" style="flex:1 1 200px;width:auto"><option value="essentials">Essentials · $15/door</option><option value="autopilot" selected>Autopilot · $35/door</option><option value="plus">Autopilot Plus · $59/door</option></select><input id="bill-doors" type="number" min="1" max="500" value="1" aria-label="Doors" style="width:90px"><button class="sun" id="bill-go">Open Stripe checkout</button></div>
+        <p class="muted">Sandbox: pay with card 4242 4242 4242 4242, any future date, any CVC.</p>
       </div>
       <div class="card"><h2>Waiting for you</h2><div id="approvals" class="muted">Connect to load.</div></div>
     </div>
@@ -127,8 +133,18 @@ $('#ev-screen').addEventListener('click', async () => {
 $('#ev-pay').addEventListener('click', async () => {
   const c = (await api('/api/charges')).filter((x) => x.status === 'open').sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
   if (!c) return toast('No open charges right now');
-  await api('/api/dev/event', { event: 'payment.received', payload: { chargeId: c.id, amount: c.amount - c.paid, method: 'ach', providerRef: 'test_' + Date.now() } }); toast('Payment recorded'); refresh();
+  await api(`/api/charges/${c.id}/received`, {}); toast('Marked received'); refresh();
 });
+$('#bill-go').addEventListener('click', async () => {
+  const r = await api('/api/billing/checkout', { plan: $('#bill-plan').value, doors: Number($('#bill-doors').value) || 1 });
+  if (!r.url) return toast(r.error || 'Checkout could not start');
+  location.href = r.url;
+});
+async function loadBilling() {
+  const b = await api('/api/billing');
+  $('#bill-status').textContent = !b.enabled ? 'Billing is off: add STRIPE_SECRET_KEY in Railway.' : b.billing ? `Status: ${b.billing.status.replace('_', ' ')}${b.billing.plan ? ' · ' + b.billing.plan : ''}${b.billing.doors ? ' · ' + b.billing.doors + ' door(s)' : ''}` : 'No subscription yet.';
+  if (b.plan) $('#bill-plan').value = b.plan;
+}
 async function refresh() {
   if (!token) return;
   const [msgs, dash] = await Promise.all([api('/api/messages'), api('/api/dashboard')]);
@@ -147,7 +163,7 @@ async function refresh() {
 }
 $('#connect').addEventListener('click', async () => {
   token = $('#token').value.trim(); try { localStorage.setItem('lw-token', token); } catch (e) {}
-  try { await loadPeople(); await refresh(); toast('Connected'); } catch (e) {}
+  try { await loadPeople(); await refresh(); await loadBilling(); toast('Connected'); } catch (e) {}
 });
 if (token) $('#connect').click();
 setInterval(() => { refresh().catch(() => {}); }, 5000);

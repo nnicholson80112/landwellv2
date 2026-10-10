@@ -6,7 +6,7 @@
 //   Webhooks:  POST /webhooks/twilio/sms   (texts in)
 //              POST /webhooks/email        (Postmark inbound)
 //              POST /webhooks/voice        (any voice agent: transcript in, reply out)
-//              POST /webhooks/stripe       (rent payments)
+//              POST /webhooks/stripe       (Landwell's own subscription billing; never rent)
 //              POST /webhooks/screening    (screening partner results)
 //              POST /webhooks/identity     (ID verification results)
 //   Owner API: /api/... with  Authorization: Bearer <OWNER_API_TOKEN>
@@ -22,6 +22,7 @@ import { SystemClock } from '../engine/clock.ts';
 import { createServices, type Services } from '../services.ts';
 import { install } from '../workflows/index.ts';
 import { verifyStripeSignature, verifyTwilioSignature } from '../adapters/live.ts';
+import { StripeBilling, applyBillingEvent, type Plan } from '../billing/stripe.ts';
 import type { SignRequest } from '../adapters/esign-native.ts';
 import { prepareTemplate } from '../leases/template.ts';
 import { addressKey, money } from '../workflows/lib.ts';
@@ -202,19 +203,18 @@ route('POST', '/webhooks/twilio/voice/turn', async (req, res, svc) => {
   twiml(res, `<Say voice="${VOICE}">${xml(reply)}</Say>` + gather('Is there anything else I can help with?') + `<Say voice="${VOICE}">Thanks for calling. Goodbye.</Say>`);
 });
 
+// Stripe: Landwell's OWN subscription billing only. Landwell never collects rent.
 route('POST', '/webhooks/stripe', async (req, res, svc) => {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (secret && !verifyStripeSignature(secret, req.raw, String(req.headers['stripe-signature'] ?? ''))) return json(res, 400, { error: 'bad signature' });
-  const ev = req.body;
-  const obj = ev?.data?.object ?? {};
-  const chargeId = obj.metadata?.charge_id;
-  // ACH settles days later: count it when the money actually arrives.
-  const settled = ev.type === 'checkout.session.async_payment_succeeded' || (ev.type === 'checkout.session.completed' && obj.payment_status === 'paid') || ev.type === 'payment_intent.succeeded';
-  if (settled && chargeId) {
-    svc.engine.emit('payment.received', { chargeId, amount: obj.amount_total ?? obj.amount_received ?? obj.amount, method: 'ach', providerRef: obj.payment_intent ?? obj.id });
-    await svc.engine.drain();
-  }
+  if (!secret) return json(res, 503, { error: 'STRIPE_WEBHOOK_SECRET is not set' });
+  if (!verifyStripeSignature(secret, req.raw, String(req.headers['stripe-signature'] ?? ''))) return json(res, 400, { error: 'bad signature' });
+  const done = applyBillingEvent(svc.store, req.body, svc.clock.now().toISOString());
+  if (done) svc.engine.audit({ ownerId: done.ownerId, actor: 'system', action: 'billing.updated', detail: `Landwell subscription: ${done.billing.status}${done.billing.plan ? `, ${done.billing.plan}` : ''}${done.billing.doors ? `, ${done.billing.doors} door${done.billing.doors === 1 ? '' : 's'}` : ''} (${req.body.type}).` });
   json(res, 200, { received: true });
+});
+
+route('GET', '/billing/done', (_req, res) => {
+  html(res, 200, page(`${BRAND.name}: you're subscribed`, `<h1>You're all set</h1><p>Thanks for subscribing to ${BRAND.name}. Your receipt is on its way by email. You can close this page.</p>`));
 });
 
 route('POST', '/webhooks/screening', async (req, res, svc) => {
@@ -267,6 +267,33 @@ route('POST', '/api/approvals/:id', async (req, res, svc) => {
   try { svc.engine.decide(a.id, req.body.decision, req.body.note, req.body.data); } catch (e) { return json(res, 400, { error: (e as Error).message }); }
   await svc.engine.drain();
   json(res, 200, svc.store.get('approvals', a.id));
+}, true);
+
+/* Billing: start or change the owner's Landwell subscription. */
+const PLANS: Plan[] = ['essentials', 'autopilot', 'plus'];
+route('GET', '/api/billing', (req, res, svc) => json(res, 200, { plan: svc.store.get('owners', req.params.ownerId)?.plan, billing: svc.store.get('owners', req.params.ownerId)?.billing ?? null, enabled: !!process.env.STRIPE_SECRET_KEY }), true);
+route('POST', '/api/billing/checkout', async (req, res, svc) => {
+  if (!process.env.STRIPE_SECRET_KEY) return json(res, 503, { error: 'Billing is not set up yet: add STRIPE_SECRET_KEY in Railway.' });
+  const owner = svc.store.get('owners', req.params.ownerId)!;
+  const plan: Plan = PLANS.includes(req.body?.plan) ? req.body.plan : owner.plan;
+  const doors = Math.max(1, Math.min(500, Number(req.body?.doors) || mine(svc, 'properties', owner.id).length || 1));
+  try {
+    const billing = new StripeBilling({ secretKey: process.env.STRIPE_SECRET_KEY, publicUrl: svc.cfg.publicUrl });
+    const s = await billing.createCheckout({ owner, plan, doors });
+    svc.store.update('owners', owner.id, { billing: { ...(owner.billing ?? {}), status: owner.billing?.status === 'active' ? 'active' : 'checkout_started', plan, doors, updatedAt: svc.clock.now().toISOString() } });
+    json(res, 200, { url: s.url, plan, doors });
+  } catch (e) { json(res, 502, { error: (e as Error).message }); }
+}, true);
+
+/* Rent: the owner marks rent (or a deposit) received. Tenants pay the owner directly; Landwell never handles it. */
+route('POST', '/api/charges/:id/received', async (req, res, svc) => {
+  const c = svc.store.get('charges', req.params.id);
+  if (!c || c.ownerId !== req.params.ownerId) return json(res, 404, { error: 'not found' });
+  if (c.status !== 'open') return json(res, 400, { error: `already ${c.status}` });
+  const amount = Math.min(c.amount - c.paid, Math.round(Number(req.body?.amount) || c.amount - c.paid));
+  svc.engine.emit('payment.received', { chargeId: c.id, amount, method: 'owner_recorded', providerRef: `owner_${c.id}_${svc.clock.now().getTime()}` });
+  await svc.engine.drain();
+  json(res, 200, svc.store.get('charges', c.id));
 }, true);
 
 for (const [path, table] of [['properties', 'properties'], ['tenants', 'tenants'], ['vendors', 'vendors'], ['leases', 'leases'], ['work-orders', 'workOrders'], ['charges', 'charges'], ['payments', 'payments'], ['expenses', 'expenses'], ['applications', 'applications'], ['showings', 'showings'], ['tasks', 'tasks'], ['messages', 'messages'], ['audit', 'audit']] as [string, TableName][]) {
@@ -341,7 +368,7 @@ route('POST', '/api/dev/inbound', async (req, res, svc) => {
 }, true);
 
 /** Test tools: fire a partner event that would normally come from a webhook. */
-const DEV_EVENTS = ['identity.verified', 'screening.completed', 'payment.received', 'showing.slot_chosen'];
+const DEV_EVENTS = ['identity.verified', 'screening.completed', 'showing.slot_chosen'];
 route('POST', '/api/dev/event', async (req, res, svc) => {
   if (!devTools()) return json(res, 404, { error: 'not found' });
   if (!DEV_EVENTS.includes(req.body.event)) return json(res, 400, { error: `event must be one of ${DEV_EVENTS.join(', ')}` });
@@ -397,5 +424,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   setInterval(() => { svc.engine.tick(); void svc.engine.drain(); }, 30_000);
   svc.engine.tick();
   const port = Number(process.env.PORT ?? 8787);
-  createApp(svc).listen(port, () => console.log(`${BRAND.name} API on http://localhost:${port}  (AI: ${svc.ai.name}, messaging: ${svc.adapters.messaging.name}, payments: ${svc.adapters.payments.name})`));
+  createApp(svc).listen(port, () => console.log(`${BRAND.name} API on http://localhost:${port}  (AI: ${svc.ai.name}, messaging: ${svc.adapters.messaging.name}, billing: ${process.env.STRIPE_SECRET_KEY ? "stripe" : "off"})`));
 }

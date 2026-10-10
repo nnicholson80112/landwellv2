@@ -121,7 +121,7 @@ export interface LeaseRequest {
 export const leaseFlow: WorkflowDef<Services, LeaseRequest> = {
   name: 'lease',
   title: 'Lease and move-in',
-  description: 'Fills the owner\'s uploaded lease, collects both signatures, sets up deposit and first month, and runs move-in messages.',
+  description: 'Fills the owner\'s uploaded lease, collects both signatures, reminds everyone about the deposit and first month (paid to the owner), and runs move-in messages.',
   trigger: { event: 'lease.requested' },
 
   async run(ctx, req) {
@@ -215,17 +215,14 @@ export const leaseFlow: WorkflowDef<Services, LeaseRequest> = {
       return { status: 'renewed', leaseId: lease.id };
     }
 
-    // New tenancy: deposit + first month, other applicants told, listing off.
-    const charges = await ctx.step('move-in-charges', async () => {
-      const out = [];
-      for (const [kind, amount] of [['deposit', req.deposit], ['rent', req.rent]] as const) {
-        const c = store.insert('charges', { ownerId: req.ownerId, leaseId: lease.id, kind, amount, dueDate: req.startDate, paid: 0, status: 'open', period: kind === 'rent' ? req.startDate.slice(0, 7) : undefined, notices: [] });
-        const link = await ctx.svc.adapters.payments.createPaymentLink({ chargeId: c.id, amount, description: `${kind === 'deposit' ? 'Security deposit' : 'First month rent'} · ${prop.address}` });
-        out.push(store.update('charges', c.id, { payUrl: link.url }));
-      }
-      return out;
-    });
-    for (const t of tenants) await tellTenant(ctx, `move-in-pay:${t.id}`, t, `Welcome! Before move-in on ${req.startDate}, please pay your deposit (${money(req.deposit)}): ${charges[0].payUrl} and first month's rent (${money(req.rent)}): ${charges[1].payUrl}`);
+    // New tenancy: deposit + first month are paid to the OWNER directly (Landwell never
+    // handles money). We record what's due so the owner can mark it received.
+    const charges = await ctx.step('move-in-charges', () =>
+      ([['deposit', req.deposit], ['rent', req.rent]] as const).map(([kind, amount]) =>
+        store.insert('charges', { ownerId: req.ownerId, leaseId: lease.id, kind, amount, dueDate: req.startDate, paid: 0, status: 'open', period: kind === 'rent' ? req.startDate.slice(0, 7) : undefined, notices: [] })));
+    const howToPay = rules.howToPay || 'Your landlord will tell you how to pay.';
+    for (const t of tenants) await tellTenant(ctx, `move-in-pay:${t.id}`, t, `Welcome! Before move-in on ${req.startDate}, your security deposit (${money(req.deposit)}) and first month's rent (${money(req.rent)}) are due to your landlord. ${howToPay}`);
+    await ctx.step('move-in-money-task', () => store.insert('tasks', { ownerId: req.ownerId, title: `Collect deposit and first month: ${prop.address}`, detail: `${tenants.map((t) => t.name).join(' and ')} owe a ${money(req.deposit)} security deposit and ${money(req.rent)} first month's rent before ${req.startDate}. Mark each one received in the app when it arrives (charges ${charges.map((c) => c.id).join(', ')}).`, dueAt: req.startDate + 'T17:00:00Z', status: 'open' }));
     await ctx.step('property-leased', () => store.update('properties', prop.id, { status: 'occupied' }));
     await ctx.step('unpublish', () => ctx.svc.adapters.listings.unpublish({ propertyId: prop.id }));
     const others = store.list('applications', (a) => a.propertyId === prop.id && a.id !== req.applicationId && ['submitted', 'screening', 'ready_for_owner'].includes(a.status));

@@ -16,15 +16,6 @@ export interface MessagingProvider {
   send(msg: OutboundMessage): Promise<{ providerId: string }>;
 }
 
-export interface PaymentsProvider {
-  name: string;
-  /** A hosted link where the tenant pays a charge by free ACH (or card if the owner allows). */
-  createPaymentLink(input: { chargeId: string; amount: Cents; description: string; ownerAccountId?: string; tenantEmail?: string }): Promise<{ url: string; providerRef: string }>;
-  /** Pay a vendor from the owner's connected account (or record a manual payment). */
-  payVendor(input: { vendorId: string; amount: Cents; memo: string; ownerAccountId?: string }): Promise<{ providerRef: string; manual: boolean }>;
-  refundDeposit(input: { leaseId: string; amount: Cents; memo: string }): Promise<{ providerRef: string; manual: boolean }>;
-}
-
 export interface ESignProvider {
   name: string;
   send(input: { documentTitle: string; body: string; signers: { name: string; email?: string; phone?: string; role: 'tenant' | 'owner' }[]; refId: string }): Promise<{ envelopeId: string; signUrl?: string }>;
@@ -57,7 +48,6 @@ export interface ListingsProvider {
 
 export interface Adapters {
   messaging: MessagingProvider;
-  payments: PaymentsProvider;
   esign: ESignProvider;
   locks: LockProvider;
   identity: IdentityProvider;

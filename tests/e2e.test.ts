@@ -17,7 +17,9 @@ test('full demo: every workflow runs without failures', async () => {
   assert.ok(wos.every((w) => w.status === 'paid'));
   assert.ok(store.list('expenses').length >= 2);
   assert.ok(store.list('leases', (l) => l.propertyId === store.list('properties')[1].id && l.status === 'active').length === 1, 'new lease active');
-  assert.ok(store.list('charges', (c) => c.kind === 'late_fee').length === 1, 'late fee applied once');
+  assert.ok(store.list('charges', (c) => c.kind === 'late_fee').length === 1, 'late fee applied once, after the owner chose it');
+  const sentAll = store.list('messages', (m) => m.direction === 'out').map((m) => m.body).join('\n');
+  assert.doesNotMatch(sentAll, /pay here|pay\.example|checkout\.stripe|autopay here/i, 'Landwell never sends rent pay links');
   assert.ok(store.list('tasks', (t) => /Reply to/.test(t.title)).length >= 2, 'sensitive messages routed to owner');
   const ownerPhone = store.list('owners')[0].phone;
   const sent = store.list('messages', (m) => m.direction === 'out' && m.to !== ownerPhone).map((m) => m.body).join('\n');

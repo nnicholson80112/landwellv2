@@ -14,7 +14,8 @@ export const CO = {
   /** Nonpayment demand period before an eviction filing (C.R.S. 13-40-104, 10 days since 2021). Landwell never files; it only prepares the notice for the owner. */
   nonpaymentDemandDays: 10,
 
-  /** HB25-1090: advertised rent must include all mandatory fees; a free way to pay rent must exist. */
+  /** HB25-1090: advertised rent must include all mandatory fees; a free way to pay rent must exist.
+   *  Landwell never collects rent, so the free payment method is the OWNER's to provide; we remind them at setup. */
   allInRentRequired: true,
   freePaymentMethodRequired: true,
 
