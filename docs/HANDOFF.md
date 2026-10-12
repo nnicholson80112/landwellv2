@@ -25,7 +25,7 @@ and the owner spends under 30 minutes.
 
 ### Owner / founder
 - Nate (nnicholson80112@gmail.com). Also owns **GlassHouse Exteriors** (window cleaning, house and pressure washing), 720-930-5782, glasshouseexteriors.com.
-- Has a technical cofounder. Does not own rentals yet; the first client is the real test.
+- **Solo founder** (no cofounder right now); Nate makes every decision. Does not own rentals yet; the first client is the real test.
 - **How Nate likes to work:** plain language, short answers, tell him exactly what to click. Bright, inviting design with strong CTAs. Don't invent facts; flag legal items for an attorney. **Never ask him to paste keys or tokens into chat**; secrets go only into Railway Variables.
 
 ---
@@ -38,7 +38,7 @@ and the owner spends under 30 minutes.
 - **Fair housing: stay out of the gray areas.** The AI never discusses neighborhoods, safety, schools, religion, protected traits or who a home is "good for". Accommodation requests, screening-decision questions, complaints and legal topics go straight to the owner.
 - **In-house AI service** (its own Railway service) with Claude underneath; can be swapped for a self-hosted model later. Built-in rules are the fallback.
 - **Hosting:** Railway. **Billing:** Stripe. **Email:** Postmark. **Texts + calls:** Twilio (one number). **Onboarding calls:** Calendly.
-- **Brand:** bright and inviting. Sky-white `#F6F9FF`, navy text `#0E1B33`, Landwell blue `#1B4DFF` (main buttons), sunny yellow `#FFC83D` (highlights), mint `#0E9F6E` (success). Fonts: Bricolage Grotesque (headlines), Figtree (body). Nate has new prompts ready for a website + color-scheme refresh.
+- **Brand:** bright and inviting. Sky-white `#F6F9FF`, navy text `#0E1B33`, Landwell blue `#1B4DFF` (main buttons), sunny yellow `#FFC83D` (highlights), mint `#0E9F6E` (success). Fonts: Bricolage Grotesque (headlines), Figtree (body). A website + color-scheme refresh is coming; Nate will share prompts later.
 - **Name:** "Landwell" is a placeholder. Renaming is easy in code (`docs/RENAMING.md`) but hard after Twilio registration, domain and Stripe profile, so **pick the name before those.**
 - **Leslie (leslieleasing.com)** was used only as a reference for how to sell (sales console, live text demo, savings calculator). Different name, colors and customers. Don't copy its brand.
 - **Demo calls:** a few slides, then mostly a hands-on product demo.
@@ -75,7 +75,7 @@ Website **Get started** → `POST /api/public/signup` (creates owner, attaches a
 
 | Thing | Where | State |
 | --- | --- | --- |
-| Code | GitHub **`nnicholson80112/landwellv2`** (private), branch `main` | Up to date (commit `931079a`). Claude GitHub App installed on this repo. The old broken repo `nnicholson80112/Landwell` should be deleted if not already. |
+| Code | GitHub **`nnicholson80112/landwellv2`** (private), branch `main` | Up to date. Claude GitHub App installed on this repo. Old repo `Landwell` deleted. |
 | App (api service) | Railway → `https://api-production-66895.up.railway.app` | Online. **Not deploying new commits; see issue #1.** Running commit `ba5fce2`. |
 | AI service (ai) | Railway, private only, `http://ai.railway.internal:8788` | Online, Claude answering (confirmed by live tests). |
 | Storage | Railway volume `/data` on each service (`/data/landwell.json`, `/data/ai-logs`) | JSON file store; fine for testing, **not for real customers**. |
@@ -83,7 +83,7 @@ Website **Get started** → `POST /api/public/signup` (creates owner, attaches a
 | Onboarding | Calendly `calendly.com/nnicholson80112` | `CALENDLY_URL` set. Webhook tracking not connected (needs a paid Calendly plan + `CALENDLY_TOKEN`). |
 | Email | Postmark | **Not set up.** |
 | Texts + calls | Twilio | **Not set up.** Needs A2P 10DLC registration (takes weeks). |
-| Old account | Old Railway project (`api-production-5859`) and old Stripe webhook | Secrets were exposed in an old chat. **Delete the old Railway project.** |
+| Old account | Old Railway project (`api-production-5859`) | Deleted. |
 
 ### Railway services
 - **api**: start `npm start` (builds the site, then `src/api/server.ts`). Public domain. Volume `/data`.
@@ -177,7 +177,6 @@ Owner **Nate** (phone `DEMO_OWNER_PHONE`, plan Autopilot). Home **7610 S Rosemar
 4. **Unprotected webhooks until Twilio/Postmark are connected:** with no `TWILIO_AUTH_TOKEN`, anyone can post to `/webhooks/twilio/*`. Acceptable for testing; set the token as soon as Twilio exists.
 5. **AI says "I'm an automated assistant" in almost every reply.** Fine legally; consider saying it once per conversation.
 6. **`OWNER_API_TOKEN` was the placeholder text** at one point; confirm it and `AI_SERVICE_TOKEN` are real random values now.
-7. **Delete the old Railway project** (`api-production-5859`, exposed secrets) and the old GitHub repo `Landwell` if still there.
 
 ---
 
@@ -186,7 +185,7 @@ Owner **Nate** (phone `DEMO_OWNER_PHONE`, plan Autopilot). Home **7610 S Rosemar
 **This week (testing):**
 1. Fix Railway auto-deploy (issue 1), then re-run the AI tests (section 10).
 2. Finish the Stripe test (issue 2).
-3. **Website + color refresh**: Nate has prompts ready. Edit `apps/site/site.body.html`, run `npm run build:site`, republish.
+3. **Website + color refresh**: Nate will share his prompts later (save them as `docs/DESIGN-PROMPTS.md`). Edit `apps/site/site.body.html`, run `npm run build:site`, republish.
 4. Pick the **name** → USPTO search (classes 9, 42, 36) → attorney knockout search → buy domain.
 
 **To go live with real tenants:**
