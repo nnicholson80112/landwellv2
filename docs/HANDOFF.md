@@ -75,7 +75,7 @@ Website **Get started** → `POST /api/public/signup` (creates owner, attaches a
 
 | Thing | Where | State |
 | --- | --- | --- |
-| Code | GitHub **`nnicholson80112/landwellv2`** (private), branch `main` | Up to date. Claude GitHub App installed on this repo. Old repo `Landwell` deleted. |
+| Code | GitHub **`nnicholson80112/landwellv2`** (**PUBLIC**, not private; see issue 7), branch `main` | Up to date. Claude GitHub App installed on this repo. Old repo `Landwell` deleted. |
 | App (api service) | Railway → `https://api-production-66895.up.railway.app` | Online. **Not deploying new commits; see issue #1.** Running commit `ba5fce2`. |
 | AI service (ai) | Railway, private only, `http://ai.railway.internal:8788` | Online, Claude answering (confirmed by live tests). |
 | Storage | Railway volume `/data` on each service (`/data/landwell.json`, `/data/ai-logs`) | JSON file store; fine for testing, **not for real customers**. |
@@ -158,7 +158,7 @@ Owner **Nate** (phone `DEMO_OWNER_PHONE`, plan Autopilot). Home **7610 S Rosemar
 **This account (Oct 10–11):**
 1. Unpacked the handoff zip; verified 18 tests + demo + server locally.
 2. Republished the website and a regenerated build review here; added `npm run build:review`.
-3. Pushed the code to private repo `landwellv2` with folders intact. Railway services `api` + `ai` deployed and online.
+3. Pushed the code to repo `landwellv2` (turned out to be public) with folders intact. Railway services `api` + `ai` deployed and online.
 4. **Removed all rent collection** (Nate's decision): reminders with no pay links, owner confirms rent, owner decides on late fees, deposit statement + refund to-do. Website copy updated.
 5. **Billing:** Stripe subscription checkout, webhook, month-to-month + 12-month plans, no setup fee.
 6. **Private offers system** + `/admin` console + `/offer/:id` personal links + referral credits; research in `docs/OFFERS.md`.
@@ -171,12 +171,15 @@ Owner **Nate** (phone `DEMO_OWNER_PHONE`, plan Autopilot). Home **7610 S Rosemar
 
 ## 7. Current issues (in priority order)
 
-1. **Railway stopped auto-deploying.** The live app runs `ba5fce2`; commits `931e451`, `a95021d`, `931079a` (guardrail + prompt + availability fixes) aren't live (confirmed a day later). Check Railway → each service → Settings → Source (connected to `landwellv2`, branch `main`, auto-deploy on) and Deployments for a failed/queued build. Redeploy both **api** and **ai** (guardrails run in both).
+1. **Railway stopped auto-deploying.** The live app runs `ba5fce2`; commits `931e451`, `a95021d`, `931079a`, `bd20cc2`, `3740fa9` aren't live. **Cause found (Oct 14):** both services show the repo `landwellv2` + branch `main`, but say "Auto deploy unavailable" and "Could not load branches". Railway's GitHub app can't read the repo (it was likely only granted the deleted `Landwell` repo, and/or GitHub is asking Nate to verify his account). Fix: verify the GitHub account email, then GitHub → Settings → Applications → Railway → Configure → add `landwellv2`; then in Railway click Retry, and redeploy **api** and **ai**. A plain Redeploy rebuilds the old commit, so it doesn't help.
 2. **Stripe payment never completed.** The test checkout (`cs_test_a1TN…`) expired unpaid. Redo: website Get started (or `/play` → Landwell subscription) → pay with `4242 4242 4242 4242` → confirm the webhook delivered, `/play` shows "active", and the redirect lands on Calendly.
 3. **A test owner "Nate Test"** (`nnicholson80112+landwelltest@gmail.com`, `own_5ce576233a684a24`) exists from the signup test. Because there are now 2 owners, inbound messages with no matching line number can't pick an owner (real Twilio messages include the dialed number, so this only affects tests without `To`). Fine to keep for billing tests; remove before real use.
 4. **Unprotected webhooks until Twilio/Postmark are connected:** with no `TWILIO_AUTH_TOKEN`, anyone can post to `/webhooks/twilio/*`. Acceptable for testing; set the token as soon as Twilio exists.
 5. **AI says "I'm an automated assistant" in almost every reply.** Fine legally; consider saying it once per conversation.
 6. **`OWNER_API_TOKEN` was the placeholder text** at one point; confirm it and `AI_SERVICE_TOKEN` are real random values now.
+
+7. **The GitHub repo is public.** Fine for now (early prototype, no secrets in git), but **before anything is published or launched**, recreate it as a **private** repo. This happens as part of the account move below.
+8. **Move everything to a new business identity before launch.** When the idea is fully fleshed out (and the name is picked), Nate will create a new business email/domain and move **GitHub, Railway, Stripe, Calendly, Anthropic, Postmark, Twilio** and any other integrations to it. Do the new GitHub repo as **private** at that time. Today's accounts (Nate's personal Gmail) are for testing only.
 
 ---
 
