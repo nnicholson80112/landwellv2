@@ -112,7 +112,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   ai.prune(retention);
   setInterval(() => ai.prune(retention), 86_400_000);
 
-  createServer(async (req, res) => {
+  const server = createServer(async (req, res) => {
     const send = (code: number, data: unknown) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(data)); };
     if (req.url === '/health') return send(200, { ok: true });
     if (req.headers.authorization !== `Bearer ${token}`) return send(401, { error: 'unauthorized' });
@@ -129,4 +129,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       send(500, { error: 'server error' });
     }
   }).listen(Number(env.PORT ?? 8788), () => console.log(`Landwell AI service on :${env.PORT ?? 8788} (models: ${env.AI_MODEL_PRIMARY ?? 'anthropic'}${env.AI_MODEL_BACKUP ? ' → ' + env.AI_MODEL_BACKUP : ''} → rules)`));
+  // Railway sends SIGTERM when a new deploy replaces this one; exit cleanly so it isn't marked Crashed.
+  const stop = () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 5_000).unref(); };
+  process.on('SIGTERM', stop);
+  process.on('SIGINT', stop);
 }

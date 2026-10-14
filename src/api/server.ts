@@ -398,5 +398,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   setInterval(() => { svc.engine.tick(); void svc.engine.drain(); }, 30_000);
   svc.engine.tick();
   const port = Number(process.env.PORT ?? 8787);
-  createApp(svc).listen(port, () => console.log(`${BRAND.name} API on http://localhost:${port}  (AI: ${svc.ai.name}, messaging: ${svc.adapters.messaging.name}, billing: ${process.env.STRIPE_SECRET_KEY ? "stripe" : "off"})`));
+  const server = createApp(svc).listen(port, () => console.log(`${BRAND.name} API on http://localhost:${port}  (AI: ${svc.ai.name}, messaging: ${svc.adapters.messaging.name}, billing: ${process.env.STRIPE_SECRET_KEY ? "stripe" : "off"})`));
+  // Railway sends SIGTERM when a new deploy replaces this one; exit cleanly so it isn't marked Crashed.
+  const stop = () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 5_000).unref(); };
+  process.on("SIGTERM", stop);
+  process.on("SIGINT", stop);
 }
