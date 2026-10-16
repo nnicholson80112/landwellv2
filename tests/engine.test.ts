@@ -125,3 +125,22 @@ test('event dedupe prevents double starts from webhook retries', async () => {
   assert.equal(engine.emit('pay', { ref: 'x' }).length, 1);
   assert.equal(engine.emit('pay', { ref: 'x' }).length, 0);
 });
+
+test('finished runs are pruned (sweeps after 2 days, others after 90); waiting runs never', async () => {
+  const { engine, clock } = setup();
+  engine.register({ name: 'sweep', title: 's', description: '', trigger: { schedule: { every: 'hour' } }, async run() {} });
+  engine.register({ name: 'job', title: 'j', description: '', trigger: { event: 'go' }, async run() {} });
+  engine.register({ name: 'wait', title: 'w', description: '', trigger: { event: 'go' }, async run(ctx: any) { await ctx.waitFor('never', {}); } });
+  engine.tick();
+  engine.emit('go');
+  await engine.drain();
+  assert.equal(engine.runs().length, 3);
+  clock.advance(3 * DAY);
+  engine.tick();
+  await engine.drain();
+  assert.deepEqual(engine.runs().map((r) => r.workflow).sort(), ['job', 'sweep', 'wait'], 'old sweep gone, a fresh one ran');
+  clock.advance(90 * DAY);
+  engine.tick();
+  await engine.drain();
+  assert.deepEqual(engine.runs().map((r) => r.workflow).sort(), ['sweep', 'wait']);
+});

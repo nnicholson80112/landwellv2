@@ -277,9 +277,10 @@ test('vendor "not available" moves on to the next vendor; the tenant hears who i
 });
 
 test('the same problem texted twice joins the open repair; a later photo is forwarded to the vendor', async () => {
-  const { s, store, text, lastTo } = setup();
+  const { s, store, text, lastTo, advance } = setup();
   await text(s.tenant.phone!, 'The kitchen sink is leaking', ['https://x/1.jpg']);
   await text(s.plumber.phone!, 'YES Thu 9-11 $120');
+  await advance(MIN);
   await text(s.tenant.phone!, 'The kitchen sink is still leaking');
   assert.equal(store.list('workOrders').length, 1);
   assert.match(lastTo(s.tenant.phone!), /already in progress.*Front Range Plumbing/);

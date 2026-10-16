@@ -145,6 +145,10 @@ export class Engine<S = any> {
       this.enqueue(run.id);
     }
     const lp = localParts(now, this.tz);
+    if (this.store.kvGet('prune', 'last') !== lp.date) {
+      this.store.kvSet('prune', 'last', lp.date);
+      this.prune(now.getTime());
+    }
     for (const d of this.defs.values()) {
       const t = d.trigger as any;
       if (!t.schedule) continue;
@@ -159,6 +163,23 @@ export class Engine<S = any> {
       this.store.kvSet('schedule', k, iso);
       this.start(d.name, { slot, localDate: lp.date });
     }
+  }
+
+  /**
+   * Forget finished runs so the store doesn't grow forever: scheduled sweeps after
+   * 2 days, everything else after 90. The activity log (audit) keeps the history.
+   * Waiting and failed runs are never removed.
+   */
+  prune(nowMs = this.clock.now().getTime()): number {
+    let n = 0;
+    for (const r of this.store.kvList<RunRecord>('runs')) {
+      if (r.status !== 'completed' && r.status !== 'cancelled') continue;
+      const scheduled = 'schedule' in ((this.defs.get(r.workflow)?.trigger ?? {}) as object);
+      if (nowMs - Date.parse(r.updatedAt) < (scheduled ? 2 : 90) * 24 * 3600_000) continue;
+      this.store.kvDelete('runs', r.id);
+      n++;
+    }
+    return n;
   }
 
   /** Wait until all queued work is done (tests, demo, request handlers). */
