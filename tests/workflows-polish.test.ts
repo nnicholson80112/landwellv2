@@ -58,6 +58,8 @@ test('texting words: STOP, yes/no, addresses', () => {
   assert.equal(yesNo('Yes! We would love to renew.'), 'yes');
   assert.equal(yesNo('No, we are moving to Denver'), 'no');
   assert.equal(yesNo('Can we do 6 months instead?'), undefined);
+  assert.equal(yesNo('No hot water in the shower'), undefined, 'a repair is not a "no"');
+  assert.equal(yesNo('Yes the sink is leaking again'), undefined);
   assert.ok(looksLikeAddress('1420 Elm St, Denver CO 80203'));
   assert.ok(looksLikeAddress('PO Box 55, Golden'));
   assert.ok(!looksLikeAddress('Thanks for everything!'));
@@ -350,4 +352,22 @@ test('the front desk knows what rent the owner has marked received', async () =>
   await svc.engine.drain();
   await text(s.tenant.phone!, 'Did my landlord get my rent?');
   assert.ok(seen.some((f) => f.label === 'Rent due 2026-11-01' && /marked received by your landlord$/.test(f.value)));
+});
+
+test('with a renewal offer out, "No hot water" is a repair, not a "no"', async () => {
+  const { svc, s, text, pending, store } = setup();
+  svc.engine.emit('renewal.due', { leaseId: s.lease.id, ownerId: s.owner.id });
+  await svc.engine.drain();
+  await text(s.owner.phone, `YES ${pending('renewal_terms')[0].code}`);
+  await text(s.tenant.phone!, 'No hot water in the shower');
+  assert.equal(svc.engine.runs((r) => r.workflow === 'move-out').length, 0);
+  assert.equal(store.list('workOrders').length, 1);
+  assert.equal(svc.engine.runs((r) => r.workflow === 'renewal')[0].status, 'waiting');
+});
+
+test('a photo of a different problem starts a new repair instead of joining the open one', async () => {
+  const { s, store, text } = setup();
+  await text(s.tenant.phone!, 'The bedroom window screen is torn', ['https://x/1.jpg']);
+  await text(s.tenant.phone!, 'The dryer is broken too', ['https://x/2.jpg']);
+  assert.equal(store.list('workOrders').length, 2);
 });

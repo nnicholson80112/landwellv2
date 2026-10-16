@@ -108,7 +108,7 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
 
     // Move-out: "please reply with your forwarding address" (often after they've moved out).
     if (tenant) {
-      if (store.kvGet('forwarding', tenant.id) && looksLikeAddress(m.body)) {
+      if (store.kvGet('forwarding', tenant.id) && looksLikeAddress(m.body) && !precheck(m.body).emergency) {
         const address = m.body.trim().replace(/\s+/g, ' ').replace(/^(it'?s|my (new |forwarding |mailing )?address( is)?|new address|forwarding address|send it to)[:\s-]*/i, '').replace(/[.!]+$/, '');
         await ctx.step('forwarding', () => { store.update('tenants', tenant.id, { forwardingAddress: address }); store.kvDelete('forwarding', tenant.id); });
         await reply(`Thanks, ${firstName(tenant.name)}! I've saved ${address} for your deposit statement and refund.`);
@@ -132,8 +132,10 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
         return { attachedPhotoTo: waitingWo };
       }
       // A photo a little later, for a repair that's already moving → add it and pass it to the vendor.
+      // Only when the text doesn't describe a different problem ("the dryer is broken too" starts a new repair).
       const wo = recentOpenRepair(store, tenant.id, svc.clock.now());
-      if (wo && m.body.trim().split(/\s+/).filter(Boolean).length <= 8) {
+      const about = guessTrade(m.body);
+      if (wo && (about === 'general' || about === wo.trade) && m.body.trim().split(/\s+/).filter(Boolean).length <= 12) {
         await ctx.step('photo-add', () => store.update('workOrders', wo.id, { photos: [...wo.photos, ...media] }));
         const vendor = wo.vendorId && ['awaiting_vendor', 'awaiting_owner', 'scheduled', 'in_progress'].includes(wo.status) ? store.get('vendors', wo.vendorId) : undefined;
         const vc = vendor && contactOf(vendor);
@@ -184,7 +186,8 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
     /* ---------------- answers to something we asked ---------------- */
     if (tenant) {
       // Late rent: the owner offered a payment plan and asked what the tenant can do.
-      if (store.kvGet('paymentPlan', tenant.id)) {
+      const plan = store.kvGet<{ at: string }>('paymentPlan', tenant.id);
+      if (plan && svc.clock.now().getTime() - Date.parse(plan.at) < 14 * 24 * 3600_000 && /\b(pay\w*|rent|plan|owe|balance|amount|check|zelle|venmo|cash|week|month|friday|payday|paycheck|can)\b|\$\s?\d|\b\d{1,2}(st|nd|rd|th)\b/i.test(m.body)) {
         await ctx.step('plan-flag', () => store.kvDelete('paymentPlan', tenant.id));
         await reply(`Thanks, ${firstName(tenant.name)}. I've sent this to ${ownerFirst}, who will reply to you about the payment plan.`);
         await routeToOwner(ctx, ownerId, `${tenant.name} (${m.from})`, m.body, 'Reply to the payment plan you offered.');
@@ -485,10 +488,12 @@ async function optOutChange(ctx: C, kw: 'stop' | 'start', party: ReturnType<type
 interface ProspectAsk { kind: 'tour' | 'updates'; propertyId?: string; until: string }
 
 /** A clear yes or no at the start of a message ("Yes! We'd love to", "No, we're moving"). */
+// "No hot water" is not a no, and "Yes the sink is leaking again" is not a yes: the word has to stand on its own.
 export function yesNo(body: string): 'yes' | 'no' | undefined {
   const t = body.trim().toLowerCase();
-  if (/^(yes|yep|yeah|yup|y|sure|ok|okay|absolutely|definitely|of course|we'?d love to|count us in)\b/.test(t)) return 'yes';
-  if (/^(no|nope|nah|n|no thanks|not this time)\b/.test(t)) return 'no';
+  const alone = '(?=$|[.!,;:)]|\\s+(thanks?|thank you|please|we|we\'?d|we\'?re|we\'?ll|i|i\'?d|i\'?m|i\'?ll|let\'?s|sounds|definitely|absolutely|that works|not)\\b)';
+  if (new RegExp(`^(yes|yep|yeah|yup|y|sure|ok|okay|absolutely|definitely|of course)${alone}`).test(t) || /^(we'?d love to|count us in)\b/.test(t)) return 'yes';
+  if (new RegExp(`^(no|nope|nah|n|no thanks|not this time)${alone}`).test(t)) return 'no';
   return undefined;
 }
 

@@ -87,12 +87,12 @@ export class RuleBasedAI implements CommunicationAI {
     }
 
     const trade = TRADES.find(([, r]) => r.test(t));
-    const isRepair = !!trade && /\b(broken|broke|not working|isn'?t working|won'?t|stopped|leak\w*|drip\w*|clog\w*|crack\w*|torn|stuck|out|fix|repair|problem|issue|damage\w*|noise|dirty|filthy)\b/i.test(t);
+    const isRepair = !!trade && /\b(broken|broke|not working|isn'?t working|doesn'?t work|won'?t|stopped|leak\w*|drip\w*|clog\w*|crack\w*|torn|stuck|out|fix|repair|problem|issue|damage\w*|noise|dirty|filthy|no (hot )?water|no heat|no power|no a\/?c|not (draining|heating|cooling|turning on|flushing)|backed up|overflow\w*|keeps running|running constantly|tripp\w*)\b/i.test(t);
 
     if (input.senderRole === 'tenant' && isRepair) {
       intent = 'maintenance_request';
       e.trade = trade![0];
-      e.urgency = /\b(no hot water|no water|won'?t lock|can'?t lock|fridge (is )?(out|warm|not))\b/i.test(t) ? 'urgent' : 'routine';
+      e.urgency = /\b(no hot water|no water|no a\/?c|won'?t lock|can'?t lock|fridge (is )?(out|warm|not)|only toilet|backed up|overflow\w*)\b/i.test(t) ? 'urgent' : 'routine';
       e.summary = summarize(t);
       reply = input.mediaCount > 0
         ? "Thanks for the photo. I'm setting up the repair now and will text you the appointment time."
