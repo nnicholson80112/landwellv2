@@ -10,7 +10,7 @@ import type { Services } from '../services.ts';
 import type { Showing } from '../domain/types.ts';
 import { HOUR, MIN, DAY, localParts } from '../engine/clock.ts';
 import { checkAdCopy } from '../ai/guardrails.ts';
-import { contactOf, hourLabel, money, send, tellOwner } from './lib.ts';
+import { activeLeaseFor, contactOf, hourLabel, money, niceDate, send, tellOwner } from './lib.ts';
 
 export function fmtTime(iso: string, tz: string): string {
   return new Date(iso).toLocaleString('en-US', { timeZone: tz, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -82,9 +82,13 @@ export const showing: WorkflowDef<Services, { ownerId: string; propertyId: strin
     const tell = (label: string, body: string) => send(ctx, { label, ownerId: input.ownerId, ...to, body });
     const now = await ctx.now();
 
-    // Owner-led showing: the owner picks the time.
-    if (rules.showingMode === 'owner' || !prop.lock || prop.lock.kind === 'none') {
-      const a = await ctx.approval({ kind: 'showing_request', title: `Showing request: ${prop.address}`, body: `A prospect (${prospect.phone ?? prospect.email}) wants to see ${prop.address}${input.preferredTimes.length ? `. They suggested: ${input.preferredTimes.join(', ')}` : ''}. Reply with a time in the app, or decline.`, options: ['confirm', 'decline'] });
+    // Owner-led showing: the owner picks the time. Always owner-led while a tenant still lives there
+    // (no door codes into someone's home).
+    const occupied = await ctx.step('occupied', () => !!activeLeaseFor(store, prop.id) && prop.status !== 'vacant');
+    if (rules.showingMode === 'owner' || !prop.lock || prop.lock.kind === 'none' || occupied) {
+      const asked = [input.request, ...input.preferredTimes].filter(Boolean).join(' / ');
+      await tell('owner-led', `Thanks! ${occupied ? 'Someone still lives at' : 'Tours of'} ${prop.address}${occupied ? ', so tours are set up with the owner' : ' are with the owner'}. I've asked them for a time and will text you back.`);
+      const a = await ctx.approval({ kind: 'showing_request', title: `Showing request: ${prop.address}`, body: `A prospect (${prospect.phone ?? prospect.email}) wants to see ${prop.address}${asked ? `. They wrote: "${asked}"` : ''}.${occupied ? ' Your tenant still lives there, so give them proper notice before any showing.' : ''} To confirm, reply YES with the code and a time (like "YES code Sat 10am").`, options: ['confirm', 'decline'] });
       if (a?.decision === 'confirm') await tell('owner-confirm', `You're confirmed to see ${prop.address}${a.note ? `: ${a.note}` : ''}. The owner will meet you there.`);
       else await tell('owner-decline', `Thanks for your interest in ${prop.address}. The owner isn't able to schedule a showing right now and will reach out if that changes.`);
       return { status: a?.decision ?? 'no_decision' };
@@ -145,10 +149,10 @@ export const showing: WorkflowDef<Services, { ownerId: string; propertyId: strin
   },
 };
 
-export function listingCopy(p: { address: string; city: string; beds: number; baths: number; rent: number; deposit: number; facts: Record<string, string> }, petPolicy: string, availableFrom: string): { title: string; description: string } {
+export function listingCopy(p: { address: string; city: string; beds: number; baths: number; rent: number; deposit: number; facts: Record<string, string> }, petPolicy: string, availableFrom: string, selfTours = true): { title: string; description: string } {
   const title = `${p.beds} bed, ${p.baths} bath home for rent · ${p.address}, ${p.city}`;
   const features = Object.entries(p.facts).filter(([k]) => !/tour notes|code/i.test(k)).map(([k, v]) => `• ${k}: ${v}`).join('\n');
-  const description = `${p.beds} bedroom, ${p.baths} bathroom home at ${p.address}, ${p.city}. Available ${availableFrom}.\n\nRent: ${money(p.rent)}/month, all-in (includes every required fee). Security deposit: ${money(p.deposit)}.\nPets: ${petPolicy}\n${features ? `\n${features}\n` : ''}\nSelf-guided tours available daily with ID verification. Apply online. We welcome all qualified applicants and apply the same written criteria to everyone. Equal Housing Opportunity.`;
+  const description = `${p.beds} bedroom, ${p.baths} bathroom home at ${p.address}, ${p.city}. Available ${/^\d{4}-\d{2}-\d{2}$/.test(availableFrom) ? niceDate(availableFrom) : availableFrom}.\n\nRent: ${money(p.rent)}/month, all-in (includes every required fee). Security deposit: ${money(p.deposit)}.\nPets: ${petPolicy}\n${features ? `\n${features}\n` : ''}\n${selfTours ? 'Self-guided tours available daily with ID verification.' : 'Tours by appointment.'} Apply online. We welcome all qualified applicants and apply the same written criteria to everyone. Equal Housing Opportunity.`;
   return { title, description };
 }
 
@@ -163,7 +167,8 @@ export const listing: WorkflowDef<Services, { ownerId: string; propertyId: strin
     ctx.setOwner(input.ownerId);
     const prop = store.get('properties', input.propertyId)!;
     const rules = store.get('rules', input.ownerId)!;
-    const copy = listingCopy(prop, rules.petPolicy, input.availableFrom);
+    const selfTours = rules.showingMode !== 'owner' && !!prop.lock && prop.lock.kind !== 'none' && !activeLeaseFor(store, prop.id);
+    const copy = listingCopy(prop, rules.petPolicy, input.availableFrom, selfTours);
     const check = checkAdCopy(copy.title + '\n' + copy.description);
     if (!check.ok) {
       await tellOwner(ctx, 'ad-blocked', input.ownerId, `The listing for ${prop.address} has wording that fair-housing rules don't allow (${check.problems.join(', ')}). Please edit the home's details in the app.`);
@@ -171,8 +176,12 @@ export const listing: WorkflowDef<Services, { ownerId: string; propertyId: strin
     }
     const a = await ctx.approval({ kind: 'listing', title: `Publish listing: ${prop.address} at ${money(prop.rent)}`, body: `${copy.title}\n\n${copy.description}`, options: ['publish', 'not_now'], data: copy });
     if (a?.decision !== 'publish') return { status: 'not_published' };
-    const res = await ctx.step('publish', () => ctx.svc.adapters.listings.publish({ propertyId: prop.id, title: copy.title, description: copy.description, rent: prop.rent, beds: prop.beds, baths: prop.baths, address: prop.address }));
-    await ctx.step('status', () => store.update('properties', prop.id, { status: 'listed' }));
+    // Publish exactly what the owner approved.
+    const approved = { title: String(a.data.title ?? copy.title), description: String(a.data.description ?? copy.description) };
+    const res = await ctx.step('publish', () => ctx.svc.adapters.listings.publish({ propertyId: prop.id, title: approved.title, description: approved.description, rent: prop.rent, beds: prop.beds, baths: prop.baths, address: prop.address }));
+    // Not empty yet (a tenant is moving out): say when it opens so the front desk doesn't promise "available now".
+    const today = ctx.svc.clock.now().toISOString().slice(0, 10);
+    await ctx.step('status', () => store.update('properties', prop.id, { status: 'listed', facts: { ...prop.facts, 'Available from': input.availableFrom > today ? niceDate(input.availableFrom, today) : 'now' } }));
     await ctx.log('listing.published', `${prop.address} listed: ${res.channels.map((c) => `${c.name} (${c.status})`).join(', ')}.`);
     if (res.channels.some((c) => c.status === 'manual')) {
       await tellOwner(ctx, 'manual-post', input.ownerId, `Your listing for ${prop.address} is ready. Copy it from the app into Zillow Rental Manager (automatic posting comes once our Zillow feed is approved).`);

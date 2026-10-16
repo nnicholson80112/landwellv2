@@ -12,7 +12,7 @@ import type { Charge } from '../domain/types.ts';
 import { addDays, daysBetween } from '../engine/clock.ts';
 import { CO, cappedLateFee } from '../config/colorado.ts';
 import { DAY } from '../engine/clock.ts';
-import { money, ordinal, propertyName, tellOwner, tellTenant } from './lib.ts';
+import { firstName, money, niceDate, noticeTenant, propertyName, tellTenant } from './lib.ts';
 
 const DEFAULT_HOW_TO_PAY = 'Please pay your landlord the way you normally do.';
 
@@ -29,7 +29,7 @@ export const rentCycle: WorkflowDef<Services, { localDate: string }> = {
   name: 'rent-cycle',
   title: 'Daily rent check',
   description: 'Tracks each month\'s rent, reminds tenants to pay the owner directly, and asks the owner to confirm before anything is called late.',
-  trigger: { schedule: { every: 'day', at: '06:00' } },
+  trigger: { schedule: { every: 'day', at: '09:00' } }, // after quiet hours, so tenants and owners aren't texted early
 
   async run(ctx, { localDate }) {
     const store = ctx.store;
@@ -52,14 +52,14 @@ export const rentCycle: WorkflowDef<Services, { localDate: string }> = {
         charge = await ctx.step(`charge:${lease.id}:${period}`, () =>
           store.insert('charges', { ownerId: lease.ownerId, leaseId: lease.id, kind: 'rent', amount: lease.rent, dueDate: due, paid: 0, status: 'open', period, notices: [] }));
         created++;
-        for (const t of reminders) await tellTenant(ctx, `upcoming:${charge.id}:${t.id}`, t, `Heads up: rent of ${money(lease.rent)} for ${propertyName(store, lease.propertyId)} is due on the ${ordinal(rules.rentDueDay)}. ${howToPay}`);
+        for (const t of reminders) await noticeTenant(ctx, `upcoming:${charge.id}:${t.id}`, t, `Hi ${firstName(t.name)}, a heads-up: rent of ${money(lease.rent)} for ${propertyName(store, lease.propertyId)} is due ${niceDate(due)}. ${howToPay}`);
       }
       if (!charge || charge.status !== 'open') continue;
 
       // Due date: one friendly reminder.
       if (daysToDue === 0 && !charge.notices.includes('due') && reminders.length) {
         await ctx.step(`due:${charge.id}`, () => store.update('charges', charge!.id, { notices: [...charge!.notices, 'due'] }));
-        for (const t of reminders) await tellTenant(ctx, `due:${charge.id}:${t.id}`, t, `Friendly reminder: rent of ${money(charge.amount - charge.paid)} is due today. ${howToPay} If you've already paid, thank you!`);
+        for (const t of reminders) await noticeTenant(ctx, `due:${charge.id}:${t.id}`, t, `Friendly reminder: rent of ${money(charge.amount - charge.paid)} is due today. ${howToPay} If you've already paid, thank you!`);
         reminded++;
       }
       // After the grace period: ask the owner if it arrived (once). Only the owner knows.
@@ -94,7 +94,17 @@ export const paymentReceived: WorkflowDef<Services, { chargeId: string; amount: 
       const t = store.get('tenants', id);
       if (t) await tellTenant(ctx, `receipt:${id}`, t, `Your landlord confirmed your ${what} payment of ${money(p.amount)}. Thank you!${updated.status === 'open' ? ` They show ${money(updated.amount - updated.paid)} still due.` : ''}`);
     }
-    if (updated.status === 'paid') await ctx.emit('charge.paid', { chargeId: charge.id });
+    if (updated.status === 'paid') {
+      // Any rent question still waiting on the owner is answered now (they marked it received in the app).
+      await ctx.step('close-rent-questions', () => {
+        for (const a of store.list('approvals', (x) => x.status === 'pending' && x.data.chargeId === charge.id)) {
+          const pick = a.options.find((o) => ['received', 'skip_fee', 'keep_waiting'].includes(o));
+          if (pick) ctx.svc.engine.decide(a.id, pick, 'Closed automatically: rent was marked received.');
+        }
+        return true;
+      });
+      await ctx.emit('charge.paid', { chargeId: charge.id });
+    }
     await ctx.log('rent.recorded', `Owner recorded ${money(p.amount)} ${what} for ${propertyName(store, lease.propertyId)} (${charge.period ?? charge.kind}).`, { actor: 'owner' });
     return { status: updated.status };
   },
@@ -120,21 +130,26 @@ export const lateRent: WorkflowDef<Services, { ownerId: string; chargeId: string
     const isPaid = () => store.get('charges', chargeId)!.status === 'paid';
 
     // 1. Ask the owner first. Landwell can't see the owner's bank, so no one is told rent is late until the owner says so.
-    const check = await ctx.approval({
+    //    No answer in 2 days → ask once more. "YES code $1,500" records a partial payment.
+    const ask = (round: number) => ctx.approval({
       kind: 'rent_check',
-      title: `Did rent arrive? ${address} (${money(balance())})`,
-      body: `Rent was due ${charge.dueDate}. YES = you've been paid. NO = it hasn't arrived, and we'll send a polite late notice.`,
+      title: `${round ? 'Reminder: did' : 'Did'} rent arrive? ${address} (${money(balance())})`,
+      body: `Rent was due ${niceDate(charge.dueDate)}. If only part arrived, add the amount after YES (like "YES code $1,500"). If it hasn't arrived, I'll send ${tenants.map((t) => firstName(t.name)).join(' and ') || 'the tenant'} a polite note.`,
       options: ['received', 'not_received'],
       data: { chargeId },
+      timeoutMs: round ? undefined : 2 * DAY,
     });
+    const check = (await ask(0)) ?? (isPaid() ? null : await ask(1));
+    let owed = balance();
     if (isPaid()) return { outcome: 'paid' };
     if (check?.decision === 'received') {
-      await ctx.emit('payment.received', { chargeId, amount: balance(), method: 'owner_recorded', providerRef: `owner_${chargeId}_check` });
-      return { outcome: 'owner_confirmed_paid' };
-    }
-    if (check?.decision !== 'not_received') return { outcome: 'no_decision' };
+      const part = Number(check.data.amount) > 0 && Number(check.data.amount) < balance() ? Number(check.data.amount) : balance();
+      await ctx.emit('payment.received', { chargeId, amount: part, method: 'owner_recorded', providerRef: `owner_${chargeId}_check` });
+      if (part >= balance()) return { outcome: 'owner_confirmed_paid' };
+      owed = balance() - part; // the partial payment is recorded by its own run, a moment later
+    } else if (check?.decision !== 'not_received') return { outcome: 'no_decision' };
 
-    for (const t of tenants) await tellTenant(ctx, `late1:${t.id}`, t, `Hi ${t.name.split(' ')[0]}, your landlord hasn't received rent of ${money(balance())} for ${address} yet. ${howToPay} If you've already paid, thank you and please ignore this.`);
+    for (const t of tenants) await noticeTenant(ctx, `late1:${t.id}`, t, `Hi ${firstName(t.name)}, your landlord hasn't received ${check?.decision === 'received' ? 'the rest of the rent' : 'rent'} (${money(owed)}) for ${address} yet. ${howToPay} If you've already paid, thank you and please ignore this.`);
     await ctx.log('rent.late-notice', `Late notice sent for ${address} (${money(balance())}).`);
 
     // 2. Late fee: only allowed once rent is 7+ days late, capped (SB21-173). The OWNER decides; Landwell only tells the tenant.
@@ -146,35 +161,44 @@ export const lateRent: WorkflowDef<Services, { ownerId: string; chargeId: string
       const f = await ctx.approval({
         kind: 'late_fee',
         title: `Late fee for ${address}: up to ${money(fee)}`,
-        body: `Rent is now ${CO.lateFee.minDaysLate} days late. Your lease's late fee, capped by Colorado law (greater of $50 or 5% of past-due rent), is ${money(fee)}. YES = tell the tenant it applies (they pay it to you, not us). NO = skip it.`,
+        body: `Rent is now ${CO.lateFee.minDaysLate} days late. Your lease's late fee, capped by Colorado law (greater of $50 or 5% of past-due rent), is ${money(fee)}. If you apply it, I'll tell the tenant; they pay it to you, not us.`,
         options: ['notify_fee', 'skip_fee'],
         data: { chargeId, fee },
       });
       if (isPaid()) return { outcome: 'paid_before_fee' };
       if (f?.decision === 'notify_fee') {
         await ctx.step('late-fee', () => store.insert('charges', { ownerId, leaseId: lease.id, kind: 'late_fee', amount: fee, dueDate: feeDay.slice(0, 10), paid: 0, status: 'open', period: charge.period, notices: [] }));
-        for (const t of tenants) await tellTenant(ctx, `fee:${t.id}`, t, `Rent for ${address} is now ${CO.lateFee.minDaysLate} days late, so a late fee of ${money(fee)} applies under your lease. Total due to your landlord: ${money(balance() + fee)}. ${howToPay}`);
+        for (const t of tenants) await noticeTenant(ctx, `fee:${t.id}`, t, `Rent for ${address} is now ${CO.lateFee.minDaysLate} days late, so a late fee of ${money(fee)} applies under your lease. Total due to your landlord: ${money(balance() + fee)}. ${howToPay}`);
         await ctx.log('rent.late-fee', `Owner chose to apply a ${money(fee)} late fee for ${address} (Colorado-capped). Tenant notified.`, { actor: 'owner' });
       }
     }
 
-    // 3. Day 12: owner decides what happens next. Landwell never files anything.
-    paid = await ctx.waitFor('charge.paid', { chargeId }, { timeoutMs: 5 * DAY, label: 'Waiting for the owner to mark rent received' });
-    if (paid) return { outcome: 'paid_after_fee' };
-    const a = await ctx.approval({
-      kind: 'late_rent_next_step',
-      title: `Rent still unpaid: ${address} (${money(balance())})`,
-      body: `Rent was due ${charge.dueDate}. Choose: send a formal ${CO.nonpaymentDemandDays}-day demand for payment (we draft it, you approve and deliver it), offer a payment plan, or keep waiting. Consider talking to an attorney before any eviction step.`,
-      options: ['send_demand_notice', 'offer_payment_plan', 'keep_waiting'],
-      data: { chargeId },
-    });
-    if (a?.decision === 'send_demand_notice') {
-      for (const t of tenants) await tellTenant(ctx, `demand:${t.id}`, t, `NOTICE: Rent of ${money(balance())} for ${address} was due on ${charge.dueDate} and remains unpaid. Please pay your landlord the full amount within ${CO.nonpaymentDemandDays} days. ${howToPay} A formal written notice will also be delivered as Colorado law requires. Questions? Reply here.`);
-      await ctx.step('demand-task', () => store.insert('tasks', { ownerId, title: `Deliver written ${CO.nonpaymentDemandDays}-day demand: ${address}`, detail: 'Colorado requires the written demand to be delivered properly (posted/served). Use your attorney or the state form; this software does not serve notices.', status: 'open' }));
-    } else if (a?.decision === 'offer_payment_plan') {
-      for (const t of tenants) await tellTenant(ctx, `plan:${t.id}`, t, `Your landlord is open to a payment plan for the ${money(balance())} balance. Reply with what you can pay and when, and we'll pass it along.`);
+    // 3. Day 12: owner decides what happens next. "Keep waiting" asks again a week later (up to 3 times). Landwell never files anything.
+    for (let round = 0; round < 3; round++) {
+      paid = await ctx.waitFor('charge.paid', { chargeId }, { timeoutMs: (round ? 7 : 5) * DAY, label: 'Waiting for the owner to mark rent received' });
+      if (paid) return { outcome: round ? 'paid_while_waiting' : 'paid_after_fee' };
+      const a = await ctx.approval({
+        kind: 'late_rent_next_step',
+        title: `Rent still unpaid: ${address} (${money(balance())})`,
+        body: `Rent was due ${niceDate(charge.dueDate)}. You can send a formal ${CO.nonpaymentDemandDays}-day demand for payment (I draft it, you have it delivered properly), offer a payment plan, or keep waiting. Consider talking to an attorney before any eviction step.`,
+        options: ['send_demand_notice', 'offer_payment_plan', 'keep_waiting'],
+        data: { chargeId },
+      });
+      if (isPaid()) return { outcome: 'paid' };
+      await ctx.log(`rent.late-decision-${round}`, `Owner chose: ${a?.decision ?? 'no decision'}.`, { actor: 'owner' });
+      if (a?.decision === 'send_demand_notice') {
+        for (const t of tenants) await noticeTenant(ctx, `demand:${t.id}`, t, `NOTICE: Rent of ${money(balance())} for ${address} was due on ${niceDate(charge.dueDate)} and remains unpaid. Please pay your landlord the full amount within ${CO.nonpaymentDemandDays} days. ${howToPay} A formal written notice will also be delivered as Colorado law requires. Questions? Reply here.`);
+        await ctx.step('demand-task', () => store.insert('tasks', { ownerId, title: `Deliver written ${CO.nonpaymentDemandDays}-day demand: ${address}`, detail: 'Colorado requires the written demand to be delivered properly (posted/served). Use your attorney or the state form; this software does not serve notices.', status: 'open' }));
+        return { outcome: 'send_demand_notice' };
+      }
+      if (a?.decision === 'offer_payment_plan') {
+        // The tenant's next message goes straight to the owner.
+        for (const t of tenants) await ctx.step(`plan-flag:${t.id}`, () => store.kvSet('paymentPlan', t.id, { chargeId, at: ctx.svc.clock.now().toISOString() }));
+        for (const t of tenants) await noticeTenant(ctx, `plan:${t.id}`, t, `Hi ${firstName(t.name)}, your landlord is open to a payment plan for the ${money(balance())} balance. Reply with what you can pay and when, and I'll pass it straight to them.`);
+        return { outcome: 'offer_payment_plan' };
+      }
+      if (a?.decision !== 'keep_waiting') return { outcome: 'no_decision' };
     }
-    await ctx.log('rent.late-decision', `Owner chose: ${a?.decision ?? 'no decision'}.`, { actor: 'owner' });
-    return { outcome: a?.decision ?? 'no_decision' };
+    return { outcome: 'keep_waiting' };
   },
 };

@@ -24,9 +24,9 @@ const DANGER = /\b(gas|carbon monoxide|co alarm|fire|smoke|sparks?|break[- ]?in|
 
 export function precheck(message: string, extraOwnerKeywords: string[] = []): PreCheck {
   if (EMERGENCY.test(message)) return { intent: 'emergency', route: false, emergency: true, danger: DANGER.test(message) };
-  if (ACCOMMODATION.test(message)) return { intent: 'accommodation_request', route: true, reason: 'Accommodation or disability-related request. The owner handles these personally.', emergency: false };
-  if (SCREENING.test(message)) return { intent: 'screening_decision_question', route: true, reason: 'Question about an application decision.', emergency: false };
-  if (LEGAL.test(message)) return { intent: 'complaint_or_legal', route: true, reason: 'Complaint or legal topic.', emergency: false };
+  if (ACCOMMODATION.test(message)) return { intent: 'accommodation_request', route: true, reason: 'It is an accommodation or disability-related request, and those always come to you.', emergency: false };
+  if (SCREENING.test(message)) return { intent: 'screening_decision_question', route: true, reason: 'It is a question about an application decision, and those always come to you.', emergency: false };
+  if (LEGAL.test(message)) return { intent: 'complaint_or_legal', route: true, reason: 'It is a complaint or legal topic, and those always come to you.', emergency: false };
   if (FAIR_HOUSING.test(message)) return { intent: 'fair_housing_sensitive', route: true, reason: 'Question touching on neighbors, area or protected characteristics. Neutral answer sent.', emergency: false };
   for (const k of extraOwnerKeywords) {
     if (k && message.toLowerCase().includes(k.toLowerCase())) return { route: true, reason: `Owner asked to handle "${k}" personally.`, emergency: false };

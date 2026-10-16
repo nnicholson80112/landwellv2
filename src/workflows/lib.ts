@@ -118,7 +118,7 @@ export function buildFacts(store: Store, ownerId: string, propertyId?: string, p
   for (const h of homes) {
     const name = h.address;
     if (h.status === 'listed' || h.status === 'vacant') {
-      facts.push({ label: `Availability of ${name}`, value: h.status === 'vacant' ? 'Available now' : `Available${h.facts['Available from'] ? ` from ${h.facts['Available from']}` : ' now'}; taking applications` });
+      facts.push({ label: `Availability of ${name}`, value: h.status === 'vacant' || !h.facts['Available from'] || h.facts['Available from'] === 'now' ? 'Available now; taking applications' : `Available from ${h.facts['Available from']}; taking applications` });
       facts.push({ label: `Rent for ${name}`, value: `${money(h.rent)}/month, all-in` });
       facts.push({ label: `Security deposit for ${name}`, value: money(h.deposit) });
       facts.push({ label: `Size of ${name}`, value: `${h.beds} bed / ${h.baths} bath` });
@@ -126,7 +126,7 @@ export function buildFacts(store: Store, ownerId: string, propertyId?: string, p
       if (rules && rules.showingMode !== 'owner') facts.push({ label: `Showings for ${name}`, value: `Self-guided tours run daily ${hourLabel(rules.showingHours.start)} to ${hourLabel(rules.showingHours.end)} after a quick ID check.` });
       else facts.push({ label: `Showings for ${name}`, value: 'Reply with a few days and times that work and the owner will confirm a showing.' });
     }
-    for (const [k, v] of Object.entries(h.facts)) facts.push({ label: `${k} (${name})`, value: v });
+    for (const [k, v] of Object.entries(h.facts)) if (k !== 'Available from') facts.push({ label: `${k} (${name})`, value: v });
   }
   return facts;
 }

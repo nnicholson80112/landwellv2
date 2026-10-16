@@ -106,6 +106,16 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
     let prospectId = party.role === 'prospect' ? party.prospect.id : undefined;
     const tenant = party.role === 'tenant' ? party.tenant : undefined;
 
+    // Move-out: "please reply with your forwarding address" (often after they've moved out).
+    if (tenant) {
+      if (store.kvGet('forwarding', tenant.id) && looksLikeAddress(m.body)) {
+        const address = m.body.trim().replace(/\s+/g, ' ').replace(/^(it'?s|my (new |forwarding |mailing )?address( is)?|new address|forwarding address|send it to)[:\s-]*/i, '').replace(/[.!]+$/, '');
+        await ctx.step('forwarding', () => { store.update('tenants', tenant.id, { forwardingAddress: address }); store.kvDelete('forwarding', tenant.id); });
+        await reply(`Thanks, ${firstName(tenant.name)}! I've saved ${address} for your deposit statement and refund.`);
+        await ctx.log('tenant.forwarding', `${tenant.name} gave a forwarding address: ${address}`, { actor: 'tenant' });
+        return { forwardingAddress: address };
+      }
+    }
     // Former tenants write about their deposit or move-out: that's the owner's to answer.
     if (tenant?.status === 'former') {
       await reply(`Thanks, ${firstName(tenant.name)}. I've passed this to ${ownerFirst}, who will reply to you directly.`);
@@ -173,14 +183,6 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
 
     /* ---------------- answers to something we asked ---------------- */
     if (tenant) {
-      // Move-out: "please reply with your forwarding address".
-      if (store.kvGet('forwarding', tenant.id) && looksLikeAddress(m.body)) {
-        const address = m.body.trim().replace(/\s+/g, ' ');
-        await ctx.step('forwarding', () => { store.update('tenants', tenant.id, { forwardingAddress: address }); store.kvDelete('forwarding', tenant.id); });
-        await reply(`Thanks, ${firstName(tenant.name)}! I've saved ${address} for your deposit statement and refund.`);
-        await ctx.log('tenant.forwarding', `${tenant.name} gave a forwarding address: ${address}`, { actor: 'tenant' });
-        return { forwardingAddress: address };
-      }
       // Late rent: the owner offered a payment plan and asked what the tenant can do.
       if (store.kvGet('paymentPlan', tenant.id)) {
         await ctx.step('plan-flag', () => store.kvDelete('paymentPlan', tenant.id));
@@ -315,7 +317,7 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
         break;
       }
       case 'move_out_notice':
-        if (tenant) await ctx.emit('moveout.notice', { ownerId, tenantId: tenant.id, date: ai.entities.moveOutDate });
+        if (tenant) await ctx.emit('moveout.notice', { ownerId, tenantId: tenant.id, leaseId: store.find('leases', (l) => l.status === 'active' && l.tenantIds.includes(tenant.id))?.id, date: ai.entities.moveOutDate });
         break;
       case 'listing_question':
         if (prospectId && (ai.entities.beds || ai.entities.maxRent)) {
@@ -368,6 +370,10 @@ export function noteData(kind: string, decision: string, note: string): Record<s
     const months = note.match(/\b(\d{1,2})\s*(?:mo|months?)\b/i);
     if (months) out.months = Number(months[1]);
     return Object.keys(out).length ? out : undefined;
+  }
+  if (kind === 'rent_check' && decision === 'received') {
+    const amt = note.match(/\$?\s?(\d[\d,]*(?:\.\d{1,2})?)/);
+    return amt ? { amount: Math.round(Number(amt[1].replace(/,/g, '')) * 100) } : undefined;
   }
   if (kind.startsWith('deposit') && decision === 'deductions_entered') {
     const deductions = note.split(/[,;\n]+|\band\b/i).map((part) => {
@@ -482,6 +488,7 @@ export function yesNo(body: string): 'yes' | 'no' | undefined {
 
 /** Looks like a mailing address: a street number and a street word, or a ZIP code. */
 export function looksLikeAddress(body: string): boolean {
+  if (/\bp\.?\s?o\.?\s?box\s*\d+/i.test(body)) return true;
   return /\b\d{1,6}\s+\w+/.test(body) && (/\b(st|street|ave|avenue|rd|road|dr|drive|ln|lane|ct|court|cir|circle|blvd|boulevard|way|pl|place|pkwy|parkway|ter|terrace|trl|trail|apt|unit|suite)\b/i.test(body) || /\b\d{5}(-\d{4})?\b/.test(body) || /\bp\.?\s?o\.?\s?box\b/i.test(body));
 }
 

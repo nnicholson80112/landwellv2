@@ -19,6 +19,8 @@ const TRADES: [string, RegExp][] = [
 /** Best-guess trade from free text. Exported for the emergency path. */
 export function guessTrade(t: string): string {
   if (/\b(gas|carbon monoxide)\b/i.test(t)) return 'plumbing';
+  // Water where it shouldn't be is a plumber's job, whatever appliance it comes from.
+  if (!/\b(roof|gutter\w*|shingle\w*|skylight)\b/i.test(t) && /\b(flood\w*|burst pipe|sewage|water (is |keeps )?(everywhere|pouring|gushing|spraying|flooding|leaking)|leak\w*)\b/i.test(t)) return 'plumbing';
   return TRADES.find(([, r]) => r.test(t))?.[0] ?? 'general';
 }
 
@@ -41,8 +43,12 @@ function dollars(s: string): number | undefined {
 }
 
 function window(s: string): string | undefined {
-  const m = s.match(/\b(mon|tue|wed|thu|fri|sat|sun|today|tomorrow)\w*\.?\s*(?:at\s*)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?(?:\s*(?:-|to)\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?)?/i);
-  return m ? m[0].trim() : undefined;
+  const timeFirst = s.match(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm)(?:\s*(?:-|to)\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?\s+(?:on\s+)?(?:mon|tue|wed|thu|fri|sat|sun|today|tonight|tomorrow)\w*/i);
+  if (timeFirst) return timeFirst[0].trim();
+  const day = s.match(/\b(mon|tue|wed|thu|fri|sat|sun|today|tonight|tomorrow)\w*\.?\s*(?:at\s*|from\s*|between\s*)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?(?:\s*(?:-|to|and)\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?)?(?:\s*(?:morning|afternoon|evening))?/i);
+  if (day) return day[0].trim();
+  const soon = s.match(/\b(on (my|our|the) way|omw|heading (over|there) now|right now|asap|(with)?in (\d+|an?|half an) (min\w*|hours?|hrs?)|within the hour|(\d{1,2}(?::\d{2})?\s*(?:am|pm))(\s*(?:-|to)\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?|\d{1,2}\/\d{1,2}|this (morning|afternoon|evening))\b[^.,;$]*/i);
+  return soon ? soon[0].trim().replace(/\s+\$.*$/, '') : undefined;
 }
 
 function isoDate(s: string): string | undefined {
@@ -69,8 +75,10 @@ export class RuleBasedAI implements CommunicationAI {
 
     if (input.senderRole === 'vendor') {
       intent = 'vendor_update';
-      if (/\b(yes|yep|sure|can do|i can|available|accept\w*|ok(ay)?|confirmed?)\b/i.test(t)) e.vendorAccept = true;
-      if (/\b(no|can't|cannot|unavailable|pass|decline\w*|booked up)\b/i.test(t) && !e.vendorAccept) e.vendorAccept = false;
+      const no = /^\s*no\b|\b(can'?t|cannot|can not|unavailable|not available|no availability|pass|decline\w*|booked up|fully booked|too busy|not (this|that) (one|week|job))\b/i.test(t);
+      if (!no && /\b(yes|yep|sure|can do|i can|we can|available|accept\w*|ok(ay)?|confirm\w*|on (my|our) way|omw)\b/i.test(t)) e.vendorAccept = true;
+      if (no && !/^\s*(yes|yep|sure)\b/i.test(t)) e.vendorAccept = false;
+      else if (no) e.vendorAccept = true;
       if (/\b(done|finished|complete\w*|fixed|all set|wrapped up)\b/i.test(t)) { e.vendorDone = true; e.vendorInvoice = dollars(t); }
       else e.vendorQuote = dollars(t);
       e.vendorWindow = window(t);

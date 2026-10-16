@@ -10,7 +10,7 @@ import type { Services } from '../services.ts';
 import type { Application, ScreeningCriterion, ScreeningReport, Lease } from '../domain/types.ts';
 import { DAY } from '../engine/clock.ts';
 import { addDays } from '../engine/clock.ts';
-import { money, ordinal, propertyName, send, contactOf, tellOwner, tellTenant, type C } from './lib.ts';
+import { clip, firstName, money, niceDate, ordinal, noticeTenant, send, contactOf, tellOwner, tellTenant, type C } from './lib.ts';
 import { fillTemplate } from '../leases/template.ts';
 
 /* ------------------------------------------------------------------ */
@@ -134,8 +134,8 @@ export const leaseFlow: WorkflowDef<Services, LeaseRequest> = {
     // Colorado: one rent increase per 12 months.
     if (req.renewalOf) {
       const prev = store.get('leases', req.renewalOf)!;
-      if (req.rent > prev.rent && prev.lastRentIncreaseAt && Date.parse(prev.lastRentIncreaseAt) > ctx.svc.clock.now().getTime() - 365 * DAY) {
-        await tellOwner(ctx, 'increase-blocked', req.ownerId, `Can't raise rent on ${prop.address} yet: Colorado allows one increase per 12 months and the last was ${prev.lastRentIncreaseAt.slice(0, 10)}. The renewal will use the current rent unless you change it.`);
+      if (req.rent > prev.rent && prev.lastRentIncreaseAt && Date.parse(prev.lastRentIncreaseAt) > Date.parse(req.startDate + 'T12:00:00Z') - 365 * DAY) {
+        await tellOwner(ctx, 'increase-blocked', req.ownerId, `Can't raise rent on ${prop.address} for a lease starting ${niceDate(req.startDate)}: Colorado allows one increase per 12 months and the last was ${niceDate(prev.lastRentIncreaseAt.slice(0, 10))}. The renewal will use the current rent unless you change it.`);
         req = { ...req, rent: prev.rent };
       }
     }
@@ -205,13 +205,18 @@ export const leaseFlow: WorkflowDef<Services, LeaseRequest> = {
     }
     const ownerLink = links.find((x) => x.role === 'owner');
     await tellOwner(ctx, 'owner-sign', req.ownerId, `${tenants.map((t) => t.name).join(' and ')} signed the lease for ${prop.address}. Your turn: ${ownerLink?.url}`);
-    await ctx.waitFor('document.signed', { refId: lease.id, role: 'owner' }, { label: 'Waiting for your signature' });
+    const signed = await ctx.waitFor('document.signed', { refId: lease.id, role: 'owner' }, { timeoutMs: 2 * DAY, label: 'Waiting for your signature' });
+    if (!signed) {
+      await tellOwner(ctx, 'owner-sign-remind', req.ownerId, `Reminder: the lease for ${prop.address} is waiting on your signature: ${ownerLink?.url}`);
+      await ctx.waitFor('document.signed', { refId: lease.id, role: 'owner' }, { label: 'Waiting for your signature' });
+    }
 
     lease = await ctx.step('active', () => store.update('leases', lease.id, { status: 'active' }));
     await ctx.log('lease.signed', `Lease signed for ${prop.address}: ${money(req.rent)}/month from ${req.startDate} to ${end}.`);
 
     if (req.renewalOf) {
-      for (const t of tenants) await tellTenant(ctx, `renewed:${t.id}`, t, `All set: your renewal for ${prop.address} is signed. Thank you for staying!`);
+      for (const t of tenants) await tellTenant(ctx, `renewed:${t.id}`, t, `All set, ${firstName(t.name)}: your renewal for ${prop.address} is signed. Thank you for staying!`);
+      await tellOwner(ctx, 'renewed-owner', req.ownerId, `Renewal signed for ${prop.address}: ${money(req.rent)}/month, ${niceDate(req.startDate)} to ${niceDate(end)}.`);
       return { status: 'renewed', leaseId: lease.id };
     }
 
@@ -221,7 +226,7 @@ export const leaseFlow: WorkflowDef<Services, LeaseRequest> = {
       ([['deposit', req.deposit], ['rent', req.rent]] as const).map(([kind, amount]) =>
         store.insert('charges', { ownerId: req.ownerId, leaseId: lease.id, kind, amount, dueDate: req.startDate, paid: 0, status: 'open', period: kind === 'rent' ? req.startDate.slice(0, 7) : undefined, notices: [] })));
     const howToPay = rules.howToPay || 'Your landlord will tell you how to pay.';
-    for (const t of tenants) await tellTenant(ctx, `move-in-pay:${t.id}`, t, `Welcome! Before move-in on ${req.startDate}, your security deposit (${money(req.deposit)}) and first month's rent (${money(req.rent)}) are due to your landlord. ${howToPay}`);
+    for (const t of tenants) await tellTenant(ctx, `move-in-pay:${t.id}`, t, `Welcome, ${firstName(t.name)}! Before move-in on ${niceDate(req.startDate)}, your security deposit (${money(req.deposit)}) and first month's rent (${money(req.rent)}) are due to your landlord. ${howToPay}`);
     await ctx.step('move-in-money-task', () => store.insert('tasks', { ownerId: req.ownerId, title: `Collect deposit and first month: ${prop.address}`, detail: `${tenants.map((t) => t.name).join(' and ')} owe a ${money(req.deposit)} security deposit and ${money(req.rent)} first month's rent before ${req.startDate}. Mark each one received in the app when it arrives (charges ${charges.map((c) => c.id).join(', ')}).`, dueAt: req.startDate + 'T17:00:00Z', status: 'open' }));
     await ctx.step('property-leased', () => store.update('properties', prop.id, { status: 'occupied' }));
     await ctx.step('unpublish', () => ctx.svc.adapters.listings.unpublish({ propertyId: prop.id }));
@@ -230,12 +235,26 @@ export const leaseFlow: WorkflowDef<Services, LeaseRequest> = {
       const c = contactOf({ phone: o.phone, email: o.email });
       if (c) await send(ctx, { label: `unavailable:${o.id}`, ownerId: req.ownerId, ...c, body: `Thank you for your interest in ${prop.address}. The home has been leased, so your application is closed and no further screening is needed.` });
       await ctx.step(`close:${o.id}`, () => store.update('applications', o.id, { status: 'withdrawn' }));
+      // Their decision request is moot now.
+      await ctx.step(`close-approval:${o.id}`, () => { for (const a of store.list('approvals', (x) => x.status === 'pending' && x.kind === 'application' && x.data.applicationId === o.id)) store.update('approvals', a.id, { status: 'expired' }); return true; });
+    }
+    // Prospects who asked about this home (and didn't apply): offer to text them when another home opens up.
+    const tenantKeys = new Set(tenants.flatMap((t) => [t.phone, t.email].filter(Boolean) as string[]));
+    const since = new Date(ctx.svc.clock.now().getTime() - 60 * DAY).toISOString();
+    const askers = store.list('prospects', (p) => p.interestedIn === prop.id && !p.optInUpdates && p.createdAt >= since && !(p.phone && tenantKeys.has(p.phone)) && !(p.email && tenantKeys.has(p.email)) && !others.some((o) => (o.phone && o.phone === p.phone) || (o.email && o.email === p.email)));
+    for (const p of askers.slice(0, 50)) {
+      const c = contactOf(p);
+      if (!c) continue;
+      await ctx.step(`updates-ask:${p.id}`, () => store.kvSet('prospectAsk', p.id, { kind: 'updates', until: new Date(ctx.svc.clock.now().getTime() + 14 * DAY).toISOString() }));
+      await send(ctx, { label: `leased:${p.id}`, ownerId: req.ownerId, ...c, body: `Thanks for your interest in ${prop.address}. It has been leased. Want a text if another home opens up? Reply YES.` });
     }
 
     // Move-in: details 2 days before, tenant becomes active on day one.
     await ctx.sleepUntil(new Date(Date.parse(req.startDate + 'T15:00:00Z') - 2 * DAY).toISOString(), 'Waiting until 2 days before move-in');
     const moveIn = rules.facts['Move-in instructions'] ?? 'The owner will send key/code details the day before.';
-    for (const t of tenants) await tellTenant(ctx, `move-in-info:${t.id}`, t, `Move-in is on ${req.startDate}! ${moveIn} For repairs, just text this number anytime. Please take photos of each room on day one; they protect your deposit.`);
+    for (const t of tenants) await noticeTenant(ctx, `move-in-info:${t.id}`, t, `Move-in is ${niceDate(req.startDate)}! ${moveIn} For repairs, just text this number anytime. Please take photos of each room on day one; they protect your deposit.`);
+    const unpaid = store.list('charges', (c) => c.leaseId === lease.id && c.status === 'open').map((c) => `${c.kind === 'deposit' ? 'deposit' : "first month's rent"} (${money(c.amount - c.paid)})`);
+    await tellOwner(ctx, 'move-in-owner', req.ownerId, `${tenants.map((t) => t.name).join(' and ')} move${tenants.length > 1 ? '' : 's'} into ${prop.address} ${niceDate(req.startDate)}. Please have keys or the door code ready${rules.facts['Move-in instructions'] ? ' (we told them: "' + clip(rules.facts['Move-in instructions'], 80) + '")' : ''}.${unpaid.length ? ` Still not marked received: ${unpaid.join(' and ')}.` : ''}`);
     await ctx.sleepUntil(req.startDate + 'T07:00:00Z', 'Waiting for move-in day');
     for (const t of tenants) await ctx.step(`tenant-active:${t.id}`, () => store.update('tenants', t.id, { status: 'active' }));
     await ctx.log('lease.move-in', `${tenants.map((t) => t.name).join(' and ')} moved in to ${prop.address}.`);
