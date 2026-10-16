@@ -421,7 +421,7 @@ async function ownerCommand(ctx: C, ownerId: string, m: InboundPayload, reply: (
     }
     const data = noteData(a.kind, decision, note);
     await ctx.step('decide', () => svc.engine.decide(a!.id, decision, note.trim() || undefined, data));
-    await reply(`Got it. ${a.title}: ${optionLabel(decision)}.`);
+    await reply(`Got it: ${optionLabel(decision)}. (${a.title})`);
     return { ownerDecision: decision };
   }
   await reply(pending.length

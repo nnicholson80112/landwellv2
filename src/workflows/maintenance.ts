@@ -185,7 +185,7 @@ export const maintenance: WorkflowDef<Services, RepairInput> = {
     await ctx.step('expense', () => store.insert('expenses', { ownerId: input.ownerId, propertyId: input.propertyId, category: 'repairs', amount: invoice ?? 0, vendorId: vendor!.id, workOrderId: wo.id, date: ctx.svc.clock.now().toISOString().slice(0, 10), memo: `${vendor!.name}: ${wo.summary}` }));
     await upd({ status: 'paid' }, 'paid');
     await tellOwner(ctx, 'owner-done', input.ownerId, `Repair done at ${address}: ${jobLine(wo.summary)} by ${vendor.name}, ${money(invoice)}. Please pay ${vendor.name} directly; it's already in your books.`);
-    if (tenant) await tellTenant(ctx, 'tenant-done', tenant, `${vendor.name} marked "${wo.summary}" done. If anything still isn't right, just reply here.`);
+    if (tenant) await tellTenant(ctx, 'tenant-done', tenant, `${vendor.name} marked your repair done${jobLine(wo.summary) === wo.summary ? ` ("${wo.summary}")` : ''}. If anything still isn't right, just reply here.`);
     await ctx.log('repair.closed', `${wo.id} closed: ${money(invoice)} to ${vendor.name}.`);
     return { status: 'paid', invoice };
   },

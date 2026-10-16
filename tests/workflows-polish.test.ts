@@ -106,7 +106,7 @@ test('owner can answer with a bare YES when one decision is open, and gets choic
   assert.match(lastTo(s.owner.phone), new RegExp(`Reply YES ${ap.code} \\(Approve\\) or NO ${ap.code} \\(Decline\\)`));
   await text(s.owner.phone, 'yes');
   assert.equal(store.get('approvals', ap.id)!.decision, 'approve');
-  assert.match(lastTo(s.owner.phone), /^Got it\./);
+  assert.match(lastTo(s.owner.phone), /^Got it: Approve\./);
   await text(s.owner.phone, 'how are things?');
   assert.match(lastTo(s.owner.phone), /Nothing needs you right now/);
 });

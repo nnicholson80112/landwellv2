@@ -136,7 +136,8 @@ export async function runDemo(opts: { quiet?: boolean } = {}) {
     say(`   ${C.mag}(owner offers renewal at the same rent)${C.r}`);
     svc.engine.decide(ren.id, 'offer_renewal', undefined, { rent: s.lease.rent, months: 12 });
     await svc.engine.drain();
-    flush();
+    say(`   ${C.dim}(it's the middle of the night, so the offer waits for the morning)${C.r}`);
+    await advance(7 * HOUR);
     await text(tenant, 'Yes! We would love to renew.');
   }
 
