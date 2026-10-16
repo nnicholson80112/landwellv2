@@ -1,4 +1,4 @@
-# Landwell: project handoff (as of Oct 11, 2026)
+# Landwell: project handoff (as of Oct 16, 2026)
 
 This file is the single source of truth for picking the project up in Claude Code.
 Read it top to bottom before changing anything. `CLAUDE.md` at the repo root points here.
@@ -104,11 +104,11 @@ Random secret values: use the **Landwell Key Maker** page (link below) or a pass
 
 ## 5. The codebase (`landwellv2`)
 
-TypeScript on **Node 22.6+**, run with `--experimental-strip-types`. **No runtime dependencies** (Node built-ins only). ~4,750 lines in `src/`. **35 tests pass.**
+TypeScript on **Node 22.6+**, run with `--experimental-strip-types`. **No runtime dependencies** (Node built-ins only). **65 tests pass.**
 
 ```
-npm test              # 35 tests: engine, guardrails, workflows end to end, API, billing, offers
-npm run demo          # every workflow on sample data with a simulated month (86 runs, 0 failed)
+npm test              # 65 tests: engine, guardrails, workflows end to end, everyday edge cases, API, billing, offers
+npm run demo          # every workflow on sample data with a simulated month (0 failed)
 npm start             # API + website on http://localhost:8787 (token: dev-token locally)
 npm run ai            # AI service on :8788 (needs AI_SERVICE_TOKEN)
 npm run typecheck     # tsc --noEmit (run `npm install` once for the dev types)
@@ -119,7 +119,7 @@ npm run build:review  # rebuilds apps/review/review.html from a fresh demo run
 | Path | What it is |
 | --- | --- |
 | `src/engine/` | Durable workflow engine (waits for people, dates and events; survives restarts) + clock helpers |
-| `src/workflows/` | The 15 workflows. `inbound-message.ts` (front desk: every text/email/call), `maintenance.ts`, `rent.ts`, `leasing.ts`, `tenancy.ts` (renewals, move-out, tenant welcome), `showings-listings.ts`, `owner.ts` (Monday report, onboarding, approval texts), `lib.ts` (messaging helpers, AI facts) |
+| `src/workflows/` | The 16 workflows. `inbound-message.ts` (front desk: every text/email/call), `maintenance.ts`, `rent.ts`, `leasing.ts`, `tenancy.ts` (renewals, move-out, tenant welcome), `showings-listings.ts`, `owner.ts` (Monday report, onboarding, approval texts), `lib.ts` (messaging helpers, AI facts) |
 | `src/ai/` | AI plug-in point: `guardrails.ts` (pre/post checks, fair housing, emergencies), `prompt.ts` (system prompt), `providers.ts` (Claude, HTTP, OpenAI-compatible), `rules.ts` (offline fallback) |
 | `src/ai-service/server.ts` | The in-house AI service (`/respond`, `/stats`), logs to `/data/ai-logs` |
 | `src/api/server.ts` | HTTP API, webhooks (Twilio SMS + voice, Postmark email, generic voice, screening, identity), apply form, lease signing page, `/play` |
@@ -136,8 +136,8 @@ npm run build:review  # rebuilds apps/review/review.html from a fresh demo run
 | `apps/review/` | Build review page (generated) |
 | `docs/` | `WORKFLOWS.md`, `AI-PLUGIN.md`, `DEPLOY.md`, `OFFERS.md`, `RENAMING.md`, `demo-transcript.txt`, this file |
 
-### The 15 workflows
-Front desk (every inbound message) · Repair request · Daily rent check · Rent marked received · Late rent · Rental application · Lease and move-in · Showing · Listing · Renewal check · Renewal · Move-out and deposit · Tenant welcome · Monday owner report · New owner setup. Details: `docs/WORKFLOWS.md`.
+### The 16 workflows
+Front desk (every inbound message) · Repair request · Daily rent check · Rent marked received · Late rent · Rental application · Lease and move-in · Showing · Listing · Renewal check · Renewal · Move-out and deposit · Tenant welcome · Monday owner report · New owner setup · Decision reminders. Details: `docs/WORKFLOWS.md`.
 
 ### How messages flow (text, email, voice)
 Inbound webhook on **api** → `message.received` → Front desk workflow → **guardrails** (emergencies, fair housing, accommodations, legal → owner) → **ai service** drafts a reply using only the owner's FACTS (Claude) → **guardrails check the draft** → reply sent + the right workflow starts (repair, showing, renewal…). If the AI is down, built-in rules answer.
@@ -168,6 +168,7 @@ Owner **Nate** (phone `DEMO_OWNER_PHONE`, plan Autopilot). Home **7610 S Rosemar
 10. Name ideas (section 9).
 11. **(Oct 16) Repair chat:** tenants now talk a repair through first. The AI asks one question at a time and suggests only safe self-fixes. Every reply ends with the tenant's choices: **1 Send a pro · 2 Call me · 3 Email me · 4 It's fixed · 9 Emergency** (texts show them as numbers; `/play` shows tap buttons). Emergencies skip the chat. Flooding now gets shut-off help and a plumber with **no 911**; 911 is only for danger (gas, fire, smoke, CO, sparks, injury). Owners texting a normal question no longer get "couldn't match code". The AI says it's automated once per conversation. Code: `src/workflows/inbound-message.ts` (repair conversations), `src/ai/prompt.ts`. Recommended `ANTHROPIC_MODEL=claude-opus-5-5` on the **ai** service.
 12. **(Oct 16) Site, legal and protection pass.** Stripe test payment succeeded (`sub_1UREMAEtnoC4AY9tuDjNkxRc`, active). Site cleaned of vibe-coded patterns and unsupported claims; public demo-day deal removed; signup-window bug fixed; fonts self-hosted (zero third-party requests, no cookies). Draft `/privacy`, `/terms`, `/cookies`, `/refunds`, `/accessibility` pages; footer business details from Railway Variables (`BUSINESS_*`, `LEGAL_EFFECTIVE_DATE`, `LEGAL_REVIEWED`). Signup records Terms acceptance and optional SMS consent. Rate limits, AI daily caps, timeouts, size limits, security headers, in-memory compressed page cache (`src/api/guard.ts`). See `docs/LAUNCH-CHECKLIST.md` and `docs/SCALING.md`.
+13. **(Oct 16) Workflow polish pass** (details in `docs/WORKFLOWS.md`; tests in `tests/workflows-polish.test.ts`). Owners: decision codes like `K4P` (unique, never a word), numbered choices for 3+ options (`2 K4P`), bare `YES` when one decision is open, details after the code (`YES K4P $2,850` renewal rent, `YES K4P $1,500` partial rent, `NO K4P carpet $150, blinds $40` deposit deductions), friendly confirmations, decision reminders (new workflow 16), richer Monday report, alerts respect SMS consent. Tenants: STOP/START honored (notices fall back to email), quiet hours for non-urgent notices, renewal YES/NO understood (and "No hot water" isn't a no), renewal questions go to the owner, former tenants routed to the owner, forwarding address captured, payment-plan replies go to the owner, "thanks" doesn't ping the owner, front desk knows which rent the owner marked received. Repairs: vendor replies read better ("not available" = no, "2pm tomorrow", "on my way"), duplicate reports merge, later photos forwarded to the vendor, tenant gets the vendor's phone, routine jobs don't text vendors at night, water leaks go to a plumber. Rent: rent marked received closes stale questions, owner asked again after 2 days, keep-waiting re-asks weekly. Showings: times match "this weekend / Saturday morning", no double-booking, never a door code into an occupied home, no duplicate tours. Bugs fixed: renewal rent increases were blocked by mistake (checked against today instead of the new lease start); the move-out deposit step lost the lease after it ended; partial-payment replays. Engine prunes old finished runs.
 
 ---
 
@@ -182,6 +183,7 @@ Owner **Nate** (phone `DEMO_OWNER_PHONE`, plan Autopilot). Home **7610 S Rosemar
 
 7. **The GitHub repo is public.** Fine for now (early prototype, no secrets in git), but **before anything is published or launched**, recreate it as a **private** repo. This happens as part of the account move below.
 8. **Move everything to a new business identity before launch.** When the idea is fully fleshed out (and the name is picked), Nate will create a new business email/domain and move **GitHub, Railway, Stripe, Calendly, Anthropic, Postmark, Twilio** and any other integrations to it. Do the new GitHub repo as **private** at that time. Today's accounts (Nate's personal Gmail) are for testing only.
+9. **After the next deploy:** workflows that were already in progress on the live test data were recorded with the old code and may act oddly (for example an old repair or renewal). It's only test data: simplest is to delete `/data/landwell.json` on the **api** volume (or start fresh) so the demo reseeds.
 
 ---
 
@@ -193,7 +195,7 @@ Owner **Nate** (phone `DEMO_OWNER_PHONE`, plan Autopilot). Home **7610 S Rosemar
 
 
 **This week (testing):**
-1. Fix Railway auto-deploy (issue 1), then re-run the AI tests (section 10).
+1. Fix Railway auto-deploy (issue 1), then re-run the AI tests (section 10). Clear the old test data after deploying (issue 9).
 2. Finish the Stripe test (issue 2).
 3. **Website + color refresh**: Nate will share his prompts later (save them as `docs/DESIGN-PROMPTS.md`). Edit `apps/site/site.body.html`, run `npm run build:site`, republish.
 4. Pick the **name** → USPTO search (classes 9, 42, 36) → attorney knockout search → buy domain.

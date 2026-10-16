@@ -70,7 +70,7 @@ curl localhost:8787/api/dashboard -H 'authorization: Bearer dev-token'
 
 | Piece | Status |
 | --- | --- |
-| Workflow engine, all 15 workflows, guardrails, lease templating, API, signing page | Working and tested |
+| Workflow engine, all 16 workflows, guardrails, lease templating, API, signing page | Working and tested |
 | AI | Rule-based works offline. Claude and in-house HTTP providers are written; add a key to turn them on |
 | Twilio SMS, Postmark email, Stripe subscription billing, Seam locks | Written against each vendor's API; **not yet run against live accounts**. Test in each vendor's sandbox first |
 | ID verification, screening, listing syndication | Mock links today. Pick partners (e.g. Stripe Identity, a screening company, the Zillow rental feed) and implement the adapter interface |
