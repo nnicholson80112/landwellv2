@@ -12,25 +12,59 @@ import { HOUR, MIN, DAY, localParts } from '../engine/clock.ts';
 import { checkAdCopy } from '../ai/guardrails.ts';
 import { contactOf, hourLabel, money, send, tellOwner } from './lib.ts';
 
-function fmt(iso: string, tz: string): string {
+export function fmtTime(iso: string, tz: string): string {
   return new Date(iso).toLocaleString('en-US', { timeZone: tz, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
+const fmt = fmtTime;
 
-export function nextSlots(fromIso: string, tz: string, hours: { start: string; end: string }, count = 3): string[] {
-  const out: string[] = [];
-  let t = Math.ceil((Date.parse(fromIso) + 3 * HOUR) / HOUR) * HOUR;
-  const startH = Number(hours.start.slice(0, 2));
-  const endH = Number(hours.end.slice(0, 2));
-  for (let i = 0; i < 24 * 7 && out.length < count; i++, t += HOUR) {
-    const lp = localParts(new Date(t), tz);
-    if (lp.hour < startH || lp.hour >= endH) continue;
-    if (out.length && t - Date.parse(out[out.length - 1]) < 3 * HOUR) continue;
-    out.push(new Date(t).toISOString());
-  }
-  return out;
+/** What a prospect asked for: "this weekend", "Saturday morning", "tomorrow after 5". */
+export interface SlotPrefs { days?: number[]; part?: 'morning' | 'afternoon' | 'evening'; afterHour?: number }
+export function slotPrefs(text: string, nowIso: string, tz: string): SlotPrefs {
+  const t = text.toLowerCase();
+  const today = localParts(new Date(nowIso), tz).weekday;
+  const days = new Set<number>();
+  if (/\bweekend\b/.test(t)) { days.add(6); days.add(0); }
+  if (/\bweekday|during the week\b/.test(t)) [1, 2, 3, 4, 5].forEach((d) => days.add(d));
+  if (/\btomorrow\b/.test(t)) days.add((today + 1) % 7);
+  if (/\b(today|tonight|this (afternoon|evening))\b/.test(t)) days.add(today);
+  const dayWords = [/\bsun(day)?s?\b/, /\bmon(day)?s?\b/, /\btue(s|sday)?s?\b/, /\bwed(nesday)?s?\b/, /\bthu(rs|rsday)?s?\b/, /\bfri(day)?s?\b/, /\bsat(urday)?s?\b/];
+  dayWords.forEach((re, i) => { if (re.test(t)) days.add(i); });
+  const part = /\bmorning\b/.test(t) ? 'morning' : /\b(afternoon|lunch)\b/.test(t) ? 'afternoon' : /\b(evening|tonight|after work|after \d)\b/.test(t) ? 'evening' : undefined;
+  const after = t.match(/\bafter (\d{1,2})(?::\d{2})?\s*(am|pm)?/);
+  const afterHour = after ? (Number(after[1]) % 12) + (after[2] === 'am' || (!after[2] && Number(after[1]) >= 8 && Number(after[1]) < 12) ? 0 : 12) : undefined;
+  return { days: days.size ? [...days] : undefined, part, afterHour };
 }
 
-export const showing: WorkflowDef<Services, { ownerId: string; propertyId: string; prospectId: string; preferredTimes: string[] }> = {
+/** Three tour times at least 3 hours apart, inside showing hours, matching what they asked for and not on top of another tour. */
+export function nextSlots(fromIso: string, tz: string, hours: { start: string; end: string }, count = 3, prefs: SlotPrefs = {}, taken: string[] = []): string[] {
+  const startH = Number(hours.start.slice(0, 2));
+  const endH = Number(hours.end.slice(0, 2));
+  const fits = (h: number) => prefs.part === 'morning' ? h < 12 : prefs.part === 'afternoon' ? h >= 12 && h < 17 : prefs.part === 'evening' ? h >= 16 : true;
+  const pass = (p: SlotPrefs): string[] => {
+    const out: string[] = [];
+    // A narrow ask ("Saturday morning", "after 5") gets back-to-back hours; otherwise spread them out.
+    const gap = p.part || p.afterHour !== undefined ? HOUR : 3 * HOUR;
+    let t = Math.ceil((Date.parse(fromIso) + 3 * HOUR) / HOUR) * HOUR;
+    for (let i = 0; i < 24 * 14 && out.length < count; i++, t += HOUR) {
+      const lp = localParts(new Date(t), tz);
+      if (lp.hour < startH || lp.hour >= endH) continue;
+      if (p.days && !p.days.includes(lp.weekday)) continue;
+      if (p.part && !fits(lp.hour)) continue;
+      if (p.afterHour !== undefined && lp.hour < p.afterHour) continue;
+      if (taken.some((x) => Math.abs(Date.parse(x) - t) < HOUR)) continue;
+      if (out.length && t - Date.parse(out[out.length - 1]) < gap) continue;
+      out.push(new Date(t).toISOString());
+    }
+    return out;
+  };
+  // Asked-for days first; if that leaves fewer than three, fill with the next open times.
+  const first = pass(prefs);
+  if (first.length >= count || (!prefs.days && !prefs.part && prefs.afterHour === undefined)) return first;
+  const more = pass({}).filter((x) => !first.includes(x) && first.every((f) => Math.abs(Date.parse(f) - Date.parse(x)) >= 3 * HOUR));
+  return [...first, ...more].slice(0, count).sort();
+}
+
+export const showing: WorkflowDef<Services, { ownerId: string; propertyId: string; prospectId: string; preferredTimes: string[]; request?: string }> = {
   name: 'showing',
   title: 'Showing',
   description: 'Self-guided tours with ID check and one-time door codes, or owner-led showings on the owner\'s calendar.',
@@ -67,14 +101,26 @@ export const showing: WorkflowDef<Services, { ownerId: string; propertyId: strin
     }
     sh = await ctx.step('verified', () => store.update('showings', sh.id, { idVerified: true }));
 
-    // Offer three times.
-    const slots = await ctx.step('slots', () => nextSlots(now.toISOString(), svc.cfg.tz, rules.showingHours));
+    // Offer three times that fit what they asked for. They can answer 1-3, or name another day (up to 3 rounds).
     await ctx.step('choice-flag', () => store.kvSet('showingChoice', prospect.id, sh.id));
-    await tell('slots', `Thanks, you're verified. Reply 1, 2 or 3 to pick a time:\n${slots.map((s, i) => `${i + 1}) ${fmt(s, svc.cfg.tz)}`).join('\n')}`);
-    const pick = await ctx.waitFor<{ choice: number }>('showing.slot_chosen', { showingId: sh.id }, { timeoutMs: DAY, label: 'Waiting for the prospect to pick a time' });
+    let ask = [input.request ?? '', ...input.preferredTimes].join(' ');
+    let at: string | undefined;
+    for (let round = 0; round < 3 && !at; round++) {
+      const slots = await ctx.step(`slots-${round}`, () => {
+        const taken = store.list('showings', (x) => x.propertyId === prop.id && x.status === 'confirmed' && x.id !== sh.id).map((x) => x.at);
+        return nextSlots(svc.clock.now().toISOString(), svc.cfg.tz, rules.showingHours, 3, slotPrefs(ask, svc.clock.now().toISOString(), svc.cfg.tz), taken);
+      });
+      await tell(`slots-${round}`, `${round ? 'Here are some other times' : "Thanks, you're verified"}. Reply 1, 2 or 3 to pick a time:\n${slots.map((x, i) => `${i + 1}) ${fmt(x, svc.cfg.tz)}`).join('\n')}\nOr tell me a day that works better.`);
+      const pick = await ctx.waitFor<{ choice: number; request?: string }>('showing.slot_chosen', { showingId: sh.id }, { timeoutMs: DAY, label: 'Waiting for the prospect to pick a time' });
+      if (!pick) break;
+      if (pick.choice >= 1 && slots[pick.choice - 1]) at = slots[pick.choice - 1];
+      else ask = pick.request ?? '';
+    }
     await ctx.step('clear-choice', () => store.kvDelete('showingChoice', prospect.id));
-    if (!pick || !slots[pick.choice - 1]) return { status: 'no_time_chosen' };
-    const at = slots[pick.choice - 1];
+    if (!at) {
+      await ctx.step('cancel-notime', () => store.update('showings', sh.id, { status: 'cancelled' }));
+      return { status: 'no_time_chosen' };
+    }
     sh = await ctx.step('confirmed', () => store.update('showings', sh.id, { at, status: 'confirmed' }));
     await tell('confirmed', `You're booked for ${fmt(at, svc.cfg.tz)} at ${prop.address}. Your door code arrives 15 minutes before.`);
     await tellOwner(ctx, 'owner-fyi', input.ownerId, `Self-tour booked: ${prop.address}, ${fmt(at, svc.cfg.tz)} (ID verified).`);
@@ -136,7 +182,9 @@ export const listing: WorkflowDef<Services, { ownerId: string; propertyId: strin
     const matches = store.list('prospects', (p) => p.ownerId === input.ownerId && p.optInUpdates && (!p.wants?.beds || p.wants.beds <= prop.beds) && (!p.wants?.maxRent || p.wants.maxRent >= prop.rent));
     for (const p of matches.slice(0, 50)) {
       const to = contactOf(p);
-      if (to) await send(ctx, { label: `rematch:${p.id}`, ownerId: input.ownerId, ...to, body: `A home just opened up that matches what you asked about: ${prop.beds} bed at ${prop.address}, ${money(prop.rent)}/month all-in. Want a self-tour? Reply YES. (Reply STOP to opt out.)` });
+      if (!to) continue;
+      await ctx.step(`rematch-ask:${p.id}`, () => store.kvSet('prospectAsk', p.id, { kind: 'tour', propertyId: prop.id, until: new Date(ctx.svc.clock.now().getTime() + 14 * DAY).toISOString() }));
+      await send(ctx, { label: `rematch:${p.id}`, ownerId: input.ownerId, ...to, body: `A home just opened up that matches what you asked about: ${prop.beds} bed at ${prop.address}, ${money(prop.rent)}/month all-in. Want a self-tour? Reply YES. (Reply STOP to opt out.)` });
     }
     return { status: 'published', rematched: matches.length };
   },

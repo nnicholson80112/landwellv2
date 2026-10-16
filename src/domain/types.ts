@@ -133,6 +133,7 @@ export interface Tenant {
   language?: string; // Colorado: notices in tenant's primary language when known
   autopay: boolean;
   status: 'active' | 'former' | 'future';
+  forwardingAddress?: string; // given at move-out, for the deposit statement and refund
 }
 
 export interface Lease {
@@ -305,6 +306,7 @@ export interface Approval {
   body: string;
   options: string[]; // e.g. ['approve','decline']
   data: Record<string, unknown>;
+  code?: string; // short code the owner texts back ("YES 4F2"); unique among pending approvals
   status: 'pending' | 'decided' | 'expired';
   decision?: string;
   note?: string;

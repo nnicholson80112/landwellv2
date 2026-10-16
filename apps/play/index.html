@@ -191,7 +191,7 @@ async function refresh() {
     return `<div class="m ${m.direction}${owner ? ' owner' : ''}"><div class="w">${m.direction === 'in' ? esc(who) : 'Landwell → ' + esc(who)} · ${m.channel} · ${when}</div><div class="b">${esc(m.body)}${m.media?.length ? ' [photo]' : ''}</div>${opts}</div>`;
   }).join('') || '<p class="muted">No messages yet. Send one on the left.</p>';
   if (atBottom) feed.scrollTop = feed.scrollHeight;
-  $('#approvals').innerHTML = dash.approvals.length ? dash.approvals.map((a) => `<div class="ap"><b>${esc(a.title)}</b><p>${esc(a.body)}</p><p>Text code: <b style="display:inline">${esc(a.id.slice(-3).toUpperCase())}</b></p><div class="row">${a.options.map((o, i) => `<button class="${i ? 'ghost' : 'sun'}" data-ap="${a.id}" data-d="${esc(o)}">${esc(o.replace(/_/g, ' '))}</button>`).join('')}</div></div>`).join('') : '<p class="muted">Nothing is waiting on you.</p>';
+  $('#approvals').innerHTML = dash.approvals.length ? dash.approvals.map((a) => `<div class="ap"><b>${esc(a.title)}</b><p>${esc(a.body)}</p><p>Text code: <b style="display:inline">${esc(a.code ?? "")}</b></p><div class="row">${a.options.map((o, i) => `<button class="${i ? 'ghost' : 'sun'}" data-ap="${a.id}" data-d="${esc(o)}">${esc(o.replace(/_/g, ' '))}</button>`).join('')}</div></div>`).join('') : '<p class="muted">Nothing is waiting on you.</p>';
   $('#runs').innerHTML = dash.inProgress.map((r) => `<div><b>${esc(r.workflow)}</b>: ${esc(r.waitingFor)}</div>`).join('') || 'Nothing in progress.';
   $('#activity').innerHTML = dash.activity.slice(0, 40).map((a) => `<div><b>${esc(new Date(a.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}</b> ${esc(a.detail)}</div>`).join('');
 }

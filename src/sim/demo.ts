@@ -46,7 +46,7 @@ export async function runDemo(opts: { quiet?: boolean } = {}) {
   };
   const code = (kind: string) => {
     const a = store.list('approvals', (x) => x.kind === kind && x.status === 'pending').pop();
-    return a ? a.id.slice(-3).toUpperCase() : '???';
+    return a?.code ?? '???';
   };
   const owner = s.owner.phone;
   const tenant = s.tenant.phone!;

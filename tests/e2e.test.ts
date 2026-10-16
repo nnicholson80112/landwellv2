@@ -20,7 +20,8 @@ test('full demo: every workflow runs without failures', async () => {
   assert.ok(store.list('charges', (c) => c.kind === 'late_fee').length === 1, 'late fee applied once, after the owner chose it');
   const sentAll = store.list('messages', (m) => m.direction === 'out').map((m) => m.body).join('\n');
   assert.doesNotMatch(sentAll, /pay here|pay\.example|checkout\.stripe|autopay here/i, 'Landwell never sends rent pay links');
-  assert.ok(store.list('tasks', (t) => /Reply to/.test(t.title)).length >= 2, 'sensitive messages routed to owner');
+  assert.ok(store.list('tasks', (t) => /Reply to/.test(t.title)).length >= 1, 'accommodation request routed to owner');
+  assert.ok(store.list('audit', (a) => a.action === 'message.fyi').length >= 1, 'fair-housing question logged and sent to the owner as an FYI');
   const ownerPhone = store.list('owners')[0].phone;
   const sent = store.list('messages', (m) => m.direction === 'out' && m.to !== ownerPhone).map((m) => m.body).join('\n');
   assert.doesNotMatch(sent, /perfect for|family-friendly|safe neighborhood/i);
@@ -78,7 +79,7 @@ test('owner and vendor can share one phone (owner runs the vendor company)', asy
   await text(shared, 'YES Wed 10-12 $180'); // vendor reply from the shared phone
   const ap = store.list('approvals', (a) => a.status === 'pending')[0];
   assert.ok(ap, 'quote over limit created an approval');
-  await text(shared, `YES ${ap.id.slice(-3).toUpperCase()}`); // owner approval from the same phone
+  await text(shared, `YES ${ap.code}`); // owner approval from the same phone
   assert.equal(store.get('workOrders', wo.id)!.status, 'scheduled');
   await text(shared, 'Done $180');
   assert.equal(store.get('workOrders', wo.id)!.status, 'paid');

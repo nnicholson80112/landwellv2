@@ -4,8 +4,9 @@
 import type { WorkflowDef } from '../engine/engine.ts';
 import type { Services } from '../services.ts';
 import type { Approval } from '../domain/types.ts';
-import { DAY } from '../engine/clock.ts';
-import { addressKey, money, tellOwner } from './lib.ts';
+import { randomInt } from 'node:crypto';
+import { DAY, addDays } from '../engine/clock.ts';
+import { addressKey, clip, money, niceDate, tellOwner } from './lib.ts';
 
 export const weeklyReport: WorkflowDef<Services, { localDate: string }> = {
   name: 'weekly-report',
@@ -15,17 +16,28 @@ export const weeklyReport: WorkflowDef<Services, { localDate: string }> = {
   async run(ctx, { localDate }) {
     const store = ctx.store;
     const since = new Date((await ctx.now()).getTime() - 7 * DAY).toISOString();
-    for (const o of store.list('owners')) {
+    const owners = store.list('owners', (o) => o.billing?.status !== 'canceled');
+    for (const o of owners) {
       const audit = store.list('audit', (a) => a.ownerId === o.id && a.at >= since);
       const paid = store.list('payments', (p) => p.ownerId === o.id && p.receivedAt >= since && (!p.chargeId || store.get('charges', p.chargeId)?.kind !== 'deposit')).reduce((s, p) => s + p.amount, 0);
-      const repairs = store.list('workOrders', (w) => w.ownerId === o.id && w.createdAt >= since).length;
+      const opened = store.list('workOrders', (w) => w.ownerId === o.id && w.createdAt >= since).length;
+      const closed = audit.filter((a) => a.action === 'repair.closed').length;
+      const selfFixed = audit.filter((a) => a.action === 'repair.self-fixed').length;
       const msgs = audit.filter((a) => a.action === 'message.answered').length;
       const pending = store.list('approvals', (a) => a.ownerId === o.id && a.status === 'pending');
       const tasks = store.list('tasks', (t) => t.ownerId === o.id && t.status === 'open');
-      const body = `Your week with ${ctx.svc.brand.name} (to ${localDate}): ${money(paid)} rent marked received, ${repairs} repair${repairs === 1 ? '' : 's'} handled, ${msgs} message${msgs === 1 ? '' : 's'} answered. ${pending.length ? `${pending.length} decision${pending.length > 1 ? 's' : ''} waiting for you.` : 'Nothing waiting on you.'}${tasks.length ? ` ${tasks.length} open to-do${tasks.length > 1 ? 's' : ''}.` : ''}`;
-      await tellOwner(ctx, `report:${o.id}`, o.id, body);
+      const lines = [
+        `${ctx.svc.brand.name} weekly report, ${niceDate(addDays(localDate, -7))} to ${niceDate(localDate)}:`,
+        `• Rent you marked received: ${money(paid)}`,
+        `• Repairs: ${opened} new, ${closed} finished${selfFixed ? `, ${selfFixed} fixed by the tenant with our help` : ''}`,
+        `• Messages answered for you: ${msgs}`,
+      ];
+      if (pending.length) lines.push(`Waiting on you: ${pending.slice(0, 3).map((a) => `${a.title}${a.code ? ` (code ${a.code})` : ''}`).join('; ')}${pending.length > 3 ? ` and ${pending.length - 3} more` : ''}.`);
+      if (tasks.length) lines.push(`To-dos: ${tasks.length}, starting with "${tasks[0].title}".`);
+      if (!pending.length && !tasks.length) lines.push('Nothing needs you right now. Enjoy your week!');
+      await tellOwner(ctx, `report:${o.id}`, o.id, lines.join('\n'));
     }
-    return { owners: store.list('owners').length };
+    return { owners: owners.length };
   },
 };
 
@@ -51,16 +63,54 @@ export const onboarding: WorkflowDef<Services, { ownerId: string }> = {
   },
 };
 
+/** Plain words for each decision, used in texts and confirmations. */
+const LABELS: Record<string, string> = {
+  approve: 'Approve', decline: 'Decline', deny: 'Deny', dispute: 'Dispute the invoice',
+  received: 'Yes, it arrived', not_received: "No, it hasn't",
+  notify_fee: 'Apply the late fee', skip_fee: 'Skip the fee',
+  send_demand_notice: 'Send the 10-day demand', offer_payment_plan: 'Offer a payment plan', keep_waiting: 'Keep waiting',
+  offer_renewal: 'Offer the renewal', do_not_renew: "Don't renew",
+  i_will_arrange_it: "I'll arrange it", cancel_request: 'Cancel the request',
+  return_full: 'Return the full deposit', deductions_entered: 'Take deductions',
+  publish: 'Publish it', not_now: 'Not now', confirm: 'Confirm', send: 'Send it', cancel: 'Cancel',
+  exempt_tenancy_confirmed_by_attorney: 'Exempt (my attorney confirmed)',
+};
+export function optionLabel(option: string): string {
+  const s = LABELS[option] ?? option.replace(/_/g, ' ');
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** Letter, digit, letter (like "K4P"): never a real word, and unique among decisions still open. */
+export function newApprovalCode(store: Services['store']): string {
+  const L = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+  const D = '23456789';
+  const taken = new Set(store.list('approvals', (a) => a.status === 'pending').map((a) => a.code));
+  let code = '';
+  for (let i = 0; i < 500 && (!code || taken.has(code)); i++) code = L[randomInt(L.length)] + D[randomInt(D.length)] + L[randomInt(L.length)];
+  return code;
+}
+
+/** How to answer an approval by text: "Reply YES K4P (Approve) or NO K4P (Decline)." */
+export function replyHint(a: Pick<Approval, 'options' | 'code'>): string {
+  const code = a.code ?? '';
+  if (a.options.length === 2) return `Reply YES ${code} (${optionLabel(a.options[0])}) or NO ${code} (${optionLabel(a.options[1])}).`;
+  return `Reply with a number and ${code}: ${a.options.map((o, i) => `${i + 1} ${code} = ${optionLabel(o)}`).join(', ')}.`;
+}
+
 /** Called by the engine when an approval is created: text the owner a short code. */
 export async function notifyOwnerOfApproval(svc: Services, a: Approval): Promise<void> {
   const owner = svc.store.get('owners', a.ownerId);
   if (!owner) return;
-  const code = a.id.slice(-3).toUpperCase();
+  const code = newApprovalCode(svc.store);
+  svc.store.update('approvals', a.id, { code });
+  a.code = code;
   svc.store.kvSet('approvalCode', code, a.id);
-  const opts = a.options.length === 2 ? `Reply YES ${code} or NO ${code}` : `Open the app to choose`;
-  const body = `${svc.brand.name}: ${a.title}. ${a.body.replace(/\n•\s*/g, ' • ').replace(/\n+/g, ' ').slice(0, 300)} ${opts}, or open ${svc.cfg.publicUrl}/app#approvals`;
-  const to = owner.phone || owner.email;
-  const channel = owner.phone ? 'sms' : 'email';
-  const r = await svc.adapters.messaging.send({ channel, to, body });
+  const sms = !!owner.phone && owner.consents?.smsConsent !== false;
+  const to = sms ? owner.phone : owner.email;
+  const channel = sms ? 'sms' : 'email';
+  const hint = replyHint({ options: a.options, code });
+  const details = clip(a.body.replace(/\n•\s*/g, ' • ').replace(/\n+/g, ' '), Math.max(160, 560 - hint.length - a.title.length));
+  const body = `${svc.brand.name}: ${a.title}. ${details}\n${hint}`;
+  const r = await svc.adapters.messaging.send({ channel, to, body, subject: channel === 'email' ? `${svc.brand.name}: ${a.title}` : undefined });
   svc.store.insert('messages', { ownerId: owner.id, threadKey: addressKey(to), direction: 'out', channel, to, body, media: [], at: svc.clock.now().toISOString(), meta: { providerId: r.providerId, approvalId: a.id } });
 }
