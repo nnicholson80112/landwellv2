@@ -177,6 +177,7 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
     // "Thanks!" or a thumbs-up closes the loop; no reply needed and nothing for the owner.
     if (!media.length && /^(thanks?|thank you|thank u|thx|ty|tysm|thanks so much|thank you so much|much appreciated|appreciate it|got it|great|perfect|awesome|cool|sounds good|will do|👍|🙏|🙂|😊|❤️)[\s.!,]*(thanks?|thank you)?[\s.!]*$/iu.test(m.body.trim())) {
       await ctx.log('message.thanks', `${tenant ? tenant.name : 'A prospect'} said ${quote(m.body)}`, { actor: tenant ? 'tenant' : 'prospect' });
+      if (m.channel === 'voice') await reply("You're welcome!"); // a call can't just go quiet
       return { acknowledged: true };
     }
 
@@ -580,6 +581,7 @@ const MENU = [
 const CHAT_TTL_MS = 3 * 24 * 3600_000;
 
 function withMenu(text: string, channel: Channel): string {
+  if (channel === 'voice') return `${text} You can also say: send a pro, call me, it's fixed, or emergency.`;
   const menu = MENU.map((o) => `${o.key} ${o.label}`).join(' · ');
   return `${text}\n\n${channel === 'email' ? 'Reply with a number:' : 'Reply'} ${menu}`;
 }
@@ -590,12 +592,13 @@ function openRepairChat(store: C['store'], tenantId: string, now: Date): RepairC
 }
 
 export function menuChoice(body: string): Choice | undefined {
-  const t = body.trim().toLowerCase().replace(/[.!]+$/, '');
-  if (/^(1|send (a |someone|somebody|a pro|a plumber|help)\b.*|book (a pro|someone|it))$/.test(t)) return 'dispatch';
-  if (/^(2|call me( instead)?|please call me)$/.test(t)) return 'call';
-  if (/^(3|email me( instead)?|please email me)$/.test(t)) return 'email';
-  if (/^(4|fixed|it'?s fixed|it'?s working( now)?|all good( now)?)$/.test(t)) return 'fixed';
-  if (/^(9|emergency)$/.test(t)) return 'emergency';
+  // Also what people say on a call ("One.", "Please send someone", "Yeah, call me").
+  const t = body.trim().toLowerCase().replace(/[.!,]+/g, '').replace(/^(please|yes|yeah|yep|ok|okay|um|uh)\s+/, '').replace(/\s+please$/, '').trim();
+  if (/^(1|one|send (a |someone|somebody|a pro|a plumber|help|over)\b.*|book (a pro|someone|it)|get (a pro|someone) (out|over)( here)?)$/.test(t)) return 'dispatch';
+  if (/^(2|two|call me( instead| back)?|can you call me|have (him|her|them|the owner|the landlord) call me)$/.test(t)) return 'call';
+  if (/^(3|three|email me( instead)?)$/.test(t)) return 'email';
+  if (/^(4|four|fixed|it'?s fixed( now)?|it'?s working( now)?|all good( now)?|never ?mind( it'?s fixed)?|that (fixed|did) it|that worked)$/.test(t)) return 'fixed';
+  if (/^(9|nine|emergency|it'?s an emergency)$/.test(t)) return 'emergency';
   return undefined;
 }
 
