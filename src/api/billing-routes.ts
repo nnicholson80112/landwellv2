@@ -9,6 +9,8 @@
 //   Admin:    GET  /admin  · GET /api/admin/overview · POST /api/admin/offers · POST /api/admin/offers/:id/revoke
 //             (Authorization: Bearer <ADMIN_API_TOKEN>)
 
+import { TERMS_VERSION } from './legal.ts';
+import { clientIp } from './guard.ts';
 import type { ServerResponse } from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -114,7 +116,11 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
     if (!name) return fail(400, 'Please enter your name.');
     if (!validEmail(email)) return fail(400, 'Please enter a valid email.');
     if (!/^\+\d{10,15}$/.test(phone)) return fail(400, 'Please enter a mobile number, like 720-555-0123.');
+    const yes = (v: unknown) => v === true || v === 'yes' || v === 'on' || v === 'true';
+    if (!yes(b.agree)) return fail(400, 'Please agree to the Terms of service to continue.');
     const now = svc.clock.now();
+    // A record of what they agreed to and when (kept with the account).
+    const consents = { termsAcceptedAt: now.toISOString(), termsVersion: TERMS_VERSION, smsConsent: yes(b.smsConsent), smsConsentAt: yes(b.smsConsent) ? now.toISOString() : undefined, ip: clientIp(req) };
 
     let owner = svc.store.find('owners', (o) => cleanEmail(o.email) === email);
     if (owner?.billing?.status === 'active') return fail(409, 'That email already has an active Landwell account. Text us or reply to your welcome email for help.');
@@ -122,8 +128,10 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
     if (!owner) {
       owner = svc.store.insert('owners', {
         name, email, phone, plan: asPlan(b.plan, 'autopilot'), timezone: svc.cfg.tz, createdAt: now.toISOString(),
-        source: viaOffer?.kind === 'demo' ? 'demo' : 'web', onboarding: { status: 'not_booked', updatedAt: now.toISOString() },
+        source: viaOffer?.kind === 'demo' ? 'demo' : 'web', onboarding: { status: 'not_booked', updatedAt: now.toISOString() }, consents,
       });
+    } else {
+      owner = svc.store.update('owners', owner.id, { consents });
     }
     // Offers issued to this email before they had an account now belong to the account.
     for (const o of svc.store.list('offers', (x) => !x.ownerId && x.email === email)) svc.store.update('offers', o.id, { ownerId: owner.id });
@@ -175,6 +183,8 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
 <label for="p">Plan</label><select id="p" name="plan" style="width:100%;min-height:48px;border:1.5px solid #D8E1F2;border-radius:12px;padding:10px 14px;font:inherit">${plans.map((p) => `<option value="${p}" ${p === (owner?.plan ?? 'autopilot') ? 'selected' : ''}>${p[0].toUpperCase() + p.slice(1)}</option>`).join('')}</select>
 <label for="t">Billing</label><select id="t" name="term" style="width:100%;min-height:48px;border:1.5px solid #D8E1F2;border-radius:12px;padding:10px 14px;font:inherit">${o.terms.map((t) => `<option value="${t}">${termLabel(t)}</option>`).join('')}</select>
 <label for="d">Rental homes</label><input id="d" name="doors" type="number" min="1" max="500" value="${owner?.billing?.doors ?? 1}">
+<label class="check"><input type="checkbox" name="agree" value="yes" required><span>I agree to the <a href="/terms" target="_blank" rel="noopener">Terms of service</a> and the automatic monthly renewal, and I have read the <a href="/privacy" target="_blank" rel="noopener">Privacy policy</a> and <a href="/refunds" target="_blank" rel="noopener">Refund and cancellation policy</a>.</span></label>
+<label class="check"><input type="checkbox" name="smsConsent" value="yes"><span>Text me about my account, like repair approvals and tenant updates. Optional. Message frequency varies. Msg and data rates may apply. Reply STOP to opt out or HELP for help. Consent is not required to buy.</span></label>
 <button>Claim offer and check out</button></form>`));
   });
 

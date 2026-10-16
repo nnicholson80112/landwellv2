@@ -131,3 +131,43 @@ export class ResilientAI implements CommunicationAI {
     }
   }
 }
+
+/**
+ * Spending guard for any paid model. Caps model calls per owner per day and for the
+ * whole service per day, and trims very long messages before they reach the model.
+ * Over a cap it throws, so ResilientAI answers with the free rule-based AI instead:
+ * tenants still get a reply, and nobody can run up the AI bill by flooding messages.
+ */
+export class BudgetAI implements CommunicationAI {
+  name: string;
+  private inner: CommunicationAI;
+  private perOwner: number;
+  private total: number;
+  private day = '';
+  private counts = new Map<string, number>();
+  private all = 0;
+  onLimit?: (what: string) => void;
+  constructor(inner: CommunicationAI, opts: { perOwnerPerDay: number; totalPerDay: number }) {
+    this.inner = inner;
+    this.name = inner.name;
+    this.perOwner = opts.perOwnerPerDay;
+    this.total = opts.totalPerDay;
+  }
+  async respond(input: AIInput): Promise<AIResult> {
+    const today = new Date().toISOString().slice(0, 10);
+    if (today !== this.day) { this.day = today; this.counts.clear(); this.all = 0; }
+    const key = input.ownerId ?? 'none';
+    const used = this.counts.get(key) ?? 0;
+    if (this.all >= this.total) { if (this.all === this.total) this.onLimit?.(`service-wide daily AI limit (${this.total}) reached`); this.all++; throw new Error('AI daily limit reached'); }
+    if (used >= this.perOwner) { if (used === this.perOwner) this.onLimit?.(`owner ${key} reached the daily AI limit (${this.perOwner})`); this.counts.set(key, used + 1); throw new Error('owner AI daily limit reached'); }
+    this.counts.set(key, used + 1);
+    this.all++;
+    return this.inner.respond(trimInput(input));
+  }
+}
+
+/** Long messages cost more and are rarely needed in full: keep the first part of each. */
+export function trimInput(input: AIInput): AIInput {
+  const cut = (t: string, max: number) => (t.length > max ? t.slice(0, max) + ' [trimmed]' : t);
+  return { ...input, message: cut(input.message, 1500), history: input.history.slice(-8).map((h) => ({ ...h, body: cut(h.body, 600) })) };
+}

@@ -91,7 +91,7 @@ Website **Get started** → `POST /api/public/signup` (creates owner, attaches a
 - One `Dockerfile` (node:22-slim, no runtime dependencies). `railway.json` sets healthcheck `/health`.
 
 ### Railway variables (names only; values live in Railway, never in chat or git)
-**api:** `PORT=8787`, `PUBLIC_URL=https://${{RAILWAY_PUBLIC_DOMAIN}}`, `DATA_FILE=/data/landwell.json`, `TZ_DEFAULT=America/Denver`, `OWNER_API_TOKEN`, `ADMIN_API_TOKEN`, `AI_PROVIDER=http`, `AI_HTTP_URL=http://ai.railway.internal:8788/respond`, `AI_HTTP_TOKEN=${{ai.AI_SERVICE_TOKEN}}`, `DEV_TOOLS=true`, `SEED_DEMO=true`, `DEMO_OWNER_NAME=Nate`, `DEMO_OWNER_PHONE=+17209305782`, `DEMO_TENANT_PHONE=+13037481671`, `DEMO_VENDOR_NAME=GlassHouse Exteriors`, `DEMO_VENDOR_PHONE=+17209305782`, `DEMO_ADDRESS=7610 S Rosemary Cir`, `DEMO_CITY=Centennial`, `DEMO_ZIP=80112`, `DEMO_BEDS=3`, `DEMO_BATHS=2`, `DEMO_RENT=2750`, `STRIPE_SECRET_KEY` (sk_test), `STRIPE_WEBHOOK_SECRET` (whsec), `CALENDLY_URL`. Later: `CALENDLY_TOKEN`, `CALENDLY_WEBHOOK_SECRET`, `POSTMARK_TOKEN`, `EMAIL_FROM`, `EMAIL_WEBHOOK_SECRET`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`, `SEAM_API_KEY`.
+**api:** `PORT=8787`, `PUBLIC_URL=https://${{RAILWAY_PUBLIC_DOMAIN}}`, `DATA_FILE=/data/landwell.json`, `TZ_DEFAULT=America/Denver`, `OWNER_API_TOKEN`, `ADMIN_API_TOKEN`, `AI_PROVIDER=http`, `AI_HTTP_URL=http://ai.railway.internal:8788/respond`, `AI_HTTP_TOKEN=${{ai.AI_SERVICE_TOKEN}}`, `DEV_TOOLS=true`, `SEED_DEMO=true`, `DEMO_OWNER_NAME=Nate`, `DEMO_OWNER_PHONE=+17209305782`, `DEMO_TENANT_PHONE=+13037481671`, `DEMO_VENDOR_NAME=GlassHouse Exteriors`, `DEMO_VENDOR_PHONE=+17209305782`, `DEMO_ADDRESS=7610 S Rosemary Cir`, `DEMO_CITY=Centennial`, `DEMO_ZIP=80112`, `DEMO_BEDS=3`, `DEMO_BATHS=2`, `DEMO_RENT=2750`, `STRIPE_SECRET_KEY` (sk_test), `STRIPE_WEBHOOK_SECRET` (whsec), `CALENDLY_URL`. Later: `CALENDLY_TOKEN`, `CALENDLY_WEBHOOK_SECRET`, `POSTMARK_TOKEN`, `EMAIL_FROM`, `EMAIL_WEBHOOK_SECRET`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`, `SEAM_API_KEY`. Before launch: `BUSINESS_LEGAL_NAME`, `BUSINESS_ADDRESS`, `BUSINESS_EMAIL`, `BUSINESS_PHONE`, `LEGAL_EFFECTIVE_DATE`, then `LEGAL_REVIEWED=true` after attorney sign-off. Optional limits (defaults in `docs/SCALING.md`): `RL_*`, `AI_OWNER_DAILY_MAX`, `AI_DAILY_MAX` (also on **ai**, plus `AI_PER_MIN`).
 **ai:** `PORT=8788`, `AI_SERVICE_TOKEN`, `AI_MODEL_PRIMARY=anthropic`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL=claude-sonnet-5-5`, `AI_LOG_DIR=/data/ai-logs`, `AI_LOG_RETENTION_DAYS=90`.
 Random secret values: use the **Landwell Key Maker** page (link below) or a password manager. Anthropic key: 1-year expiry + a monthly spend limit in the Anthropic console.
 
@@ -104,10 +104,10 @@ Random secret values: use the **Landwell Key Maker** page (link below) or a pass
 
 ## 5. The codebase (`landwellv2`)
 
-TypeScript on **Node 22.6+**, run with `--experimental-strip-types`. **No runtime dependencies** (Node built-ins only). ~4,750 lines in `src/`. **31 tests pass.**
+TypeScript on **Node 22.6+**, run with `--experimental-strip-types`. **No runtime dependencies** (Node built-ins only). ~4,750 lines in `src/`. **35 tests pass.**
 
 ```
-npm test              # 31 tests: engine, guardrails, workflows end to end, API, billing, offers
+npm test              # 35 tests: engine, guardrails, workflows end to end, API, billing, offers
 npm run demo          # every workflow on sample data with a simulated month (86 runs, 0 failed)
 npm start             # API + website on http://localhost:8787 (token: dev-token locally)
 npm run ai            # AI service on :8788 (needs AI_SERVICE_TOKEN)
@@ -167,13 +167,14 @@ Owner **Nate** (phone `DEMO_OWNER_PHONE`, plan Autopilot). Home **7610 S Rosemar
 9. **Live AI test** through the voice webhook: Claude answers repairs, rent, tours and pet questions well; fair-housing question safely deflected. Found and fixed (in code, **not yet deployed**): "Court" in street names / tenant named "Sue" / "hearing a noise" were wrongly routed to the owner; AI told a tenant to call 911 for a leak; listed homes weren't stated as available.
 10. Name ideas (section 9).
 11. **(Oct 16) Repair chat:** tenants now talk a repair through first. The AI asks one question at a time and suggests only safe self-fixes. Every reply ends with the tenant's choices: **1 Send a pro · 2 Call me · 3 Email me · 4 It's fixed · 9 Emergency** (texts show them as numbers; `/play` shows tap buttons). Emergencies skip the chat. Flooding now gets shut-off help and a plumber with **no 911**; 911 is only for danger (gas, fire, smoke, CO, sparks, injury). Owners texting a normal question no longer get "couldn't match code". The AI says it's automated once per conversation. Code: `src/workflows/inbound-message.ts` (repair conversations), `src/ai/prompt.ts`. Recommended `ANTHROPIC_MODEL=claude-opus-5-5` on the **ai** service.
+12. **(Oct 16) Site, legal and protection pass.** Stripe test payment succeeded (`sub_1UREMAEtnoC4AY9tuDjNkxRc`, active). Site cleaned of vibe-coded patterns and unsupported claims; public demo-day deal removed; signup-window bug fixed; fonts self-hosted (zero third-party requests, no cookies). Draft `/privacy`, `/terms`, `/cookies`, `/refunds`, `/accessibility` pages; footer business details from Railway Variables (`BUSINESS_*`, `LEGAL_EFFECTIVE_DATE`, `LEGAL_REVIEWED`). Signup records Terms acceptance and optional SMS consent. Rate limits, AI daily caps, timeouts, size limits, security headers, in-memory compressed page cache (`src/api/guard.ts`). See `docs/LAUNCH-CHECKLIST.md` and `docs/SCALING.md`.
 
 ---
 
 ## 7. Current issues (in priority order)
 
 1. **Railway stopped auto-deploying.** The live app runs `ba5fce2`; commits `931e451`, `a95021d`, `931079a`, `bd20cc2`, `3740fa9` aren't live. **Cause found (Oct 14):** both services show the repo `landwellv2` + branch `main`, but say "Auto deploy unavailable" and "Could not load branches". Railway's GitHub app can't read the repo (it was likely only granted the deleted `Landwell` repo, and/or GitHub is asking Nate to verify his account). Fix: verify the GitHub account email, then GitHub → Settings → Applications → Railway → Configure → add `landwellv2`; then in Railway click Retry, and redeploy **api** and **ai**. A plain Redeploy rebuilds the old commit, so it doesn't help.
-2. **Stripe payment never completed.** The test checkout (`cs_test_a1TN…`) expired unpaid. Redo: website Get started (or `/play` → Landwell subscription) → pay with `4242 4242 4242 4242` → confirm the webhook delivered, `/play` shows "active", and the redirect lands on Calendly.
+2. ~~Stripe payment never completed~~ Done Oct 16: test checkout paid, subscription active, webhook and Calendly redirect worked.
 3. **A test owner "Nate Test"** (`nnicholson80112+landwelltest@gmail.com`, `own_5ce576233a684a24`) exists from the signup test. Because there are now 2 owners, inbound messages with no matching line number can't pick an owner (real Twilio messages include the dialed number, so this only affects tests without `To`). Fine to keep for billing tests; remove before real use.
 4. **Unprotected webhooks until Twilio/Postmark are connected:** with no `TWILIO_AUTH_TOKEN`, anyone can post to `/webhooks/twilio/*`. Acceptable for testing; set the token as soon as Twilio exists.
 5. ~~AI says "I'm an automated assistant" in every reply~~ Fixed Oct 16: once per conversation. **Attorney:** confirm once-per-conversation bot disclosure is enough.

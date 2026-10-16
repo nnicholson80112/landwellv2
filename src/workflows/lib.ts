@@ -9,7 +9,7 @@ import type { Store } from '../store/store.ts';
 export type C = Ctx<Services>;
 
 export const money = (c: Cents | undefined): string =>
-  c === undefined ? '—' : '$' + (c / 100).toLocaleString('en-US', { minimumFractionDigits: c % 100 ? 2 : 0, maximumFractionDigits: 2 });
+  c === undefined ? 'n/a' : '$' + (c / 100).toLocaleString('en-US', { minimumFractionDigits: c % 100 ? 2 : 0, maximumFractionDigits: 2 });
 
 export const firstName = (n: string): string => n.split(/\s+/)[0];
 
@@ -70,7 +70,9 @@ export async function tellVendor(ctx: C, label: string, vendor: Vendor, body: st
 }
 export async function tellOwner(ctx: C, label: string, ownerId: string, body: string): Promise<void> {
   const o = ctx.store.get('owners', ownerId);
-  if (o) await send(ctx, { label, ownerId, to: o.phone || o.email, channel: o.phone ? 'sms' : 'email', body });
+  // Text only owners who agreed to texts at signup (seeded and older accounts have no record and keep texts).
+  const sms = !!o?.phone && o.consents?.smsConsent !== false;
+  if (o) await send(ctx, { label, ownerId, to: sms ? o.phone : o.email, channel: sms ? 'sms' : 'email', body });
 }
 
 /** Facts the AI is allowed to state for this conversation. */
@@ -93,7 +95,7 @@ export function buildFacts(store: Store, ownerId: string, propertyId?: string, p
       facts.push({ label: `Security deposit for ${name}`, value: money(h.deposit) });
       facts.push({ label: `Size of ${name}`, value: `${h.beds} bed / ${h.baths} bath` });
       facts.push({ label: `Application for ${name}`, value: `Apply here: ${publicUrl}/apply/${h.id}` });
-      if (rules && rules.showingMode !== 'owner') facts.push({ label: `Showings for ${name}`, value: `Self-guided tours run daily ${hourLabel(rules.showingHours.start)}–${hourLabel(rules.showingHours.end)} after a quick ID check.` });
+      if (rules && rules.showingMode !== 'owner') facts.push({ label: `Showings for ${name}`, value: `Self-guided tours run daily ${hourLabel(rules.showingHours.start)} to ${hourLabel(rules.showingHours.end)} after a quick ID check.` });
       else facts.push({ label: `Showings for ${name}`, value: 'Reply with a few days and times that work and the owner will confirm a showing.' });
     }
     for (const [k, v] of Object.entries(h.facts)) facts.push({ label: `${k} (${name})`, value: v });

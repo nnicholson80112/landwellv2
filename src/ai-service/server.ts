@@ -26,7 +26,8 @@ import { createServer } from 'node:http';
 import { appendFileSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AIInput, AIResult, CommunicationAI } from '../ai/types.ts';
-import { AnthropicAI, OpenAICompatAI, normalize } from '../ai/providers.ts';
+import { AnthropicAI, BudgetAI, OpenAICompatAI, normalize } from '../ai/providers.ts';
+import { RateLimiter, safeEqual, tooMany } from '../api/guard.ts';
 import { RuleBasedAI } from '../ai/rules.ts';
 import { postcheck, precheck, SAFE_REPLY } from '../ai/guardrails.ts';
 
@@ -105,22 +106,29 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const token = env.AI_SERVICE_TOKEN;
   if (!token) { console.error('Set AI_SERVICE_TOKEN'); process.exit(1); }
   const ai = new LandwellAI({
-    chain: [modelFrom(env.AI_MODEL_PRIMARY ?? 'anthropic', env), modelFrom(env.AI_MODEL_BACKUP, env)].filter((x): x is CommunicationAI => !!x),
+    // Each paid model gets its own daily cap (a second line of defense behind the api service's caps).
+    chain: [modelFrom(env.AI_MODEL_PRIMARY ?? 'anthropic', env), modelFrom(env.AI_MODEL_BACKUP, env)]
+      .filter((x): x is CommunicationAI => !!x)
+      .map((m) => { const b = new BudgetAI(m, { perOwnerPerDay: Number(env.AI_OWNER_DAILY_MAX) || 400, totalPerDay: Number(env.AI_DAILY_MAX) || 20_000 }); b.onLimit = (w) => console.error(`[ai] ${w}`); return b; }),
     logDir: env.AI_LOG_DIR ?? './data/ai-logs',
   });
   const retention = Number(env.AI_LOG_RETENTION_DAYS ?? 90);
   ai.prune(retention);
   setInterval(() => ai.prune(retention), 86_400_000);
 
+  // Burst guard: at most AI_PER_MIN model requests a minute across the whole service.
+  const perMin = new RateLimiter({ capacity: Number(env.AI_PER_MIN) || 600, perMs: 60_000 });
   const server = createServer(async (req, res) => {
     const send = (code: number, data: unknown) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(data)); };
     if (req.url === '/health') return send(200, { ok: true });
-    if (req.headers.authorization !== `Bearer ${token}`) return send(401, { error: 'unauthorized' });
+    if (!safeEqual(String(req.headers.authorization ?? ''), `Bearer ${token}`)) return send(401, { error: 'unauthorized' });
     if (req.method === 'GET' && req.url === '/stats') return send(200, { ...ai.stats, avgMs: ai.stats.requests ? Math.round(ai.stats.totalMs / ai.stats.requests) : 0 });
     if (req.method !== 'POST' || req.url !== '/respond') return send(404, { error: 'not found' });
     try {
+      const wait = perMin.take('all');
+      if (wait) return tooMany(res, wait, 'AI service busy');
       let raw = '';
-      for await (const c of req) raw += c;
+      for await (const c of req) { raw += c; if (raw.length > 200_000) return send(413, { error: 'too large' }); }
       const input = JSON.parse(raw) as AIInput;
       if (!input?.message || !Array.isArray(input.allowedIntents)) return send(400, { error: 'invalid AIInput' });
       send(200, await ai.respond(input));
@@ -128,7 +136,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       console.error(e);
       send(500, { error: 'server error' });
     }
-  }).listen(Number(env.PORT ?? 8788), () => console.log(`Landwell AI service on :${env.PORT ?? 8788} (models: ${env.AI_MODEL_PRIMARY ?? 'anthropic'}${env.AI_MODEL_BACKUP ? ' → ' + env.AI_MODEL_BACKUP : ''} → rules)`));
+  });
+  server.requestTimeout = 60_000;
+  server.headersTimeout = 20_000;
+  server.listen(Number(env.PORT ?? 8788), () => console.log(`Landwell AI service on :${env.PORT ?? 8788} (models: ${env.AI_MODEL_PRIMARY ?? 'anthropic'}${env.AI_MODEL_BACKUP ? ' → ' + env.AI_MODEL_BACKUP : ''} → rules)`));
   // Railway sends SIGTERM when a new deploy replaces this one; exit cleanly so it isn't marked Crashed.
   const stop = () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 5_000).unref(); };
   process.on('SIGTERM', stop);

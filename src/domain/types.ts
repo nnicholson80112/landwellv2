@@ -20,6 +20,8 @@ export interface Owner {
   onboarding?: OwnerOnboarding;
   referralCode?: string; // their personal code for referring other owners
   source?: 'demo' | 'web' | 'seed';
+  /** What the owner agreed to at signup, and when. smsConsent false → owner alerts go by email. */
+  consents?: { termsAcceptedAt?: ISO; termsVersion?: string; smsConsent?: boolean; smsConsentAt?: ISO; ip?: string };
   createdAt: ISO;
 }
 

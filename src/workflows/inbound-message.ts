@@ -79,7 +79,7 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
     /* ---------------- vendors ---------------- */
     if (party.role === 'vendor' || sharedVendor) {
       const vendor = party.role === 'vendor' ? party.vendor : sharedVendor!;
-      const ai = await ctx.step('ai', () => svc.ai.respond({ channel: m.channel, senderRole: 'vendor', senderName: vendor.name, message: m.body, mediaCount: media.length, history: [], facts: [], allowedIntents: ALLOWED.vendor, ownerFirstName: firstName(owner.name), brandName: svc.brand.name }));
+      const ai = await ctx.step('ai', () => svc.ai.respond({ ownerId, channel: m.channel, senderRole: 'vendor', senderName: vendor.name, message: m.body, mediaCount: media.length, history: [], facts: [], allowedIntents: ALLOWED.vendor, ownerFirstName: firstName(owner.name), brandName: svc.brand.name }));
       const workOrderId = store.kvGet<string>('vendorLast', vendor.id);
       const e = ai.entities;
       await ctx.emit('vendor.replied', {
@@ -162,7 +162,7 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
     }
 
     const ai: AIResult = await ctx.step('ai', () =>
-      svc.ai.respond({ channel: m.channel, senderRole: role, senderName: tenant?.name, message: m.body, mediaCount: media.length, history, facts, allowedIntents: ALLOWED[role], ownerFirstName: firstName(owner.name), brandName: svc.brand.name }),
+      svc.ai.respond({ ownerId, channel: m.channel, senderRole: role, senderName: tenant?.name, message: m.body, mediaCount: media.length, history, facts, allowedIntents: ALLOWED[role], ownerFirstName: firstName(owner.name), brandName: svc.brand.name }),
     );
     let text = ai.reply;
     const check = postcheck(text, facts);

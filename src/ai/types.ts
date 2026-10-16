@@ -45,6 +45,8 @@ export interface AIInput {
   allowedIntents: Intent[];
   ownerFirstName: string;
   brandName: string;
+  /** Which owner's account this is for, so AI use can be capped per account. */
+  ownerId?: string;
 }
 
 export interface AIEntities {

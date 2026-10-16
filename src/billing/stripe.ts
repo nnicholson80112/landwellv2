@@ -70,8 +70,8 @@ export class StripeBilling {
       success_url: `${this.base}/billing/done?session={CHECKOUT_SESSION_ID}`,
       cancel_url: `${this.base}/#pricing`,
       'custom_text[submit][message]': i.term === 'contract12'
-        ? 'You are agreeing to a 12-month Landwell agreement, billed monthly per door. Your first month is charged today.'
-        : 'Month-to-month: billed monthly per door, cancel anytime. Your first month is charged today.',
+        ? 'You are agreeing to a 12-month Landwell agreement, billed monthly per door. Your first month is charged today and each month after until the agreement ends.'
+        : 'Month-to-month: your first month is charged today, then this plan renews automatically every month at the price shown until you cancel. Cancel anytime by emailing us; it takes effect at the end of the paid month.',
     });
     if (i.offer) {
       // One single-use coupon per offer: it can't be reused, shared or found by anyone else.

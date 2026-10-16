@@ -59,7 +59,7 @@ export const showing: WorkflowDef<Services, { ownerId: string; propertyId: strin
     // Self-guided: verify ID first.
     let sh: Showing = await ctx.step('showing', () => store.insert('showings', { ownerId: input.ownerId, propertyId: prop.id, prospectId: prospect.id, at: '', mode: 'self', idVerified: false, status: 'requested' }));
     const idv = await ctx.step('idv', () => svc.adapters.identity.createVerification({ refId: sh.id }));
-    await tell('idv', `Great! Self-guided tours of ${prop.address} run daily ${hourLabel(rules.showingHours.start)}–${hourLabel(rules.showingHours.end)}. First, verify your ID here (takes about a minute): ${idv.url}`);
+    await tell('idv', `Great! Self-guided tours of ${prop.address} run daily ${hourLabel(rules.showingHours.start)} to ${hourLabel(rules.showingHours.end)}. First, verify your ID here (takes about a minute): ${idv.url}`);
     const verified = await ctx.waitFor('identity.verified', { refId: sh.id }, { timeoutMs: DAY, label: 'Waiting for the prospect to verify ID' });
     if (!verified) {
       await ctx.step('cancel-noid', () => store.update('showings', sh.id, { status: 'cancelled' }));

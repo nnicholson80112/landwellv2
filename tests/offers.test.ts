@@ -79,7 +79,9 @@ test('API: web signup gets a welcome offer and a discounted checkout; admin, off
     return new Response(JSON.stringify({ id: 'cs_test_1', url: 'https://checkout.stripe.com/c/cs_test_1' }));
   }) as typeof fetch;
   try {
-    const r = await fetch(`${base}/api/public/signup`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Pat Lee', email: 'Pat@Example.com', phone: '720-555-0142', doors: 3, plan: 'autopilot', term: 'monthly' }) });
+    const signup = (extra: object) => fetch(`${base}/api/public/signup`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Pat Lee', email: 'Pat@Example.com', phone: '720-555-0142', doors: 3, plan: 'autopilot', term: 'monthly', ...extra }) });
+    assert.equal((await signup({})).status, 400, 'terms must be accepted');
+    const r = await signup({ agree: true, smsConsent: false });
     const out = await r.json();
     assert.equal(r.status, 200, JSON.stringify(out));
     assert.equal(out.offer.kind, 'web_intro');
@@ -88,6 +90,8 @@ test('API: web signup gets a welcome offer and a discounted checkout; admin, off
     assert.ok(stripeCalls.some((c) => c.includes('discounts[0][coupon]=coupon_1') && !c.includes('allow_promotion_codes')), 'no public promo codes');
     const pat = store.find('owners', (o) => o.email === 'pat@example.com')!;
     assert.equal(pat.source, 'web');
+    assert.ok(pat.consents?.termsAcceptedAt && pat.consents.termsVersion, 'terms acceptance recorded');
+    assert.equal(pat.consents?.smsConsent, false, 'texts stay off unless they opt in');
 
     // After checkout: straight to Calendly with name/email filled in and the account id for matching.
     const done = await fetch(`${base}/billing/done?session=cs_test_1`, { redirect: 'manual' });
