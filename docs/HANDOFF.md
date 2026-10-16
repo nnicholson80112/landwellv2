@@ -188,6 +188,7 @@ Owner **Nate** (phone `DEMO_OWNER_PHONE`, plan Autopilot). Home **7610 S Rosemar
 ## 8. What's next (future state)
 
 **Nate's call (Oct 16):** nail the workflows and make the product stand out *before* forming the LLC, picking the name, getting a business email or setting spend limits. Nothing goes public until those are done. For the public address, use a registered agent and/or virtual mailbox (never a family home).
+**Website design:** Nate asked for the "TasteSkill" plugin; it isn't in his plugin catalog. Closest options offered: Anthropic's **frontend-design** plugin (and the **Design** plugin for critique and accessibility review). Use whichever he installed for the next site redesign, keeping the rules in `docs/LAUNCH-CHECKLIST.md` (no pills, gradients, fake claims, em dashes).
 **AI cost:** Nate wants it cheaper than ~3 cents/message. Plan: route routine messages to Claude Haiku 5.5 and keep Opus/Sonnet for repair troubleshooting, cache the system prompt, skip the AI for menu replies, and log real token usage per message to measure.
 
 
