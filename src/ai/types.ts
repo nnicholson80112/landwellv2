@@ -61,6 +61,8 @@ export interface AIEntities {
   vendorInvoice?: number; // dollars
   beds?: number;
   maxRent?: number; // dollars
+  /** Repairs: keep troubleshooting with the tenant, send a pro now, or the tenant fixed it. */
+  repairAction?: 'troubleshoot' | 'dispatch' | 'resolved';
 }
 
 export interface AIResult {

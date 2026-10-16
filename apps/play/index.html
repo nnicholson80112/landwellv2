@@ -34,6 +34,8 @@ button.sun{background:var(--sun);color:#0E1B33}
 .m.in{align-self:flex-start}.m.in .b{background:var(--tint);border-bottom-left-radius:4px}
 .m.out{align-self:flex-end}.m.out .w{text-align:right}.m.out .b{background:var(--brand);color:var(--brand-ink);border-bottom-right-radius:4px}
 .m.out.owner .b{background:var(--sun);color:#0E1B33}
+[hidden]{display:none!important}
+.qr{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;margin-top:6px}.qr span{font-size:12px;opacity:.7;align-self:center}.qr button{padding:6px 12px;font-size:13px}
 .ap{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px;background:var(--sun-soft)}
 .ap b{display:block}.ap p{margin:6px 0 0;font-size:14px;color:var(--muted);white-space:pre-wrap}
 .log{font-size:13px;color:var(--muted);display:grid;gap:6px;max-height:300px;overflow-y:auto}
@@ -52,7 +54,7 @@ button.sun{background:var(--sun);color:#0E1B33}
       <div class="card">
         <h2>Send a message</h2>
         <label for="as">Send as</label><select id="as"></select>
-        <label for="custom" id="customL" hidden>Prospect phone number</label><input id="custom" hidden placeholder="+13035550123">
+        <label for="custom" id="customL" hidden>Prospect phone number</label><input id="custom" hidden placeholder="Made-up number, e.g. 3035550123">
         <label for="msg">Message</label><textarea id="msg" placeholder="The kitchen faucet is leaking"></textarea>
         <label class="chk"><input type="checkbox" id="photo"> Attach a sample photo</label>
         <div class="row"><button id="send">Send</button></div>
@@ -97,7 +99,7 @@ async function api(path, body) {
   if (r.status === 401) { toast('That token was not accepted'); throw new Error('401'); }
   return r.json();
 }
-const norm = (p) => { const d = String(p || '').replace(/[^\d+]/g, ''); return d.startsWith('+') ? d : d.length === 10 ? '+1' + d : d; };
+const norm = (p) => { if (String(p || '').includes('@')) return String(p).trim().toLowerCase(); const d = String(p || '').replace(/[^\d+]/g, ''); return d.startsWith('+') ? d : d.length === 10 ? '+1' + d : d; };
 async function loadPeople() {
   const [dash, tenants, vendors] = await Promise.all([api('/api/dashboard'), api('/api/tenants'), api('/api/vendors')]);
   ownerPhone = norm(dash.owner.phone);
@@ -106,13 +108,13 @@ async function loadPeople() {
   const add = (phone, label) => { const k = norm(phone); people[k] = people[k] ? people[k] + ' / ' + label : label; };
   add(dash.owner.phone, 'You (owner)');
   opts.push([dash.owner.phone, 'You (owner) — approve with "YES CODE"']);
-  for (const t of tenants.filter((t) => t.status !== 'former')) { add(t.phone, 'Tenant ' + t.name); opts.push([t.phone, 'Tenant · ' + t.name]); }
+  for (const t of tenants.filter((t) => t.status !== 'former')) { add(t.phone, 'Tenant ' + t.name); if (t.email) add(t.email, 'Tenant ' + t.name + ' (email)'); opts.push([t.phone, 'Tenant · ' + t.name]); }
   for (const v of vendors) { add(v.phone, v.name); if (norm(v.phone) !== ownerPhone) opts.push([v.phone, 'Vendor · ' + v.name]); else opts[0][1] = 'You (owner) + ' + v.name + ' — same phone'; }
   opts.push(['custom', 'New prospect (enter a number)']);
   $('#as').innerHTML = opts.map(([p, l]) => `<option value="${esc(p)}">${esc(l)}</option>`).join('');
 }
 $('#as').addEventListener('change', () => { const c = $('#as').value === 'custom'; $('#custom').hidden = !c; $('#customL').hidden = !c; });
-const SAMPLES = ['The back bedroom window screen is torn and the windows are filthy', 'YES Wed 10-12 $180', 'Done, all set. $180', 'Is the place still available? Do you allow dogs?', 'Can I tour it this weekend?', 'Is it a safe neighborhood?', 'I smell gas in the kitchen', 'When is rent due?'];
+const SAMPLES = ['The kitchen sink is leaking', 'Water is pouring out from under the dishwasher', 'The back bedroom window screen is torn and the windows are filthy', 'YES Wed 10-12 $180', 'Done, all set. $180', 'Is the place still available? Do you allow dogs?', 'Can I tour it this weekend?', 'Is it a safe neighborhood?', 'I smell gas in the kitchen', 'When is rent due?'];
 $('#samples').innerHTML = SAMPLES.map((s) => `<button class="ghost" data-s="${esc(s)}">${esc(s.length > 28 ? s.slice(0, 26) + '…' : s)}</button>`).join('');
 $('#samples').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) $('#msg').value = b.dataset.s; });
 $('#send').addEventListener('click', async () => {
@@ -122,6 +124,12 @@ $('#send').addEventListener('click', async () => {
   $('#send').disabled = true;
   try { await api('/api/dev/inbound', { from, body, media: $('#photo').checked ? ['https://placehold.co/600x400?text=Tenant+photo'] : [] }); $('#msg').value = ''; $('#photo').checked = false; await refresh(); }
   finally { $('#send').disabled = false; }
+});
+$('#feed').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-qr]'); if (!b) return;
+  b.disabled = true;
+  const from = b.dataset.qrFrom, channel = from.includes('@') ? 'email' : 'sms';
+  try { await api('/api/dev/inbound', { from, channel, body: b.dataset.qr, media: [] }); await refresh(); } finally { b.disabled = false; }
 });
 async function decide(id, decision) { await api('/api/approvals/' + id, { decision }); toast('Decision recorded'); refresh(); }
 $('#approvals').addEventListener('click', (e) => { const b = e.target.closest('button[data-ap]'); if (b) decide(b.dataset.ap, b.dataset.d); });
@@ -172,12 +180,15 @@ async function refresh() {
   if (!token) return;
   const [msgs, dash] = await Promise.all([api('/api/messages'), api('/api/dashboard')]);
   msgs.sort((a, b) => a.at.localeCompare(b.at));
+  const latestTo = {}; for (const m of msgs) if (m.direction === 'out') latestTo[norm(m.to)] = m;
   const feed = $('#feed'); const atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 40;
   feed.innerHTML = msgs.slice(-150).map((m) => {
     const who = people[norm(m.direction === 'in' ? m.from : m.to)] || (m.direction === 'in' ? m.from : m.to) || 'Prospect';
     const owner = m.direction === 'out' && norm(m.to) === ownerPhone;
     const when = new Date(m.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-    return `<div class="m ${m.direction}${owner ? ' owner' : ''}"><div class="w">${m.direction === 'in' ? esc(who) : 'Landwell → ' + esc(who)} · ${m.channel} · ${when}</div><div class="b">${esc(m.body)}${m.media?.length ? ' [photo]' : ''}</div></div>`;
+    // The tenant's repair choices: buttons on the newest message to them that offers any.
+    const opts = m.meta?.options && m === latestTo[norm(m.to)] ? `<div class="qr"><span>${esc(who)} can tap:</span>${m.meta.options.map((o) => `<button class="ghost" data-qr-from="${esc(m.to)}" data-qr="${esc(o.key)}">${esc(o.label)}</button>`).join('')}</div>` : '';
+    return `<div class="m ${m.direction}${owner ? ' owner' : ''}"><div class="w">${m.direction === 'in' ? esc(who) : 'Landwell → ' + esc(who)} · ${m.channel} · ${when}</div><div class="b">${esc(m.body)}${m.media?.length ? ' [photo]' : ''}</div>${opts}</div>`;
   }).join('') || '<p class="muted">No messages yet. Send one on the left.</p>';
   if (atBottom) feed.scrollTop = feed.scrollHeight;
   $('#approvals').innerHTML = dash.approvals.length ? dash.approvals.map((a) => `<div class="ap"><b>${esc(a.title)}</b><p>${esc(a.body)}</p><p>Text code: <b style="display:inline">${esc(a.id.slice(-3).toUpperCase())}</b></p><div class="row">${a.options.map((o, i) => `<button class="${i ? 'ghost' : 'sun'}" data-ap="${a.id}" data-d="${esc(o)}">${esc(o.replace(/_/g, ' '))}</button>`).join('')}</div></div>`).join('') : '<p class="muted">Nothing is waiting on you.</p>';

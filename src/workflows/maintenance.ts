@@ -57,7 +57,7 @@ export const maintenance: WorkflowDef<Services, RepairInput> = {
     await upd({ status: 'triaged' }, 'triaged');
 
     if (input.urgency === 'emergency') {
-      await tellOwner(ctx, 'emergency', input.ownerId, `EMERGENCY at ${address}: "${input.summary}". Contacting your emergency vendor now. Tenant was told to call 911 if anyone is in danger.`);
+      await tellOwner(ctx, 'emergency', input.ownerId, `EMERGENCY at ${address}: "${input.summary}". Contacting your emergency vendor now.${tenant?.phone ? ` ${tenant.name}: ${tenant.phone}.` : ''}`);
     }
 
     // 2. Find a vendor. Preferred and trade-matched first; emergency-capable for emergencies.

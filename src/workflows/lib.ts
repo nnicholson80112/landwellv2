@@ -45,10 +45,10 @@ export function identify(store: Store, from: string, ownerHint?: string): Party 
 }
 
 /** Send a message exactly once per run (keyed by label) and record it. */
-export async function send(ctx: C, m: { label: string; ownerId?: string; to: string; channel: Channel; body: string; subject?: string }): Promise<void> {
+export async function send(ctx: C, m: { label: string; ownerId?: string; to: string; channel: Channel; body: string; subject?: string; meta?: Record<string, unknown> }): Promise<void> {
   await ctx.step(`send:${m.label}`, async () => {
     const r = await ctx.svc.adapters.messaging.send({ channel: m.channel, to: m.to, body: m.body, subject: m.subject });
-    ctx.store.insert('messages', { ownerId: m.ownerId, threadKey: addressKey(m.to), direction: 'out', channel: m.channel, to: m.to, body: m.body, media: [], at: ctx.svc.clock.now().toISOString(), meta: { providerId: r.providerId, runId: ctx.runId } });
+    ctx.store.insert('messages', { ownerId: m.ownerId, threadKey: addressKey(m.to), direction: 'out', channel: m.channel, to: m.to, body: m.body, media: [], at: ctx.svc.clock.now().toISOString(), meta: { ...m.meta, providerId: r.providerId, runId: ctx.runId } });
     return r.providerId;
   });
 }

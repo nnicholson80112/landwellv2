@@ -16,6 +16,6 @@ current issues (in priority order) and what's next.
 - `LIST_PRICE` / `BASE_PRICE` in `src/billing/offers.ts` must match the Stripe prices (lookup keys `landwell_<plan>_<monthly|contract12>`).
 
 ## Before every commit
-`npm test` (25 tests), `npm run typecheck`, and `npm run demo` should show 0 failed runs.
+`npm test` (31 tests), `npm run typecheck`, and `npm run demo` should show 0 failed runs.
 After editing `apps/site/site.body.html` run `npm run build:site`; after workflow changes run `npm run build:review`.
 Pushing to `main` deploys to Railway (both `api` and `ai` services).

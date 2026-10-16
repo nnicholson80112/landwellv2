@@ -9,14 +9,19 @@
 //               then the communication AI classifies and drafts a reply
 //               then guardrails check the draft
 //               then hand the request to the right workflow (repair, showing, renewal...)
+//
+//  Repairs are a conversation first: the AI helps the tenant pin down the problem
+//  and try safe fixes, and every reply carries the tenant's choices
+//  (1 send a pro · 2 call me · 3 email me · 4 it's fixed · 9 emergency).
+//  Emergencies skip the chat and dispatch at once.
 
 import type { WorkflowDef } from '../engine/engine.ts';
 import type { Services } from '../services.ts';
-import type { Channel } from '../domain/types.ts';
+import type { Channel, Owner, Tenant, Urgency } from '../domain/types.ts';
 import type { AIResult, Intent, SenderRole } from '../ai/types.ts';
 import { SAFE_REPLY, postcheck, precheck } from '../ai/guardrails.ts';
 import { guessTrade, summarize } from '../ai/rules.ts';
-import { addressKey, buildFacts, firstName, identify, send, tellOwner, type C } from './lib.ts';
+import { addressKey, buildFacts, firstName, identify, propertyName, send, tellOwner, type C } from './lib.ts';
 
 export interface InboundPayload {
   from: string;
@@ -53,7 +58,7 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
     await ctx.step('record', () =>
       store.insert('messages', { ownerId, threadKey: addressKey(m.from), direction: 'in', channel: m.channel, from: m.from, to: m.to, body: m.body, media, at: svc.clock.now().toISOString(), meta: { role: party.role } }),
     );
-    const reply = (body: string) => send(ctx, { label: 'reply', ownerId, to: m.from, channel: m.channel, body, subject: m.subject ? `Re: ${m.subject}` : undefined });
+    const reply = (body: string, meta?: Record<string, unknown>) => send(ctx, { label: 'reply', ownerId, to: m.from, channel: m.channel, body, subject: m.subject ? `Re: ${m.subject}` : undefined, meta });
 
     /* ---------------- owner commands ---------------- */
     // One phone can be both the owner and a vendor (an owner who runs a trade business).
@@ -102,6 +107,11 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
         return { attachedPhotoTo: waitingWo };
       }
     }
+    // A tenant picking one of the repair choices ("1", "call me", "9"...).
+    const chat = tenant ? openRepairChat(store, tenant.id, svc.clock.now()) : undefined;
+    const choice = chat ? menuChoice(m.body) : undefined;
+    if (tenant && chat && choice) return repairChoice(ctx, choice, chat, tenant, owner, m, reply);
+
     // A prospect choosing a showing slot ("2").
     if (prospectId && /^\s*[1-3]\s*$/.test(m.body)) {
       const showingId = store.kvGet<string>('showingChoice', prospectId);
@@ -124,7 +134,9 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
     const propertyId = tenant?.propertyId ?? (prospectId ? store.get('prospects', prospectId)?.interestedIn : undefined);
 
     if (pre.emergency && tenant) {
-      await reply(/\bgas\b|carbon monoxide/i.test(m.body) ? SAFE_REPLY.gas! : SAFE_REPLY.emergency!);
+      const water = /\b(flood\w*|burst pipe|water|leak\w*|sewage)\b/i.test(m.body);
+      await reply(/\bgas\b|carbon monoxide/i.test(m.body) ? SAFE_REPLY.gas! : pre.danger ? SAFE_REPLY.emergency! : water ? SAFE_REPLY.water! : SAFE_REPLY.urgent_repair!);
+      if (chat) await ctx.step('chat-close', () => store.kvDelete('repairChat', tenant.id));
       await ctx.emit('maintenance.requested', { ownerId, propertyId: tenant.propertyId, tenantId: tenant.id, summary: summarize(m.body), trade: guessTrade(m.body), urgency: 'emergency', photos: media });
       await ctx.log('message.emergency', `Emergency reported by ${tenant.name}: "${m.body}"`, { actor: 'tenant' });
       return { intent: 'emergency' };
@@ -146,6 +158,7 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
     if (tenant) {
       const open = store.list('workOrders', (w) => w.tenantId === tenant.id && !['paid', 'cancelled', 'completed'].includes(w.status));
       for (const w of open) facts.push({ label: `Open repair: ${w.summary.slice(0, 60)}`, value: w.scheduledFor ? `scheduled ${w.scheduledFor}` : `status: ${w.status.replace(/_/g, ' ')}` });
+      if (chat) facts.push({ label: 'Problem we are talking through now (no pro booked yet)', value: chat.summary });
     }
 
     const ai: AIResult = await ctx.step('ai', () =>
@@ -169,11 +182,33 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
 
     switch (ai.intent) {
       case 'maintenance_request':
-        if (tenant) await ctx.emit('maintenance.requested', { ownerId, propertyId: tenant.propertyId, tenantId: tenant.id, summary: ai.entities.summary ?? m.body, trade: ai.entities.trade ?? 'general', urgency: ai.entities.urgency ?? 'routine', photos: media });
+      case 'maintenance_update': {
+        if (!tenant) break;
+        const action = ai.entities.repairAction ?? (ai.intent === 'maintenance_request' ? 'dispatch' : chat ? 'troubleshoot' : undefined);
+        const summary = ai.entities.summary ?? chat?.summary ?? summarize(m.body);
+        if (action === 'troubleshoot') {
+          const next: RepairChat = { summary, trade: ai.entities.trade ?? chat?.trade ?? guessTrade(m.body), urgency: ai.entities.urgency === 'urgent' ? 'urgent' : chat?.urgency ?? 'routine', photos: [...(chat?.photos ?? []), ...media], startedAt: chat?.startedAt ?? svc.clock.now().toISOString() };
+          await ctx.step('chat-open', () => store.kvSet('repairChat', tenant.id, next));
+          if (!handoff) {
+            await reply(withMenu(text, m.channel), { options: MENU });
+            text = '';
+          }
+        } else if (action === 'resolved') {
+          if (chat) await ctx.step('chat-close', () => store.kvDelete('repairChat', tenant.id));
+          await ctx.log('repair.self-fixed', `${tenant.name} fixed it without a pro: "${summary}"`, { actor: 'tenant' });
+        } else if (action === 'dispatch') {
+          if (chat) await ctx.step('chat-close', () => store.kvDelete('repairChat', tenant.id));
+          await ctx.emit('maintenance.requested', { ownerId, propertyId: tenant.propertyId, tenantId: tenant.id, summary, trade: ai.entities.trade ?? chat?.trade ?? 'general', urgency: ai.entities.urgency ?? chat?.urgency ?? 'routine', photos: [...(chat?.photos ?? []), ...media] });
+        }
         break;
+      }
       case 'emergency':
-        if (tenant) await ctx.emit('maintenance.requested', { ownerId, propertyId: tenant.propertyId, tenantId: tenant.id, summary: summarize(m.body), trade: ai.entities.trade ?? guessTrade(m.body), urgency: 'emergency', photos: media });
-        text = SAFE_REPLY.emergency!;
+        if (tenant) {
+          if (chat) await ctx.step('chat-close', () => store.kvDelete('repairChat', tenant.id));
+          await ctx.emit('maintenance.requested', { ownerId, propertyId: tenant.propertyId, tenantId: tenant.id, summary: summarize(m.body), trade: ai.entities.trade ?? guessTrade(m.body), urgency: 'emergency', photos: [...(chat?.photos ?? []), ...media] });
+        }
+        // Danger gets the fixed 911 wording; property emergencies keep the AI's checked reply.
+        if (precheck(m.body).danger || /\b911\b/.test(text) || !text) text = precheck(m.body).danger ? SAFE_REPLY.emergency! : SAFE_REPLY.urgent_repair!;
         break;
       case 'showing_request':
         if (prospectId && propertyId) await ctx.emit('showing.requested', { ownerId, propertyId, prospectId, preferredTimes: ai.entities.preferredTimes ?? [] });
@@ -223,8 +258,10 @@ async function ownerCommand(ctx: C, ownerId: string, m: InboundPayload, reply: (
         return { ownerDecision: decision };
       }
     }
-    await reply(`I couldn't match code ${code.toUpperCase()} to an open decision. Open the app to see everything waiting for you.`);
-    return { ownerDecision: null };
+    if (/^(yes|y|no|n|ok|approve|decline|deny)$/i.test(word)) {
+      await reply(`I couldn't match code ${code.toUpperCase()} to an open decision. Open the app to see everything waiting for you.`);
+      return { ownerDecision: null };
+    }
   }
   const pending = ctx.store.list('approvals', (a) => a.ownerId === ownerId && a.status === 'pending');
   await reply(pending.length ? `You have ${pending.length} decision${pending.length > 1 ? 's' : ''} waiting: ${pending.slice(0, 3).map((a) => a.title).join('; ')}. Open the app or reply with the YES/NO code from each text.` : 'Nothing needs you right now.');
@@ -246,4 +283,84 @@ function vendorWithOpenJob(store: C['store'], from: string, ownerId: string) {
   const woId = store.kvGet<string>('vendorLast', v.id);
   const wo = woId ? store.get('workOrders', woId) : undefined;
   return wo && ['awaiting_vendor', 'awaiting_owner', 'scheduled', 'in_progress'].includes(wo.status) ? v : undefined;
+}
+
+/* ---------------- repair conversations ---------------- */
+
+interface RepairChat { summary: string; trade: string; urgency: Urgency; photos: string[]; startedAt: string }
+type Choice = 'dispatch' | 'call' | 'email' | 'fixed' | 'emergency';
+
+/** The tenant's choices, shown on every troubleshooting reply. /play shows them as buttons. */
+const MENU = [
+  { key: '1', label: 'Send a pro' },
+  { key: '2', label: 'Call me' },
+  { key: '3', label: 'Email me' },
+  { key: '4', label: "It's fixed" },
+  { key: '9', label: 'Emergency' },
+];
+const CHAT_TTL_MS = 3 * 24 * 3600_000;
+
+function withMenu(text: string, channel: Channel): string {
+  const menu = MENU.map((o) => `${o.key} ${o.label}`).join(' · ');
+  return `${text}\n\n${channel === 'email' ? 'Reply with a number:' : 'Reply'} ${menu}`;
+}
+
+function openRepairChat(store: C['store'], tenantId: string, now: Date): RepairChat | undefined {
+  const chat = store.kvGet<RepairChat>('repairChat', tenantId);
+  return chat && now.getTime() - new Date(chat.startedAt).getTime() < CHAT_TTL_MS ? chat : undefined;
+}
+
+export function menuChoice(body: string): Choice | undefined {
+  const t = body.trim().toLowerCase().replace(/[.!]+$/, '');
+  if (/^(1|send (a |someone|somebody|a pro|a plumber|help)\b.*|book (a pro|someone|it))$/.test(t)) return 'dispatch';
+  if (/^(2|call me( instead)?|please call me)$/.test(t)) return 'call';
+  if (/^(3|email me( instead)?|please email me)$/.test(t)) return 'email';
+  if (/^(4|fixed|it'?s fixed|it'?s working( now)?|all good( now)?)$/.test(t)) return 'fixed';
+  if (/^(9|emergency)$/.test(t)) return 'emergency';
+  return undefined;
+}
+
+async function repairChoice(ctx: C, choice: Choice, chat: RepairChat, tenant: Tenant, owner: Owner, m: InboundPayload, reply: (b: string, meta?: Record<string, unknown>) => Promise<void>) {
+  const store = ctx.store;
+  const who = firstName(owner.name);
+  const address = propertyName(store, tenant.propertyId);
+  const close = () => ctx.step('chat-close', () => store.kvDelete('repairChat', tenant.id));
+  const request = (urgency: Urgency) => ctx.emit('maintenance.requested', { ownerId: owner.id, propertyId: tenant.propertyId, tenantId: tenant.id, summary: chat.summary, trade: chat.trade, urgency, photos: [...chat.photos, ...(m.media ?? [])] });
+  const task = (title: string, detail: string) => ctx.step('owner-task', () => store.insert('tasks', { ownerId: owner.id, title, detail, status: 'open', dueAt: new Date(ctx.svc.clock.now().getTime() + 4 * 3600_000).toISOString() }));
+
+  switch (choice) {
+    case 'dispatch':
+      await close();
+      await request(chat.urgency);
+      await reply(`Booking a pro for "${chat.summary}" now.${chat.photos.length ? '' : ' If you can, text a photo of it; it helps them bring the right parts.'}`);
+      break;
+    case 'call':
+      await task(`Call ${tenant.name}`, `About "${chat.summary}" at ${address}. ${tenant.phone ?? ''}`);
+      await tellOwner(ctx, 'call-request', owner.id, `${ctx.svc.brand.name}: ${tenant.name} asked for a call about "${chat.summary}" at ${address}. Please call ${tenant.phone ?? 'them'}.`);
+      await reply(`No problem. I've asked ${who} to give you a call${tenant.phone ? ` at ${tenant.phone}` : ''}. If it gets worse before then, reply 9.`);
+      break;
+    case 'email':
+      if (!tenant.email) {
+        await task(`Add an email for ${tenant.name}`, `They asked to switch to email about "${chat.summary}".`);
+        await reply(`I don't have an email on file for you yet, so I've asked ${who} to add it. We can keep going here by text in the meantime.`);
+        break;
+      }
+      await send(ctx, { label: 'email-switch', ownerId: owner.id, to: tenant.email, channel: 'email', subject: `Your repair: ${chat.summary}`, body: withMenu(`Hi ${firstName(tenant.name)}, picking up here by email about "${chat.summary}" at ${address}. Just reply to this email with any details or questions.`, 'email'), meta: { options: MENU } });
+      await reply(`Sent! Check your email at ${tenant.email} and reply there anytime.`);
+      break;
+    case 'fixed':
+      await close();
+      await ctx.log('repair.self-fixed', `${tenant.name} fixed it without a pro: "${chat.summary}"`, { actor: 'tenant' });
+      await reply(`Great news, glad it's working! If it acts up again, just text me.`);
+      break;
+    case 'emergency':
+      await close();
+      await task(`URGENT: call ${tenant.name}`, `Pressed EMERGENCY about "${chat.summary}" at ${address}. ${tenant.phone ?? ''}`);
+      await tellOwner(ctx, 'emergency-button', owner.id, `URGENT: ${tenant.name} pressed EMERGENCY about "${chat.summary}" at ${address}. Please call them now${tenant.phone ? ` at ${tenant.phone}` : ''}.`);
+      await request('emergency');
+      await reply(`Getting a person on this right now. I've asked ${who} to call you and I'm contacting the emergency repair vendor. If anyone is in danger, call 911.`);
+      break;
+  }
+  await ctx.log('repair.choice', `${tenant.name} chose "${choice}" for "${chat.summary}"`, { actor: 'tenant' });
+  return { repairChoice: choice };
 }

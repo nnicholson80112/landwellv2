@@ -10,16 +10,20 @@ export interface PreCheck {
   route: boolean; // owner must handle
   reason?: string;
   emergency: boolean;
+  /** A person may be in danger (gas, fire, smoke, CO, sparks, break-in): tell them to call 911. */
+  danger?: boolean;
 }
 
-const EMERGENCY = /\b(gas (smell|leak)|smell(s)? (like )?gas|carbon monoxide|co alarm|fire|smoke|sparks?|flood(ing|ed)?|burst pipe|water (everywhere|pouring|gushing)|sewage|no heat|furnace (is )?out|heat (is )?out|locked out|break[- ]?in|broken (front |back )?door|power (is )?out|electrical burning)\b/i;
+const EMERGENCY = /\b(gas (smell|leak)|smell(s)? (like )?gas|carbon monoxide|co alarm|fire|smoke|sparks?|flood(ing|ed)?|burst pipe|water (is |keeps )?(everywhere|pouring|gushing|spraying|flooding)|sewage|no heat|furnace (is )?out|heat (is )?out|locked out|break[- ]?in|broken (front |back )?door|power (is )?out|electrical burning)\b/i;
 const ACCOMMODATION = /\b(disab\w*|accommodat\w*|modification|service (dog|animal)|assistance animal|support animal|\besa\b|emotional support|wheelchair|ramp|grab bar|hearing (impair\w*|aid|loss)|hard of hearing|deaf|blind|sign language|medical (need|condition))\b/i;
 const FAIR_HOUSING = /\b(neighbou?rhood|area) (like|safe|good)|\bsafe (area|neighbou?rhood|for)|\bcrime\b|\bschools?\b|family[- ]friendly|good for (kids|families|singles|couples|seniors)|\b(kids|children)\b.*\b(allowed|ok|okay)\b|\b(church|mosque|synagogue|temple)\b|\b(race|racial|ethnic\w*|religio\w*|national origin|immigra\w*|citizen\w*)\b|who (lives|are the neighbors)|what kind of (people|neighbors)|\bdiverse\b|\bsection 8\b|\bvoucher\b/i;
 const SCREENING = /\b(will i (get|be) (approved|accepted)|why (was|were) (i|we) (denied|rejected|declined)|(denied|rejected|declined) (my|our) application|application (was |been |got )?(denied|rejected|declined)|my (credit score|chances)|do i qualify|am i (approved|qualified))\b/i;
 const LEGAL = /\b(lawyer|attorney|su(e|ing) (you|them|him|her|the|my|your|landlord|owner|management)|lawsuit|small claims|(take|taking|took) (you|them|him|her|it|this) to court|(go|going) to court|court (date|case|order|hearing|filing)|legal action|hud\b|discriminat\w*|retaliat\w*|harass\w*|complaint|code enforcement|habitability|withhold(ing)? rent|escrow)\b/i;
 
+const DANGER = /\b(gas|carbon monoxide|co alarm|fire|smoke|sparks?|break[- ]?in|electrical burning|injur\w*|hurt)\b/i;
+
 export function precheck(message: string, extraOwnerKeywords: string[] = []): PreCheck {
-  if (EMERGENCY.test(message)) return { intent: 'emergency', route: false, emergency: true };
+  if (EMERGENCY.test(message)) return { intent: 'emergency', route: false, emergency: true, danger: DANGER.test(message) };
   if (ACCOMMODATION.test(message)) return { intent: 'accommodation_request', route: true, reason: 'Accommodation or disability-related request. The owner handles these personally.', emergency: false };
   if (SCREENING.test(message)) return { intent: 'screening_decision_question', route: true, reason: 'Question about an application decision.', emergency: false };
   if (LEGAL.test(message)) return { intent: 'complaint_or_legal', route: true, reason: 'Complaint or legal topic.', emergency: false };
@@ -31,13 +35,15 @@ export function precheck(message: string, extraOwnerKeywords: string[] = []): Pr
 }
 
 /** Pre-written replies for routed topics. Same words for everyone. */
-export const SAFE_REPLY: Partial<Record<Intent | 'gas', string>> = {
+export const SAFE_REPLY: Partial<Record<Intent | 'gas' | 'water' | 'urgent_repair', string>> = {
   accommodation_request: "Thank you for letting us know. I've passed this directly to the owner, who handles every accommodation request personally. They'll follow up with you soon.",
   screening_decision_question: 'Application decisions are made by the owner, using the same written criteria for every applicant. I\'ve passed your question to them.',
   complaint_or_legal: "Thank you. I've shared this with the owner so they can respond to you directly.",
   fair_housing_sensitive: "I can share facts about the home itself, like the price, size, features and availability. For information about the area, the city's website and public resources are the best source. Is there anything about the home I can help with?",
   gas: "Please leave the home right away and, once you're outside, call 911 or the gas company's emergency line. Don't use light switches or flames. I'm alerting the owner and the emergency vendor now.",
   emergency: "That sounds urgent. If anyone is in danger, please call 911 first. I'm contacting the emergency repair vendor and the owner right now.",
+  water: "Oh no, let's stop the water first. If you can do it safely, turn the shut-off valve under the sink or behind the appliance clockwise, or use the home's main water shut-off. I'm getting an emergency plumber and letting the owner know right now.",
+  urgent_repair: "That needs fast help. I'm contacting the emergency repair vendor and letting the owner know right now. I'll text you as soon as someone is on the way.",
 };
 
 // Phrases an ad or reply must never contain (HUD advertising guidance examples).

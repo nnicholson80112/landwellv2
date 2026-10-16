@@ -104,10 +104,10 @@ Random secret values: use the **Landwell Key Maker** page (link below) or a pass
 
 ## 5. The codebase (`landwellv2`)
 
-TypeScript on **Node 22.6+**, run with `--experimental-strip-types`. **No runtime dependencies** (Node built-ins only). ~4,750 lines in `src/`. **25 tests pass.**
+TypeScript on **Node 22.6+**, run with `--experimental-strip-types`. **No runtime dependencies** (Node built-ins only). ~4,750 lines in `src/`. **31 tests pass.**
 
 ```
-npm test              # 25 tests: engine, guardrails, workflows end to end, API, billing, offers
+npm test              # 31 tests: engine, guardrails, workflows end to end, API, billing, offers
 npm run demo          # every workflow on sample data with a simulated month (86 runs, 0 failed)
 npm start             # API + website on http://localhost:8787 (token: dev-token locally)
 npm run ai            # AI service on :8788 (needs AI_SERVICE_TOKEN)
@@ -166,6 +166,7 @@ Owner **Nate** (phone `DEMO_OWNER_PHONE`, plan Autopilot). Home **7610 S Rosemar
 8. **Pricing model:** standard price above the offer price; then rounded to whole $5 amounts (table in section 3). Stripe prices updated, old ones archived.
 9. **Live AI test** through the voice webhook: Claude answers repairs, rent, tours and pet questions well; fair-housing question safely deflected. Found and fixed (in code, **not yet deployed**): "Court" in street names / tenant named "Sue" / "hearing a noise" were wrongly routed to the owner; AI told a tenant to call 911 for a leak; listed homes weren't stated as available.
 10. Name ideas (section 9).
+11. **(Oct 16) Repair chat:** tenants now talk a repair through first. The AI asks one question at a time and suggests only safe self-fixes. Every reply ends with the tenant's choices: **1 Send a pro · 2 Call me · 3 Email me · 4 It's fixed · 9 Emergency** (texts show them as numbers; `/play` shows tap buttons). Emergencies skip the chat. Flooding now gets shut-off help and a plumber with **no 911**; 911 is only for danger (gas, fire, smoke, CO, sparks, injury). Owners texting a normal question no longer get "couldn't match code". The AI says it's automated once per conversation. Code: `src/workflows/inbound-message.ts` (repair conversations), `src/ai/prompt.ts`. Recommended `ANTHROPIC_MODEL=claude-opus-5-5` on the **ai** service.
 
 ---
 
@@ -175,7 +176,7 @@ Owner **Nate** (phone `DEMO_OWNER_PHONE`, plan Autopilot). Home **7610 S Rosemar
 2. **Stripe payment never completed.** The test checkout (`cs_test_a1TN…`) expired unpaid. Redo: website Get started (or `/play` → Landwell subscription) → pay with `4242 4242 4242 4242` → confirm the webhook delivered, `/play` shows "active", and the redirect lands on Calendly.
 3. **A test owner "Nate Test"** (`nnicholson80112+landwelltest@gmail.com`, `own_5ce576233a684a24`) exists from the signup test. Because there are now 2 owners, inbound messages with no matching line number can't pick an owner (real Twilio messages include the dialed number, so this only affects tests without `To`). Fine to keep for billing tests; remove before real use.
 4. **Unprotected webhooks until Twilio/Postmark are connected:** with no `TWILIO_AUTH_TOKEN`, anyone can post to `/webhooks/twilio/*`. Acceptable for testing; set the token as soon as Twilio exists.
-5. **AI says "I'm an automated assistant" in almost every reply.** Fine legally; consider saying it once per conversation.
+5. ~~AI says "I'm an automated assistant" in every reply~~ Fixed Oct 16: once per conversation. **Attorney:** confirm once-per-conversation bot disclosure is enough.
 6. **`OWNER_API_TOKEN` was the placeholder text** at one point; confirm it and `AI_SERVICE_TOKEN` are real random values now.
 
 7. **The GitHub repo is public.** Fine for now (early prototype, no secrets in git), but **before anything is published or launched**, recreate it as a **private** repo. This happens as part of the account move below.

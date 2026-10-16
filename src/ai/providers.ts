@@ -40,15 +40,22 @@ export class AnthropicAI implements CommunicationAI {
   constructor(opts: { apiKey: string; model: string; timeoutMs?: number }) {
     this.apiKey = opts.apiKey;
     this.model = opts.model;
-    this.timeoutMs = opts.timeoutMs ?? 15_000;
+    this.timeoutMs = opts.timeoutMs ?? 25_000;
   }
   async respond(input: AIInput): Promise<AIResult> {
+    // Current models think before answering; low effort keeps texting fast. They also
+    // accept a server-side fallback model if a safety check declines a message.
+    const current = /^claude-(opus-5-5|sonnet-5-5|fable-5-1)$/.test(this.model);
     const data = await postJson(
       'https://api.anthropic.com/v1/messages',
-      { 'x-api-key': this.apiKey, 'anthropic-version': '2023-06-01' },
-      { model: this.model, max_tokens: 600, system: systemPrompt(input), messages: [{ role: 'user', content: userPrompt(input) }] },
+      { 'x-api-key': this.apiKey, 'anthropic-version': '2023-06-01', ...(current ? { 'anthropic-beta': 'server-side-fallback-2026-07-01' } : {}) },
+      {
+        model: this.model, max_tokens: 4000, system: systemPrompt(input), messages: [{ role: 'user', content: userPrompt(input) }],
+        ...(current ? { output_config: { effort: 'low' }, fallbacks: 'default' } : {}),
+      },
       this.timeoutMs,
     );
+    if (data.stop_reason === 'refusal') throw new Error(`model declined (${data.stop_details?.category ?? 'unknown'})`);
     const text = (data.content ?? []).filter((c: any) => c.type === 'text').map((c: any) => c.text).join('');
     return normalize(parseJson(text), `anthropic:${this.model}`, input);
   }
@@ -95,7 +102,7 @@ export class HttpAI implements CommunicationAI {
   constructor(opts: { url: string; token?: string; timeoutMs?: number }) {
     this.url = opts.url;
     this.token = opts.token;
-    this.timeoutMs = opts.timeoutMs ?? 15_000;
+    this.timeoutMs = opts.timeoutMs ?? 30_000;
   }
   async respond(input: AIInput): Promise<AIResult> {
     const data = await postJson(this.url, this.token ? { authorization: `Bearer ${this.token}` } : {}, input, this.timeoutMs);

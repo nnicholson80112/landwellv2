@@ -33,7 +33,7 @@ export interface Services {
 export function pickAI(env: Record<string, string | undefined>): CommunicationAI {
   const mode = (env.AI_PROVIDER ?? 'rules').toLowerCase();
   let primary: CommunicationAI = new RuleBasedAI();
-  if (mode === 'anthropic' && env.ANTHROPIC_API_KEY) primary = new AnthropicAI({ apiKey: env.ANTHROPIC_API_KEY, model: env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-5' });
+  if (mode === 'anthropic' && env.ANTHROPIC_API_KEY) primary = new AnthropicAI({ apiKey: env.ANTHROPIC_API_KEY, model: env.ANTHROPIC_MODEL ?? 'claude-opus-5-5' });
   if (mode === 'http' && env.AI_HTTP_URL) primary = new HttpAI({ url: env.AI_HTTP_URL, token: env.AI_HTTP_TOKEN });
   const r = new ResilientAI(primary);
   r.onError = (e) => console.error('[ai] provider failed, used rules fallback:', e instanceof Error ? e.message : e);
