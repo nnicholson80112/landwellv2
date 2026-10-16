@@ -322,3 +322,32 @@ test('a home that is still occupied is never self-toured', async () => {
   assert.ok(pending('showing_request')[0].body.includes('give them proper notice'));
   assert.equal(store.list('showings').length, 0, 'no door code');
 });
+
+/* ---------------- owner follow-up ---------------- */
+
+test('an unanswered decision is re-sent once: 2 hours for urgent repairs, a day for the rest', async () => {
+  const { s, text, sentTo, advance } = setup();
+  await text(s.tenant.phone!, 'No hot water, the water heater stopped working');
+  await text(s.plumber.phone!, 'YES today 3-5pm $400');
+  const reminders = () => sentTo(s.owner.phone).filter((m) => /^(Still waiting|Reminder):/.test(m.body));
+  await advance(HOUR);
+  assert.equal(reminders().length, 0);
+  await advance(2 * HOUR);
+  assert.equal(reminders().length, 1);
+  assert.match(reminders()[0].body, /^Still waiting: Repair \$400/);
+  await advance(2 * DAY);
+  assert.equal(reminders().length, 1, 'only once');
+});
+
+test('the front desk knows what rent the owner has marked received', async () => {
+  const { svc, s, store, text } = setup('2026-11-03T16:00:00Z');
+  const charge = store.insert('charges', { ownerId: s.owner.id, leaseId: s.lease.id, kind: 'rent', amount: 275_000, dueDate: '2026-11-01', paid: 0, status: 'open', period: '2026-11', notices: [] });
+  let seen: { label: string; value: string }[] = [];
+  svc.ai = { name: 'spy', respond: async (input) => { seen = input.facts; return { intent: 'rent_question', confidence: 0.9, reply: 'Checking.', entities: {}, handoff: false, provider: 'spy' }; } };
+  await text(s.tenant.phone!, 'Did my landlord get my rent?');
+  assert.ok(seen.some((f) => f.label === 'Rent due 2026-11-01' && /not marked received/.test(f.value)));
+  svc.engine.emit('payment.received', { chargeId: charge.id, amount: 275_000, method: 'owner_recorded', providerRef: 'x' });
+  await svc.engine.drain();
+  await text(s.tenant.phone!, 'Did my landlord get my rent?');
+  assert.ok(seen.some((f) => f.label === 'Rent due 2026-11-01' && /marked received by your landlord$/.test(f.value)));
+});

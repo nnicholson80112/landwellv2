@@ -110,6 +110,7 @@ export const maintenance: WorkflowDef<Services, RepairInput> = {
         kind: 'vendor_needed', title: `No vendor available: ${address}`,
         body: `"${wo.summary}". ${candidates.length ? 'Your vendors did not accept in time.' : `You have no ${wo.trade} vendor on file.`} Colorado requires work to start by ${new Date(wo.respondBy).toLocaleString('en-US', { timeZone: ctx.svc.cfg.tz })}.`,
         options: ['i_will_arrange_it', 'cancel_request'],
+        data: { workOrderId: wo.id },
       });
       if (a?.decision === 'cancel_request') {
         await upd({ status: 'cancelled' }, 'cancel-novendor');

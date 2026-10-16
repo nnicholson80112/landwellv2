@@ -21,7 +21,7 @@ import type { Approval, Channel, Owner, Tenant, Urgency } from '../domain/types.
 import type { AIResult, Intent, SenderRole } from '../ai/types.ts';
 import { SAFE_REPLY, postcheck, precheck } from '../ai/guardrails.ts';
 import { guessTrade, summarize } from '../ai/rules.ts';
-import { addressKey, buildFacts, contactOf, firstName, identify, propertyName, quote, send, tellOwner, type C } from './lib.ts';
+import { addressKey, buildFacts, contactOf, firstName, identify, money, propertyName, quote, send, tellOwner, type C } from './lib.ts';
 import { optionLabel, replyHint } from './owner.ts';
 import { fmtTime, slotPrefs } from './showings-listings.ts';
 
@@ -238,6 +238,12 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
         facts.push({ label: `Open repair: ${w.summary.slice(0, 60)}`, value: w.status === 'scheduled' && v ? `booked with ${v.name}${w.scheduledFor ? `, ${w.scheduledFor}` : ''}` : `status: ${w.status.replace(/_/g, ' ')}` });
       }
       if (chat) facts.push({ label: 'Problem we are talking through now (no pro booked yet)', value: chat.summary });
+      // What the owner has marked, so "did my landlord get my rent?" has a true answer.
+      const lease = store.find('leases', (l) => l.status === 'active' && l.tenantIds.includes(tenant.id));
+      const charges = lease ? store.list('charges', (c) => c.leaseId === lease.id && c.status !== 'void').sort((a, b) => a.dueDate.localeCompare(b.dueDate)) : [];
+      const latestRent = charges.filter((c) => c.kind === 'rent').pop();
+      if (latestRent) facts.push({ label: `Rent due ${latestRent.dueDate}`, value: latestRent.status === 'paid' ? `${money(latestRent.amount)}, marked received by your landlord` : latestRent.paid ? `${money(latestRent.paid)} marked received by your landlord, ${money(latestRent.amount - latestRent.paid)} not marked received yet` : `${money(latestRent.amount)}, not marked received by your landlord yet` });
+      for (const c of charges.filter((x) => x.kind !== 'rent' && x.status === 'open')) facts.push({ label: `${c.kind === 'late_fee' ? 'Late fee' : c.kind === 'deposit' ? 'Security deposit' : 'Charge'} due ${c.dueDate}`, value: `${money(c.amount - c.paid)}, not marked received by your landlord yet` });
     }
 
     const ai: AIResult = await ctx.step('ai', () =>

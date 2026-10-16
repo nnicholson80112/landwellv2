@@ -5,8 +5,8 @@ import type { WorkflowDef } from '../engine/engine.ts';
 import type { Services } from '../services.ts';
 import type { Approval } from '../domain/types.ts';
 import { randomInt } from 'node:crypto';
-import { DAY, addDays } from '../engine/clock.ts';
-import { addressKey, clip, money, niceDate, tellOwner } from './lib.ts';
+import { DAY, HOUR, addDays } from '../engine/clock.ts';
+import { addressKey, clip, isQuietHours, money, niceDate, tellOwner } from './lib.ts';
 
 export const weeklyReport: WorkflowDef<Services, { localDate: string }> = {
   name: 'weekly-report',
@@ -38,6 +38,31 @@ export const weeklyReport: WorkflowDef<Services, { localDate: string }> = {
       await tellOwner(ctx, `report:${o.id}`, o.id, lines.join('\n'));
     }
     return { owners: owners.length };
+  },
+};
+
+/** Decisions with their own follow-up (rent check, deposit deadline) aren't re-sent here. */
+const OWN_REMINDERS = new Set(['rent_check', 'deposit', 'deposit-final']);
+
+export const approvalReminders: WorkflowDef<Services, { slot: string }> = {
+  name: 'approval-reminders',
+  title: 'Decision reminders',
+  description: "Re-sends a decision the owner hasn't answered, once: after 2 hours for urgent repairs, after a day for everything else (never during quiet hours unless urgent).",
+  trigger: { schedule: { every: 'hour' } },
+  async run(ctx) {
+    const store = ctx.store;
+    const now = (await ctx.now()).getTime();
+    let sent = 0;
+    for (const a of store.list('approvals', (x) => x.status === 'pending' && !x.data.remindedAt && !OWN_REMINDERS.has(x.kind))) {
+      const wo = typeof a.data.workOrderId === 'string' ? store.get('workOrders', a.data.workOrderId) : undefined;
+      const urgent = !!wo && wo.urgency !== 'routine';
+      if (now - Date.parse(a.createdAt) < (urgent ? 2 * HOUR : DAY)) continue;
+      if (!urgent && isQuietHours(ctx.svc, a.ownerId)) continue;
+      await ctx.step(`reminded:${a.id}`, () => store.update('approvals', a.id, { data: { ...a.data, remindedAt: new Date(now).toISOString() } }));
+      await tellOwner(ctx, `remind:${a.id}`, a.ownerId, `${urgent ? 'Still waiting' : 'Reminder'}: ${a.title}. ${clip(a.body.replace(/\n+/g, ' '), 220)}\n${replyHint(a)}`);
+      sent++;
+    }
+    return { sent };
   },
 };
 
