@@ -72,6 +72,7 @@ export const application: WorkflowDef<Services, { applicationId: string }> = {
       }
     }
     app = await ctx.step('status-ready', () => store.update('applications', applicationId, { status: 'ready_for_owner', report: rep!.report }));
+    await tell('screened', `Thanks, ${firstName(app.applicantName)}: your screening for ${prop.address} is complete. The owner reviews every application against the same written criteria, and you'll hear back here.`);
 
     const rows = compareCriteria(rules.screeningCriteria, rep.report, prop.rent);
     const table = rows.map((r) => `• ${r.label}: ${r.report} (${r.met === 'yes' ? 'meets' : r.met === 'no' ? 'does not meet' : 'review'})`).join('\n');
