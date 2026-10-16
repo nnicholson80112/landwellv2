@@ -149,6 +149,7 @@ test('rent marked received in the app closes the "Did rent arrive?" question', a
   await svc.engine.drain();
   assert.equal(pending().length, 0, 'nothing left waiting on the owner');
   assert.equal(svc.engine.runs((r) => r.workflow === 'late-rent')[0].status, 'completed');
+  assert.deepEqual(store.list('payments').map((p) => p.amount), [275_000], 'no extra $0 payment from the closed question');
 });
 
 test('owner can record a partial payment by text; the late note asks only for the rest', async () => {
@@ -160,6 +161,10 @@ test('owner can record a partial payment by text; the late note asks only for th
   await advance(MIN);
   assert.equal(store.get('charges', charge.id)!.paid, 150_000);
   assert.match(sentTo(s.tenant.phone!).map((m) => m.body).join('\n'), /hasn't received the rest of the rent \(\$1,250\)/);
+  // The run carries on to the late-fee step (it doesn't think rent is settled after the partial payment).
+  await advance(2 * DAY);
+  assert.equal(svc.engine.runs((r) => r.workflow === 'late-rent')[0].status, 'waiting');
+  assert.ok(pending('late_fee').length === 1);
 });
 
 test('owner who never answers "Did rent arrive?" is asked once more after 2 days', async () => {

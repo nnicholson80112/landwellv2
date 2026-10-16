@@ -140,13 +140,16 @@ export const lateRent: WorkflowDef<Services, { ownerId: string; chargeId: string
       timeoutMs: round ? undefined : 2 * DAY,
     });
     const check = (await ask(0)) ?? (isPaid() ? null : await ask(1));
-    let owed = balance();
     if (isPaid()) return { outcome: 'paid' };
+    // Recorded once: the balance changes as soon as the payment below is booked, and replays must see the same numbers.
+    const { part, owed } = await ctx.step('owed', () => {
+      const due = balance();
+      const p = check?.decision === 'received' ? (Number(check.data.amount) > 0 && Number(check.data.amount) < due ? Number(check.data.amount) : due) : 0;
+      return { part: p, owed: due - p };
+    });
     if (check?.decision === 'received') {
-      const part = Number(check.data.amount) > 0 && Number(check.data.amount) < balance() ? Number(check.data.amount) : balance();
       await ctx.emit('payment.received', { chargeId, amount: part, method: 'owner_recorded', providerRef: `owner_${chargeId}_check` });
-      if (part >= balance()) return { outcome: 'owner_confirmed_paid' };
-      owed = balance() - part; // the partial payment is recorded by its own run, a moment later
+      if (owed <= 0) return { outcome: 'owner_confirmed_paid' };
     } else if (check?.decision !== 'not_received') return { outcome: 'no_decision' };
 
     for (const t of tenants) await noticeTenant(ctx, `late1:${t.id}`, t, `Hi ${firstName(t.name)}, your landlord hasn't received ${check?.decision === 'received' ? 'the rest of the rent' : 'rent'} (${money(owed)}) for ${address} yet. ${howToPay} If you've already paid, thank you and please ignore this.`);

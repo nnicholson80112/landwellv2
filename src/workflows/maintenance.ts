@@ -37,7 +37,7 @@ export const maintenance: WorkflowDef<Services, RepairInput> = {
     const started = await ctx.now();
 
     // The same problem reported again (a repeat text, or the photo after the fact) joins the open job.
-    const same = await ctx.step('duplicate-check', () => (input.urgency === 'emergency' || !tenant ? undefined : sameOpenRepair(store, tenant.id, input, started)?.id) ?? null);
+    const same = await ctx.step('duplicate-check', () => (input.urgency === 'emergency' || !tenant ? undefined : sameOpenRepair(store, tenant.id, input, started, started.toISOString())?.id) ?? null);
     if (same) {
       const open = store.get('workOrders', same)!;
       const v = open.vendorId ? store.get('vendors', open.vendorId) : undefined;
@@ -193,10 +193,10 @@ export const maintenance: WorkflowDef<Services, RepairInput> = {
 };
 
 /** An open repair for the same tenant that this request most likely repeats (same trade, similar words, last 3 days). */
-export function sameOpenRepair(store: C['store'], tenantId: string, input: Pick<RepairInput, 'summary' | 'trade'>, now: Date): WorkOrder | undefined {
+export function sameOpenRepair(store: C['store'], tenantId: string, input: Pick<RepairInput, 'summary' | 'trade'>, now: Date, exceptCreatedAt?: string): WorkOrder | undefined {
   const words = (t: string) => new Set(t.toLowerCase().match(/[a-z]{4,}/g)?.filter((w) => !STOP_WORDS.has(w)) ?? []);
   const mine = words(input.summary);
-  return store.list('workOrders', (w) => w.tenantId === tenantId && w.trade === input.trade && !['paid', 'cancelled', 'completed'].includes(w.status) && now.getTime() - Date.parse(w.createdAt) < 3 * DAY)
+  return store.list('workOrders', (w) => w.tenantId === tenantId && w.trade === input.trade && w.createdAt !== exceptCreatedAt && !['paid', 'cancelled', 'completed'].includes(w.status) && now.getTime() - Date.parse(w.createdAt) < 3 * DAY)
     .find((w) => {
       const theirs = words(w.summary);
       const rooms = (x: Set<string>) => [...x].filter((r) => ROOMS.has(r));
