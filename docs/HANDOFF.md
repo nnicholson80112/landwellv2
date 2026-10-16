@@ -187,6 +187,10 @@ Owner **Nate** (phone `DEMO_OWNER_PHONE`, plan Autopilot). Home **7610 S Rosemar
 
 ## 8. What's next (future state)
 
+**Nate's call (Oct 16):** nail the workflows and make the product stand out *before* forming the LLC, picking the name, getting a business email or setting spend limits. Nothing goes public until those are done. For the public address, use a registered agent and/or virtual mailbox (never a family home).
+**AI cost:** Nate wants it cheaper than ~3 cents/message. Plan: route routine messages to Claude Haiku 5.5 and keep Opus/Sonnet for repair troubleshooting, cache the system prompt, skip the AI for menu replies, and log real token usage per message to measure.
+
+
 **This week (testing):**
 1. Fix Railway auto-deploy (issue 1), then re-run the AI tests (section 10).
 2. Finish the Stripe test (issue 2).
