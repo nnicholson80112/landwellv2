@@ -62,6 +62,9 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
     );
     const reply = (body: string, meta?: Record<string, unknown>) => send(ctx, { label: 'reply', ownerId, to: m.from, channel: m.channel, body, subject: m.subject ? `Re: ${m.subject}` : undefined, meta });
 
+    // Nothing to read (an empty text, or a blank call turn): nothing to answer.
+    if (!m.body.trim() && !media.length && party.role !== 'owner') return { empty: true };
+
     /* ---------------- STOP / START ---------------- */
     // Carriers handle the confirmation text; we stop (or restart) our own texts to this number.
     const kw = m.channel === 'sms' ? textingKeyword(m.body) : undefined;
@@ -109,7 +112,7 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
     // Move-out: "please reply with your forwarding address" (often after they've moved out).
     if (tenant) {
       if (store.kvGet('forwarding', tenant.id) && looksLikeAddress(m.body) && !precheck(m.body).emergency) {
-        const address = m.body.trim().replace(/\s+/g, ' ').replace(/^(it'?s|my (new |forwarding |mailing )?address( is)?|new address|forwarding address|send it to)[:\s-]*/i, '').replace(/[.!]+$/, '');
+        const address = stripAddressIntro(m.body);
         await ctx.step('forwarding', () => { store.update('tenants', tenant.id, { forwardingAddress: address }); store.kvDelete('forwarding', tenant.id); });
         await reply(`Thanks, ${firstName(tenant.name)}! I've saved ${address} for your deposit statement and refund.`);
         await ctx.log('tenant.forwarding', `${tenant.name} gave a forwarding address: ${address}`, { actor: 'tenant' });
@@ -169,6 +172,21 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
       role = 'prospect';
     } else if (prospectId && mentioned && store.get('prospects', prospectId)?.interestedIn !== mentioned) {
       await ctx.step('prospect-home', () => store.update('prospects', prospectId!, { interestedIn: mentioned }));
+    }
+
+    // "Thanks!" or a thumbs-up closes the loop; no reply needed and nothing for the owner.
+    if (!media.length && /^(thanks?|thank you|thank u|thx|ty|tysm|thanks so much|thank you so much|much appreciated|appreciate it|got it|great|perfect|awesome|cool|sounds good|will do|👍|🙏|🙂|😊|❤️)[\s.!,]*(thanks?|thank you)?[\s.!]*$/iu.test(m.body.trim())) {
+      await ctx.log('message.thanks', `${tenant ? tenant.name : 'A prospect'} said ${quote(m.body)}`, { actor: tenant ? 'tenant' : 'prospect' });
+      return { acknowledged: true };
+    }
+
+    // A prospect asking about one of the owner's homes that isn't for rent: say so plainly, and point to what is.
+    const unlisted = prospectId ? namedHome(store, ownerId, m.body) : undefined;
+    if (prospectId && unlisted && !listedHomes(store, ownerId).some((h) => h.id === unlisted.id) && !precheck(m.body).route) {
+      const open = listedHomes(store, ownerId);
+      if (!open.length) await ctx.step('ask-updates', () => store.kvSet('prospectAsk', prospectId!, { kind: 'updates', until: new Date(svc.clock.now().getTime() + 14 * 24 * 3600_000).toISOString() }));
+      await reply(`Thanks for asking! ${unlisted.address} isn't available right now.${open.length ? ` Available now: ${open.map((h) => `${h.address} (${h.beds} bed, ${money(h.rent)}/month)`).join('; ')}. Want details or a tour?` : " Want a text when a home opens up? Reply YES."}`);
+      return { intent: 'listing_question', unlisted: unlisted.id };
     }
 
     const pre = precheck(m.body, rules?.alwaysRouteToOwner ?? []);
@@ -499,20 +517,32 @@ export function yesNo(body: string): 'yes' | 'no' | undefined {
 
 /** Looks like a mailing address: a street number and a street word, or a ZIP code. */
 export function looksLikeAddress(body: string): boolean {
-  if (/\bp\.?\s?o\.?\s?box\s*\d+/i.test(body)) return true;
-  return /\b\d{1,6}\s+\w+/.test(body) && (/\b(st|street|ave|avenue|rd|road|dr|drive|ln|lane|ct|court|cir|circle|blvd|boulevard|way|pl|place|pkwy|parkway|ter|terrace|trl|trail|apt|unit|suite)\b/i.test(body) || /\b\d{5}(-\d{4})?\b/.test(body) || /\bp\.?\s?o\.?\s?box\b/i.test(body));
+  if (body.includes('?')) return false;
+  const t = stripAddressIntro(body);
+  if (/^p\.?\s?o\.?\s?box\s*\d+/i.test(t)) return true;
+  // Starts with a street number, then a street word or a ZIP code soon after.
+  return /^\d{1,6}\s+\S+/.test(t) && t.split(/\s+/).length <= 16 && (/\b(st|street|ave|avenue|rd|road|dr|drive|ln|lane|ct|court|cir|circle|blvd|boulevard|way|pl|place|pkwy|parkway|ter|terrace|trl|trail|apt|unit|suite|hwy|highway)\b/i.test(t) || /\b\d{5}(-\d{4})?\b/.test(t));
+}
+function stripAddressIntro(body: string): string {
+  return body.trim().replace(/\s+/g, ' ').replace(/^((here'?s|here is|it'?s|it is|my|our|the|new|forwarding|mailing|address|is|send (it|them|the deposit) to|you can (send|mail) (it|them) to|please (send|mail) (it|them) to)[:,\s-]*)+/i, '').replace(/[.!]+$/, '');
 }
 
 function listedHomes(store: C['store'], ownerId: string) {
   return store.list('properties', (p) => p.ownerId === ownerId && (p.status === 'listed' || p.status === 'vacant'));
 }
 
-/** Which available home a prospect means: the only one, or the one whose street name they used ("Aspen"). */
+/** The owner's home whose street name appears in the message ("Aspen"), listed or not. */
+function namedHome(store: C['store'], ownerId: string, body: string) {
+  const t = body.toLowerCase();
+  return store.list('properties', (p) => p.ownerId === ownerId).find((h) => h.address.toLowerCase().split(/\s+/).filter((w) => w.length >= 4 && !/^\d/.test(w) && !/^(street|avenue|court|drive|circle|road|lane|place|boulevard|parkway|trail|unit)$/.test(w)).some((w) => new RegExp(`\\b${w}\\b`).test(t)));
+}
+
+/** Which available home a prospect means: the one whose street name they used ("Aspen"), or the only one. */
 export function mentionedHome(store: C['store'], ownerId: string, body: string): string | undefined {
   const homes = listedHomes(store, ownerId);
-  const t = body.toLowerCase();
-  const named = homes.find((h) => h.address.toLowerCase().split(/\s+/).filter((w) => w.length >= 4 && !/^\d/.test(w) && !/^(street|avenue|court|drive|circle|road|lane|place|boulevard|parkway|trail|unit)$/.test(w)).some((w) => new RegExp(`\\b${w}\\b`).test(t)));
-  return named?.id ?? (homes.length === 1 ? homes[0].id : undefined);
+  const named = namedHome(store, ownerId, body);
+  if (named) return homes.some((h) => h.id === named.id) ? named.id : undefined;
+  return homes.length === 1 ? homes[0].id : undefined;
 }
 
 function activeShowing(store: C['store'], prospectId: string, now: Date) {

@@ -137,8 +137,10 @@ export const moveOut: WorkflowDef<Services, { ownerId: string; tenantId: string;
     const date = input.date && input.date <= lease.endDate && input.date >= today ? input.date : lease.endDate;
 
     for (const t of tenants) await ctx.step(`forwarding-flag:${t.id}`, () => store.kvSet('forwarding', t.id, true));
-    for (const t of tenants) await noticeTenant(ctx, `confirm:${t.id}`, t, `Got it, ${firstName(t.name)}: move-out from ${address} is ${niceDate(date, today)}. Before then: clean, remove all belongings, and return keys. Please reply with your forwarding address so your landlord can send your deposit statement and refund.`);
-    if (!input.fromOwner) await tellOwner(ctx, 'owner', input.ownerId, `${names} ${tenants.length > 1 ? 'are' : 'is'} moving out of ${address} on ${niceDate(date, today)}. I'll get the listing ready so it can go up early.`);
+    // A date after the lease ends isn't ours to agree to: note the lease end, and let the owner decide.
+    const asked = input.date && input.date !== date ? input.date : undefined;
+    for (const t of tenants) await noticeTenant(ctx, `confirm:${t.id}`, t, `Got it, ${firstName(t.name)}: move-out from ${address} is ${niceDate(date, today)}${asked ? `, when your lease ends. I've asked ${firstName(store.get('owners', input.ownerId)?.name ?? 'the owner')} about ${niceDate(asked, today)} and they'll confirm` : ''}. Before then: clean, remove all belongings, and return keys. Please reply with your forwarding address so your landlord can send your deposit statement and refund.`);
+    if (!input.fromOwner) await tellOwner(ctx, 'owner', input.ownerId, `${names} ${tenants.length > 1 ? 'are' : 'is'} moving out of ${address}${asked ? `. They asked for ${niceDate(asked, today)}, but the lease ends ${niceDate(date, today)}; please tell them which date works` : ` on ${niceDate(date, today)}`}. I'll get the listing ready so it can go up early.`);
     await ctx.emit('listing.requested', { ownerId: input.ownerId, propertyId: lease.propertyId, availableFrom: addDays(date, 3) });
     await ctx.step('walkthrough-task', () => store.insert('tasks', { ownerId: input.ownerId, title: `Move-out walkthrough: ${address}`, detail: `Do the walkthrough on ${date} and take photos of every room. Compare with move-in photos. Normal wear and tear can't be charged.`, dueAt: date + 'T17:00:00Z', status: 'open' }));
 

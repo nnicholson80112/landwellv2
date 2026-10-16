@@ -108,7 +108,7 @@ export const maintenance: WorkflowDef<Services, RepairInput> = {
       if (tenant) await tellTenant(ctx, 'still-looking', tenant, `Quick update on "${wo.summary}": I'm still lining up a pro. ${ownerFirst} is on it and you'll hear back soon.${input.urgency === 'emergency' ? ' If anyone is in danger, call 911.' : ''}`);
       const a = await ctx.approval({
         kind: 'vendor_needed', title: `No vendor available: ${address}`,
-        body: `"${wo.summary}". ${candidates.length ? 'Your vendors did not accept in time.' : `You have no ${wo.trade} vendor on file.`} Colorado requires work to start by ${new Date(wo.respondBy).toLocaleString('en-US', { timeZone: ctx.svc.cfg.tz })}.`,
+        body: `"${wo.summary}". ${candidates.length ? 'Your vendors did not accept in time.' : `You have no ${wo.trade} vendor on file.`} Colorado requires work to start by ${new Date(wo.respondBy).toLocaleString('en-US', { timeZone: ctx.svc.cfg.tz, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}.`,
         options: ['i_will_arrange_it', 'cancel_request'],
         data: { workOrderId: wo.id },
       });

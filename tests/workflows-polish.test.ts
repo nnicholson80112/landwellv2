@@ -377,3 +377,39 @@ test('a photo of a different problem starts a new repair instead of joining the 
   await text(s.tenant.phone!, 'The dryer is broken too', ['https://x/2.jpg']);
   assert.equal(store.list('workOrders').length, 2);
 });
+
+test('"thanks!" and empty texts get no reply and never ping the owner', async () => {
+  const { s, text, sentTo } = setup();
+  const before = sentTo(s.owner.phone).length;
+  await text(s.tenant.phone!, 'Thanks so much!');
+  await text(s.tenant.phone!, '👍');
+  await text(s.tenant.phone!, '   ');
+  assert.equal(sentTo(s.tenant.phone!).length, 0);
+  assert.equal(sentTo(s.owner.phone).length, before);
+});
+
+test('a question with an address in it is not taken as a forwarding address', async () => {
+  const { svc, s, store, text } = setup('2027-01-20T16:00:00Z');
+  svc.engine.emit('moveout.notice', { ownerId: s.owner.id, tenantId: s.tenant.id, leaseId: s.lease.id });
+  await svc.engine.drain();
+  await text(s.tenant.phone!, 'Can I see 88 Aspen Ct on saturday morning?');
+  assert.equal(store.get('tenants', s.tenant.id)!.forwardingAddress, undefined);
+  await text(s.tenant.phone!, "Here's my new address: 55 Pine Rd, Golden CO 80401");
+  assert.equal(store.get('tenants', s.tenant.id)!.forwardingAddress, '55 Pine Rd, Golden CO 80401');
+});
+
+test('a move-out date after the lease ends goes to the owner instead of being agreed to', async () => {
+  const { svc, s, lastTo, sentTo } = setup('2027-01-20T16:00:00Z');
+  svc.engine.emit('moveout.notice', { ownerId: s.owner.id, tenantId: s.tenant.id, leaseId: s.lease.id, date: '2027-03-03' });
+  await svc.engine.drain();
+  assert.match(lastTo(s.tenant.phone!), /is Sun, Feb 14, when your lease ends\. I've asked Nate about Wed, Mar 3/);
+  assert.ok(sentTo(s.owner.phone).some((m) => /asked for Wed, Mar 3, but the lease ends Sun, Feb 14/.test(m.body)));
+});
+
+test('a prospect asking about a home that is not for rent hears so, and what is available', async () => {
+  const { s, text, lastTo } = setup();
+  await text('+17205550123', 'Is the Rosemary house for rent?');
+  assert.match(lastTo('+17205550123'), /7610 S Rosemary Cir isn't available right now\. Available now: 88 Aspen Ct \(2 bed, \$1,850\/month\)/);
+  await text('+17205550123', 'yes');
+  assert.match(lastTo('+17205550123'), /verify your ID/);
+});

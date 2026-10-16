@@ -58,8 +58,11 @@ function isoDate(s: string): string | undefined {
   if (!mm) return undefined;
   const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
   const mo = months.indexOf(mm[1].toLowerCase().slice(0, 3)) + 1;
-  const yr = mm[3] ?? String(new Date().getUTCFullYear());
-  return `${yr}-${String(mo).padStart(2, '0')}-${String(Number(mm[2])).padStart(2, '0')}`;
+  const now = new Date();
+  const thisYear = `${now.getUTCFullYear()}-${String(mo).padStart(2, '0')}-${String(Number(mm[2])).padStart(2, '0')}`;
+  // No year given: the next time that date comes around.
+  if (!mm[3]) return thisYear < now.toISOString().slice(0, 10) ? `${now.getUTCFullYear() + 1}${thisYear.slice(4)}` : thisYear;
+  return `${mm[3]}${thisYear.slice(4)}`;
 }
 
 export class RuleBasedAI implements CommunicationAI {
@@ -111,7 +114,12 @@ export class RuleBasedAI implements CommunicationAI {
       const due = pick(input.facts, 'rent due', 'due date');
       const how = pick(input.facts, 'how to pay', 'payment');
       reply = [how?.value ?? 'Rent is paid to your landlord directly, the way you normally pay.', due ? `Rent is due ${due.value}.` : ''].filter(Boolean).join(' ');
-    } else if (/\b(tour|show(ing)?|see (it|the (place|home|house|unit))|view(ing)?|visit|walk ?through|open house)\b/i.test(t)) {
+    } else if (/^(yes|yeah|yep|sure|ok(ay)?|please|definitely|absolutely)\b/i.test(t.trim()) && /\btour\b/i.test([...input.history].reverse().find((h) => h.direction === 'out')?.body ?? '') && input.senderRole !== 'tenant') {
+      // "Yes" to "Would you like to schedule a self-guided tour?"
+      intent = 'showing_request';
+      e.preferredTimes = window(t) ? [window(t)!] : [];
+      reply = "Great! I'll text you the next steps right now.";
+    } else if (/\b(tour|show(ing)?|(see|look at|check out|come by|stop by) (it|the|this|that|\d+|inside)|view(ing)?|visit|walk ?through|open house)\b/i.test(t)) {
       intent = 'showing_request';
       e.preferredTimes = window(t) ? [window(t)!] : [];
       reply = "Happy to help you see it! I'll text you the next steps right now.";
@@ -150,12 +158,12 @@ export class RuleBasedAI implements CommunicationAI {
       intent = 'general';
       reply = "Thanks for your message! I've passed it along and you'll hear back soon.";
       handoff = true;
-      handoffReason = 'Could not classify the message.';
+      handoffReason = "I wasn't sure how to answer this one.";
     }
 
     if (!input.allowedIntents.includes(intent)) {
       handoff = true;
-      handoffReason = `Intent ${intent} not allowed for ${input.senderRole}.`;
+      handoffReason = "I wasn't sure how to answer this one.";
       reply = "Thanks for your message! I've passed it along and you'll hear back soon.";
       intent = 'general';
     }
