@@ -18,6 +18,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { MemoryStore } from '../store/store.ts';
+import { DATA_VERSION, freshStartIfOld } from '../store/data-version.ts';
 import { SystemClock } from '../engine/clock.ts';
 import { createServices, type Services } from '../services.ts';
 import { install } from '../workflows/index.ts';
@@ -70,7 +71,17 @@ async function readBody(req: IncomingMessage, max: number): Promise<string> {
 
 /* ======================= PUBLIC ======================= */
 
-route('GET', '/health', (_q, res) => json(res, 200, { ok: true }));
+const STARTED = new Date().toISOString();
+route('GET', '/health', (_q, res, svc) => json(res, 200, {
+  ok: true,
+  brand: BRAND.name,
+  // Which commit is live (Railway sets this), so a deploy can be checked from outside.
+  commit: (process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT ?? 'unknown').slice(0, 7),
+  dataVersion: svc.store.kvGet<number>('meta', 'dataVersion') ?? null,
+  ai: svc.ai.name,
+  messaging: svc.adapters.messaging.name,
+  startedAt: STARTED,
+}));
 
 /* Pages and files that are the same for everyone are built once and served from memory (see guard.ts). */
 const STATIC = new StaticCache();
@@ -471,7 +482,11 @@ export function createApp(svc: Services) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const store = new MemoryStore({ file: process.env.DATA_FILE ?? join(ROOT, 'data/landwell.json') });
+  const dataFile = process.env.DATA_FILE ?? join(ROOT, 'data/landwell.json');
+  const setAside = freshStartIfOld(dataFile);
+  if (setAside) console.log(`Fresh start (data version ${DATA_VERSION}): old data moved to ${setAside}`);
+  const store = new MemoryStore({ file: dataFile });
+  store.kvSet('meta', 'dataVersion', DATA_VERSION);
   const svc = createServices({ store, clock: new SystemClock(), logMessages: true });
   install(svc, { log: console.log });
   if (!store.list('owners').length && process.env.SEED_DEMO !== 'false') {

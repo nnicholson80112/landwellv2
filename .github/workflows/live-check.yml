@@ -1,0 +1,28 @@
+name: Live check
+# After every push to main: wait for Railway to deploy that commit, then check the live app.
+# Run it by hand (Actions → Live check → Run workflow) to also talk to the front desk.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      conversations:
+        description: Also test conversations through the phone-line webhook
+        type: boolean
+        default: true
+env:
+  LIVE_URL: https://api-production-66895.up.railway.app
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Deployed and healthy
+        if: github.event_name == 'push'
+        run: node scripts/live-check.mjs "$LIVE_URL" --expect-commit "${GITHUB_SHA::7}" --wait 900
+      - name: Live check with conversations
+        if: github.event_name == 'workflow_dispatch'
+        run: node scripts/live-check.mjs "$LIVE_URL" ${{ inputs.conversations && '--conversations' || '' }}

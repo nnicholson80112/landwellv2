@@ -1,0 +1,17 @@
+name: CI
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm test
+      - run: npx tsc --noEmit
+      - name: Demo month runs with 0 failed workflows
+        run: npm run demo | tee demo.txt && grep -q ", 0 failed)" demo.txt
