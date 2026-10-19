@@ -22,6 +22,8 @@ Small edits to shared files:
   moved into `owner-routes.ts`, with checks added.
 - `src/api/billing-routes.ts`: only `GET /billing/done` (see "After checkout").
 - `apps/admin/index.html`: a new "Sign-in link" card plus its own small script (nothing existing changed).
+- `apps/play/index.html`: `decide()` shows the server's reason when a decision is refused and asks for a showing
+  time or deposit deductions (the API now requires them).
 - `tests/offers.test.ts`: the `/billing/done` assertions now expect the new flow (changed on purpose).
 
 ## How sign-in works
