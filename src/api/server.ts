@@ -9,7 +9,8 @@
 //              POST /webhooks/stripe       (KeyHelm's own subscription billing; never rent)
 //              POST /webhooks/screening    (screening partner results)
 //              POST /webhooks/identity     (ID verification results)
-//   Owner API: /api/... with  Authorization: Bearer <OWNER_API_TOKEN>
+//   Owner API: /api/... signed in with the "kh_session" cookie (from /login), or
+//              Authorization: Bearer <token> (kv "tokens" or OWNER_API_TOKEN). See ./owner-routes.ts.
 //
 // Run: npm start   (reads .env from the environment; see .env.example)
 
@@ -24,8 +25,9 @@ import { createServices, type Services } from '../services.ts';
 import { install } from '../workflows/index.ts';
 import { verifyStripeSignature, verifyTwilioSignature } from '../adapters/live.ts';
 import { registerBillingRoutes } from './billing-routes.ts';
+import { registerOwnerRoutes } from './owner-routes.ts';
+import { sessionAuth, withoutSecrets, type AuthResult } from './auth.ts';
 import type { SignRequest } from '../adapters/esign-native.ts';
-import { prepareTemplate } from '../leases/template.ts';
 import { addressKey, money } from '../workflows/lib.ts';
 import { seed } from '../sim/seed.ts';
 import { BRAND } from '../config/brand.ts';
@@ -36,7 +38,7 @@ import type { TableName } from '../domain/types.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-export type Req = IncomingMessage & { raw: string; body: any; params: Record<string, string>; query: URLSearchParams };
+export type Req = IncomingMessage & { raw: string; body: any; params: Record<string, string>; query: URLSearchParams; auth?: { via: 'bearer' | 'session'; sessionId?: string } };
 export type Handler = (req: Req, res: ServerResponse, svc: Services) => Promise<void> | void;
 interface Route { method: string; pattern: RegExp; keys: string[]; auth: boolean; h: Handler }
 
@@ -281,16 +283,16 @@ route('POST', '/webhooks/identity', async (req, res, svc) => {
 });
 
 /* ======================= OWNER API ======================= */
-// MVP auth: one bearer token per owner (kv "tokens"), or OWNER_API_TOKEN for the
-// first owner. Replace with real sign-in (Clerk, Auth0, Supabase Auth) before launch.
+// Owners sign in at /login (cookie "kh_session"; see ./auth.ts). API clients and /play can
+// still use a bearer token: one per owner (kv "tokens"), or OWNER_API_TOKEN for the first owner.
 
-function ownerOf(req: Req, svc: Services): string | undefined {
+function ownerOf(req: Req, svc: Services): AuthResult {
   const t = (req.headers.authorization ?? '').replace(/^Bearer\s+/i, '');
-  if (!t) return undefined;
-  const id = svc.store.kvGet<string>('tokens', t);
-  if (id) return id;
-  if (process.env.OWNER_API_TOKEN && safeEqual(t, process.env.OWNER_API_TOKEN)) return svc.store.list('owners')[0]?.id;
-  return undefined;
+  if (t) {
+    const id = svc.store.kvGet<string>('tokens', t) ?? (process.env.OWNER_API_TOKEN && safeEqual(t, process.env.OWNER_API_TOKEN) ? svc.store.list('owners')[0]?.id : undefined);
+    return id ? { ownerId: id, via: 'bearer' } : { status: 401, error: 'unauthorized', guess: true };
+  }
+  return sessionAuth(req, svc); // cookie sign-in; changes need the X-KeyHelm header (CSRF)
 }
 const mine = <K extends TableName>(svc: Services, table: K, ownerId: string) => svc.store.list(table, (r: any) => r.ownerId === ownerId);
 
@@ -298,7 +300,7 @@ route('GET', '/api/dashboard', (req, res, svc) => {
   const o = req.params.ownerId;
   const runs = svc.engine.runs((r) => r.ownerId === o && r.status === 'waiting');
   json(res, 200, {
-    owner: svc.store.get('owners', o),
+    owner: withoutSecrets(svc.store.get('owners', o)),
     approvals: mine(svc, 'approvals', o).filter((a) => a.status === 'pending'),
     tasks: mine(svc, 'tasks', o).filter((t) => t.status === 'open'),
     properties: mine(svc, 'properties', o),
@@ -309,71 +311,14 @@ route('GET', '/api/dashboard', (req, res, svc) => {
   });
 }, true);
 
-route('GET', '/api/approvals', (req, res, svc) => json(res, 200, mine(svc, 'approvals', req.params.ownerId).sort((a, b) => b.createdAt.localeCompare(a.createdAt))), true);
-route('POST', '/api/approvals/:id', async (req, res, svc) => {
-  const a = svc.store.get('approvals', req.params.id);
-  if (!a || a.ownerId !== req.params.ownerId) return json(res, 404, { error: 'not found' });
-  try { svc.engine.decide(a.id, req.body.decision, req.body.note, req.body.data); } catch (e) { return json(res, 400, { error: (e as Error).message }); }
-  await svc.engine.drain();
-  json(res, 200, svc.store.get('approvals', a.id));
-}, true);
-
-/* Rent: the owner marks rent (or a deposit) received. Tenants pay the owner directly; KeyHelm never handles it. */
-route('POST', '/api/charges/:id/received', async (req, res, svc) => {
-  const c = svc.store.get('charges', req.params.id);
-  if (!c || c.ownerId !== req.params.ownerId) return json(res, 404, { error: 'not found' });
-  if (c.status !== 'open') return json(res, 400, { error: `already ${c.status}` });
-  const amount = Math.min(c.amount - c.paid, Math.round(Number(req.body?.amount) || c.amount - c.paid));
-  svc.engine.emit('payment.received', { chargeId: c.id, amount, method: 'owner_recorded', providerRef: `owner_${c.id}_${svc.clock.now().getTime()}` });
-  await svc.engine.drain();
-  json(res, 200, svc.store.get('charges', c.id));
-}, true);
+// Sign-in pages and the owner app's API (profile, rules, homes, tenants, vendors, leases, decisions,
+// to-dos, rent, repairs, messages, activity) live in ./owner-routes.ts. Registered before the plain
+// lists below, so its checked and filled-in versions answer first.
+registerOwnerRoutes({ route, json, html });
 
 for (const [path, table] of [['properties', 'properties'], ['tenants', 'tenants'], ['vendors', 'vendors'], ['leases', 'leases'], ['work-orders', 'workOrders'], ['charges', 'charges'], ['payments', 'payments'], ['expenses', 'expenses'], ['applications', 'applications'], ['showings', 'showings'], ['tasks', 'tasks'], ['messages', 'messages'], ['audit', 'audit']] as [string, TableName][]) {
   route('GET', `/api/${path}`, (req, res, svc) => json(res, 200, mine(svc, table, req.params.ownerId)), true);
 }
-
-route('POST', '/api/properties', (req, res, svc) => {
-  const b = req.body;
-  const p = svc.store.insert('properties', { ownerId: req.params.ownerId, address: b.address, city: b.city ?? '', state: b.state ?? 'CO', zip: b.zip ?? '', beds: Number(b.beds ?? 0), baths: Number(b.baths ?? 0), rent: Math.round(Number(b.rent) * 100), deposit: Math.round(Number(b.deposit ?? b.rent) * 100), status: b.status ?? 'occupied', lock: b.lock, facts: b.facts ?? {} });
-  json(res, 201, p);
-}, true);
-
-route('POST', '/api/tenants', async (req, res, svc) => {
-  const b = req.body;
-  const t = svc.store.insert('tenants', { ownerId: req.params.ownerId, propertyId: b.propertyId, name: b.name, phone: b.phone, email: b.email, preferredChannel: b.phone ? 'sms' : 'email', autopay: false, status: 'active' });
-  if (b.invite !== false) svc.engine.emit('tenant.added', { tenantId: t.id });
-  await svc.engine.drain();
-  json(res, 201, t);
-}, true);
-
-route('POST', '/api/vendors', (req, res, svc) => {
-  const b = req.body;
-  json(res, 201, svc.store.insert('vendors', { ownerId: req.params.ownerId, name: b.name, trades: b.trades ?? ['general'], phone: b.phone, email: b.email, emergency: !!b.emergency, preferred: b.preferred !== false }));
-}, true);
-
-route('PUT', '/api/rules', (req, res, svc) => {
-  const cur = svc.store.get('rules', req.params.ownerId);
-  if (!cur) return json(res, 404, { error: 'no rules' });
-  const { id: _i, ownerId: _o, ...patch } = req.body ?? {};
-  json(res, 200, svc.store.update('rules', cur.id, patch));
-}, true);
-
-route('POST', '/api/lease-templates', async (req, res, svc) => {
-  const prepared = prepareTemplate(String(req.body.text ?? ''));
-  if (!prepared.body.trim()) return json(res, 400, { error: 'text required (paste the lease text; PDF/Word upload converts to text first)' });
-  const t = svc.store.insert('leaseTemplates', { ownerId: req.params.ownerId, name: req.body.name ?? 'My lease', body: prepared.body, fields: prepared.fields, uploadedAt: svc.clock.now().toISOString() });
-  svc.engine.emit('template.uploaded', { ownerId: req.params.ownerId, templateId: t.id });
-  await svc.engine.drain();
-  json(res, 201, t);
-}, true);
-
-route('POST', '/api/work-orders', async (req, res, svc) => {
-  const b = req.body;
-  svc.engine.emit('maintenance.requested', { ownerId: req.params.ownerId, propertyId: b.propertyId, tenantId: b.tenantId, summary: b.summary, trade: b.trade ?? 'general', urgency: b.urgency ?? 'routine', photos: b.photos ?? [] });
-  await svc.engine.drain();
-  json(res, 202, { ok: true });
-}, true);
 
 route('POST', '/api/listings/:propertyId', async (req, res, svc) => {
   svc.engine.emit('listing.requested', { ownerId: req.params.ownerId, propertyId: req.params.propertyId, availableFrom: req.body.availableFrom ?? svc.clock.now().toISOString().slice(0, 10) });
@@ -455,11 +400,13 @@ export function createApp(svc: Services) {
       req.query = url.searchParams;
       if (r.auth) {
         if (LIMIT.authFail.blocked(ip)) return tooMany(res, 60, 'Too many failed sign-in attempts');
-        const ownerId = ownerOf(req, svc);
-        if (!ownerId) { LIMIT.authFail.take(ip); return json(res, 401, { error: 'unauthorized' }); }
-        const wait = LIMIT.owner.take(ownerId);
+        const who = ownerOf(req, svc);
+        if (who.setCookie) res.setHeader('set-cookie', who.setCookie);
+        if (!('ownerId' in who)) { if (who.guess) LIMIT.authFail.take(ip); return json(res, who.status, { error: who.error }); }
+        const wait = LIMIT.owner.take(who.ownerId);
         if (wait) return tooMany(res, wait);
-        req.params.ownerId = ownerId;
+        req.params.ownerId = who.ownerId;
+        req.auth = { via: who.via, sessionId: who.sessionId };
       }
       // Signed-in owners may upload lease templates; everything else is small.
       req.raw = req.method === 'GET' ? '' : await readBody(req, r.auth ? 2_000_000 : 256_000);

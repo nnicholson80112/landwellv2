@@ -131,7 +131,17 @@ $('#feed').addEventListener('click', async (e) => {
   const from = b.dataset.qrFrom, channel = from.includes('@') ? 'email' : 'sms';
   try { await api('/api/dev/inbound', { from, channel, body: b.dataset.qr, media: [] }); await refresh(); } finally { b.disabled = false; }
 });
-async function decide(id, decision) { await api('/api/approvals/' + id, { decision }); toast('Decision recorded'); refresh(); }
+async function decide(id, decision, extra = {}) {
+  const r = await api('/api/approvals/' + id, { decision, ...extra });
+  if (r && r.error) {
+    // Some decisions need details (a showing time, the deposit deductions): ask, then send again.
+    const v = (r.field === 'note' || r.field === 'deductions') && prompt(r.error + (r.field === 'deductions' ? ' Like: carpet cleaning 150, blinds 40' : ''));
+    if (v && r.field === 'note') return decide(id, decision, { note: v });
+    if (v) return decide(id, decision, { data: { deductions: v.split(',').map((p) => ({ reason: p.replace(/\$?\d[\d.,]*/, '').trim(), amount: (p.match(/\d[\d.,]*/) || ['0'])[0].replace(/,/g, '') })) } });
+    return toast(r.error);
+  }
+  toast('Decision recorded'); refresh();
+}
 $('#approvals').addEventListener('click', (e) => { const b = e.target.closest('button[data-ap]'); if (b) decide(b.dataset.ap, b.dataset.d); });
 $('#ev-id').addEventListener('click', async () => {
   const s = (await api('/api/showings')).filter((x) => x.status === 'requested' && !x.idVerified).pop();

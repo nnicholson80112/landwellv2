@@ -2,7 +2,7 @@
 //
 //   Public:   POST /api/public/signup        new owner → Stripe Checkout (first month today)
 //             GET  /offer/:id                 personal offer page (the link is the only way in)
-//             GET  /billing/done              after checkout → Calendly to book onboarding
+//             GET  /billing/done              after checkout → set a password → /app (book onboarding there)
 //   Webhooks: POST /webhooks/stripe           KeyHelm's own subscription only (never rent)
 //             POST /webhooks/calendly         onboarding booked / canceled
 //   Owner:    GET  /api/billing  · POST /api/billing/checkout · GET /api/offers
@@ -23,6 +23,7 @@ import { verifyStripeSignature } from '../adapters/live.ts';
 import { StripeBilling, applyBillingEvent, PLANS, TERMS, type Plan } from '../billing/stripe.ts';
 import { BASE_PRICE, LIST_PRICE, OFFER_RULES, PRESETS, PRICE_FLOOR, MAX_MONTHS_MONTHLY, offerPrice, REFERRAL_CREDIT_CENTS, expireOffers, issueOffer, pickOffer, quote, referralCodeFor, termLabel, usableOffers, type IssueInput } from '../billing/offers.ts';
 import { BRAND } from '../config/brand.ts';
+import { checkoutDone } from './owner-routes.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -188,22 +189,12 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
 <button>Claim offer and check out</button></form>`));
   });
 
-  /* ---------------- After checkout: onboarding call ---------------- */
-  route('GET', '/billing/done', (req, res, svc) => {
+  /* ---------------- After checkout: set a password, then the app (which offers the onboarding call) ---------------- */
+  route('GET', '/billing/done', async (req, res, svc) => {
     const sid = req.query.get('session') ?? '';
     const owner = sid ? svc.store.find('owners', (o) => o.billing?.checkoutSessionId === sid) : undefined;
+    if (owner) return checkoutDone(req, res, svc, owner, sid); // owner-routes.ts: one-time setup link → /app (Calendly link via GET /api/me)
     const cal = process.env.CALENDLY_URL;
-    if (cal && owner) {
-      const u = new URL(cal);
-      u.searchParams.set('name', owner.name);
-      u.searchParams.set('email', owner.email);
-      u.searchParams.set('utm_source', 'keyhelm');
-      u.searchParams.set('utm_campaign', 'onboarding');
-      u.searchParams.set('utm_content', owner.id); // comes back in the Calendly webhook, so the booking lands on the right account
-      res.writeHead(303, { location: u.toString() });
-      res.end();
-      return;
-    }
     html(res, 200, page(`${BRAND.name}: you're subscribed`, `<h1>You're all set</h1><p>Thanks for subscribing to ${BRAND.name}. Your receipt is on its way by email.</p>${cal ? `<p><a href="${esc(cal)}">Book your onboarding call</a></p>` : '<p>We\'ll reach out within one business day to schedule your onboarding call.</p>'}`));
   });
 
