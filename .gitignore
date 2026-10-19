@@ -2,3 +2,6 @@ node_modules/
 data/
 .env
 *.log
+
+# Temporary agent worktrees
+.claude/worktrees/
