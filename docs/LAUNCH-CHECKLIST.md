@@ -6,7 +6,7 @@ We do not launch until every box in "Must do before launch" is checked.
 ## Done in code (Oct 16, 2026)
 
 - Site design: no purple, no gradients, no pill-shaped buttons or badges, no emoji or glyph icons, no em dashes, no cursor or scroll effects, no stock or AI images (the only graphics are our own logo and simple line icons drawn in code).
-- No fake reviews, testimonials, customer counts or metrics. Removed unsupported claims: "Most popular" (no customers yet), "Average 9% / 75%" (no cited source), "Most owners are running in about a week", "We give you a letter to end your current agreement", "Deposits returned before the deadline" (the owner returns deposits, not Landwell), "Paid" (the owner pays vendors), "Fair-housing safe by design", Zillow listings (not built: now "coming soon").
+- No fake reviews, testimonials, customer counts or metrics. Removed unsupported claims: "Most popular" (no customers yet), "Average 9% / 75%" (no cited source), "Most owners are running in about a week", "We give you a letter to end your current agreement", "Deposits returned before the deadline" (the owner returns deposits, not KeyHelm), "Paid" (the owner pays vendors), "Fair-housing safe by design", Zillow listings (not built: now "coming soon").
 - Removed the public "Demo-day pricing" banner (it advertised a lower price to everyone, which undercuts the standard price under the FTC former-price rule; demo-day offers stay private, issued from /admin).
 - The demo form used to say "we'll email you" but sent nothing. "Book a demo" now goes straight to Calendly (`/demo`), so we collect nothing ourselves.
 - Fixed a bug where the signup window covered the page on load.
@@ -49,10 +49,10 @@ We do not launch until every box in "Must do before launch" is checked.
 | TCPA, CTIA rules, A2P 10DLC | Texts need consent, STOP/HELP, and our privacy policy must say mobile data isn't shared for marketing. | Opt-in, wording and policy language added. Owner texts respect opt-out. Tenants' consent comes through the owner: **Attorney** to confirm that's enough, and whether tenants need a first-message notice. |
 | Colorado AI Act (SB24-205, as amended) | Requires telling people when they are talking to an AI, and adds duties for AI used in "consequential decisions" such as housing. | The AI says it's automated at the start of each conversation and never scores or decides applications. **Attorney**: confirm current effective date and whether once per conversation is enough. |
 | Fair Housing Act, Colorado fair housing law, HUD guidance on AI and advertising | The AI must not steer or screen people. | Guardrails route these topics to the owner. **Attorney** to review the guardrail lists. |
-| Colorado brokerage licensing (property management for others) | Landwell must stay software, not unlicensed property management. | Software-only copy everywhere; no showings, no money handling. **Attorney** to confirm. |
+| Colorado brokerage licensing (property management for others) | KeyHelm must stay software, not unlicensed property management. | Software-only copy everywhere; no showings, no money handling. **Attorney** to confirm. |
 | FCRA (screening) | Adverse action notices when an owner denies based on a report. | Flow exists; **Attorney** to review wording. |
 | Colorado Privacy Act | Applies once we handle data on 100,000+ Colorado consumers a year (or 25,000 and sell data). | Not yet, but the policy already offers access, correction and deletion to everyone. |
 | Website accessibility (ADA) | Inaccessible sites draw demand letters. | Built to WCAG 2.1 AA; no independent audit yet. |
 | E-SIGN Act and Colorado UETA | Lease signing must capture consent to sign electronically. | Signing page has a consent step; **Attorney** to review. |
-| Trademark | "Landwell" is a placeholder and not cleared. | Pick and clear the name before the domain, Twilio and Stripe profile. |
+| Trademark | "KeyHelm" is a placeholder and not cleared. | Pick and clear the name before the domain, Twilio and Stripe profile. |
 | Images and fonts | Copyright. | No photos. Fonts are open-licensed. Icons and logo are our own. |

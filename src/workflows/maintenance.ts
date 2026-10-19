@@ -182,7 +182,7 @@ export const maintenance: WorkflowDef<Services, RepairInput> = {
       }
     }
 
-    // 8. Record it. The owner pays the vendor directly; Landwell never moves money.
+    // 8. Record it. The owner pays the vendor directly; KeyHelm never moves money.
     await ctx.step('expense', () => store.insert('expenses', { ownerId: input.ownerId, propertyId: input.propertyId, category: 'repairs', amount: invoice ?? 0, vendorId: vendor!.id, workOrderId: wo.id, date: ctx.svc.clock.now().toISOString().slice(0, 10), memo: `${vendor!.name}: ${wo.summary}` }));
     await upd({ status: 'paid' }, 'paid');
     await tellOwner(ctx, 'owner-done', input.ownerId, `Repair done at ${address}: ${jobLine(wo.summary)} by ${vendor.name}, ${money(invoice)}. Please pay ${vendor.name} directly; it's already in your books.`);

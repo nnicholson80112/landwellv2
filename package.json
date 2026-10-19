@@ -1,8 +1,8 @@
 {
-  "name": "landwell",
+  "name": "keyhelm",
   "version": "0.1.0",
   "private": true,
-  "description": "Landwell (working name): software that runs small-landlord property management. Workflow engine, integrations and pluggable communication AI.",
+  "description": "KeyHelm (working name): software that runs small-landlord property management. Workflow engine, integrations and pluggable communication AI.",
   "type": "module",
   "engines": {
     "node": ">=22.6"

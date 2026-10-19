@@ -122,7 +122,7 @@ export async function runDemo(opts: { quiet?: boolean } = {}) {
     flush();
   }
   say(`   ${C.dim}(Lisa hasn't paid November rent yet…)${C.r}`);
-  await advance(6.5 * DAY); // past the 5-day grace: Landwell asks the owner before anyone is told it's late
+  await advance(6.5 * DAY); // past the 5-day grace: KeyHelm asks the owner before anyone is told it's late
   say(`   ${C.mag}(owner checks their account: not there)${C.r}`);
   await text(owner, `NO ${code('rent_check')}`);
   await advance(1 * DAY); // 7 days late: owner decides on the late fee

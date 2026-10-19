@@ -1,6 +1,6 @@
 # Protecting the bill, and growing to a lot of users
 
-Written for Nate: what is in place now, what each piece does, and what to build as Landwell grows.
+Written for Nate: what is in place now, what each piece does, and what to build as KeyHelm grows.
 
 ## The short version
 

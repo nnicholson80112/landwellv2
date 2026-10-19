@@ -62,7 +62,7 @@ test('billing: contract start, offer redeemed, referral reward once', () => {
 test('API: web signup gets a welcome offer and a discounted checkout; admin, offer page and Calendly', async () => {
   const store = new MemoryStore();
   const env = { STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY, ADMIN_API_TOKEN: process.env.ADMIN_API_TOKEN, CALENDLY_URL: process.env.CALENDLY_URL, CALENDLY_WEBHOOK_SECRET: process.env.CALENDLY_WEBHOOK_SECRET };
-  Object.assign(process.env, { STRIPE_SECRET_KEY: 'sk_test_x', ADMIN_API_TOKEN: 'admin-secret', CALENDLY_URL: 'https://calendly.com/landwell/onboarding', CALENDLY_WEBHOOK_SECRET: 'cal_secret' });
+  Object.assign(process.env, { STRIPE_SECRET_KEY: 'sk_test_x', ADMIN_API_TOKEN: 'admin-secret', CALENDLY_URL: 'https://calendly.com/keyhelm/onboarding', CALENDLY_WEBHOOK_SECRET: 'cal_secret' });
   const svc = createServices({ store, clock: new SystemClock(), env: {} });
   install(svc);
   seed(store, {});
@@ -97,7 +97,7 @@ test('API: web signup gets a welcome offer and a discounted checkout; admin, off
     const done = await fetch(`${base}/billing/done?session=cs_test_1`, { redirect: 'manual' });
     assert.equal(done.status, 303);
     const loc = new URL(done.headers.get('location')!);
-    assert.equal(loc.origin + loc.pathname, 'https://calendly.com/landwell/onboarding');
+    assert.equal(loc.origin + loc.pathname, 'https://calendly.com/keyhelm/onboarding');
     assert.equal(loc.searchParams.get('email'), 'pat@example.com');
     assert.equal(loc.searchParams.get('utm_content'), pat.id);
 

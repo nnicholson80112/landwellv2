@@ -3,7 +3,7 @@
 //   Public:   POST /api/public/signup        new owner → Stripe Checkout (first month today)
 //             GET  /offer/:id                 personal offer page (the link is the only way in)
 //             GET  /billing/done              after checkout → Calendly to book onboarding
-//   Webhooks: POST /webhooks/stripe           Landwell's own subscription only (never rent)
+//   Webhooks: POST /webhooks/stripe           KeyHelm's own subscription only (never rent)
 //             POST /webhooks/calendly         onboarding booked / canceled
 //   Owner:    GET  /api/billing  · POST /api/billing/checkout · GET /api/offers
 //   Admin:    GET  /admin  · GET /api/admin/overview · POST /api/admin/offers · POST /api/admin/offers/:id/revoke
@@ -123,7 +123,7 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
     const consents = { termsAcceptedAt: now.toISOString(), termsVersion: TERMS_VERSION, smsConsent: yes(b.smsConsent), smsConsentAt: yes(b.smsConsent) ? now.toISOString() : undefined, ip: clientIp(req) };
 
     let owner = svc.store.find('owners', (o) => cleanEmail(o.email) === email);
-    if (owner?.billing?.status === 'active') return fail(409, 'That email already has an active Landwell account. Text us or reply to your welcome email for help.');
+    if (owner?.billing?.status === 'active') return fail(409, 'That email already has an active KeyHelm account. Text us or reply to your welcome email for help.');
     const viaOffer = b.offerId ? svc.store.get('offers', String(b.offerId)) : undefined;
     if (!owner) {
       owner = svc.store.insert('owners', {
@@ -197,7 +197,7 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
       const u = new URL(cal);
       u.searchParams.set('name', owner.name);
       u.searchParams.set('email', owner.email);
-      u.searchParams.set('utm_source', 'landwell');
+      u.searchParams.set('utm_source', 'keyhelm');
       u.searchParams.set('utm_campaign', 'onboarding');
       u.searchParams.set('utm_content', owner.id); // comes back in the Calendly webhook, so the booking lands on the right account
       res.writeHead(303, { location: u.toString() });
@@ -208,7 +208,7 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
   });
 
   /* ---------------- Webhooks ---------------- */
-  // Stripe: Landwell's OWN subscription billing only. Landwell never collects rent.
+  // Stripe: KeyHelm's OWN subscription billing only. KeyHelm never collects rent.
   route('POST', '/webhooks/stripe', async (req, res, svc) => {
     const secret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!secret) return json(res, 503, { error: 'STRIPE_WEBHOOK_SECRET is not set' });
@@ -216,7 +216,7 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
     const done = applyBillingEvent(svc.store, req.body, svc.clock.now().toISOString());
     if (done) {
       const b = done.billing;
-      svc.engine.audit({ ownerId: done.ownerId, actor: 'system', action: 'billing.updated', detail: `Landwell subscription: ${b.status}${b.plan ? `, ${b.plan}` : ''}${b.term ? `, ${termLabel(b.term)}` : ''}${b.doors ? `, ${b.doors} door${b.doors === 1 ? '' : 's'}` : ''} (${req.body.type}).` });
+      svc.engine.audit({ ownerId: done.ownerId, actor: 'system', action: 'billing.updated', detail: `KeyHelm subscription: ${b.status}${b.plan ? `, ${b.plan}` : ''}${b.term ? `, ${termLabel(b.term)}` : ''}${b.doors ? `, ${b.doors} door${b.doors === 1 ? '' : 's'}` : ''} (${req.body.type}).` });
       if (done.started) {
         const o = svc.store.get('owners', done.ownerId)!;
         if (!o.onboarding) svc.store.update('owners', o.id, { onboarding: { status: 'not_booked', updatedAt: svc.clock.now().toISOString() } });

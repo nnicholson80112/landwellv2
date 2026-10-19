@@ -23,7 +23,7 @@ itself. The front-desk workflow (`src/workflows/inbound-message.ts`) does that:
    instead and the owner is told.
 4. **The workflow acts** on the intent: starts a repair, a showing, a renewal answer…
 
-## The in-house option (recommended): Landwell AI service
+## The in-house option (recommended): KeyHelm AI service
 
 `src/ai-service/server.ts` is our own AI service. It runs as a second Railway service, and the main
 app talks to it with `AI_PROVIDER=http`. It holds everything that makes the AI ours:
@@ -52,7 +52,7 @@ and the error is logged. Tenants always get a reply.
 
 ## The HTTP contract (in-house AI)
 
-Landwell sends `POST AI_HTTP_URL` with `Authorization: Bearer AI_HTTP_TOKEN` and this body:
+KeyHelm sends `POST AI_HTTP_URL` with `Authorization: Bearer AI_HTTP_TOKEN` and this body:
 
 ```json
 {
@@ -65,7 +65,7 @@ Landwell sends `POST AI_HTTP_URL` with `Authorization: Bearer AI_HTTP_TOKEN` and
   "facts": [{ "label": "Rent due date", "value": "on the 1st of each month" }],
   "allowedIntents": ["emergency", "maintenance_request", "rent_question", "general"],
   "ownerFirstName": "Nate",
-  "brandName": "Landwell"
+  "brandName": "KeyHelm"
 }
 ```
 
@@ -91,7 +91,7 @@ in-house model.
 ## Voice
 
 **Built in, no extra vendor:** point your Twilio number's "A call comes in" webhook at
-`/webhooks/twilio/voice`. Twilio turns the caller's speech into text, Landwell answers through the
+`/webhooks/twilio/voice`. Twilio turns the caller's speech into text, KeyHelm answers through the
 same front desk, and Twilio reads the reply aloud. Emergencies are transferred straight to the owner's
 phone. To swap Twilio's voice for a more natural one or a faster streaming agent later, use the
 generic endpoint below.
@@ -104,7 +104,7 @@ generic endpoint below.
 ```
 
 and speaks back the `reply` field of the response. The voice agent handles speech;
-Landwell handles the brain, the guardrails and the workflows, the same as for texts.
+KeyHelm handles the brain, the guardrails and the workflows, the same as for texts.
 Protect it with `VOICE_WEBHOOK_SECRET` (sent as a Bearer token).
 
 ## Testing a provider

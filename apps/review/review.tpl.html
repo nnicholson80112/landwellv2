@@ -1,4 +1,4 @@
-<title>Landwell Build Review</title>
+<title>KeyHelm Build Review</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -77,7 +77,7 @@ footer{padding-block:28px;color:var(--muted);font-size:13px;border-top:1px solid
 
 <div class="wrap">
 <header>
-  <div class="eyebrow">Landwell · build review · {{DATE}}</div>
+  <div class="eyebrow">KeyHelm · build review · {{DATE}}</div>
   <h1>The website and the workflow engine are built and working.</h1>
   <p class="lead">Fifteen workflows run the business end to end on sample data: repairs, rent, late rent, applications, leases, showings, renewals, move-outs and owner reports. Next comes the owner app that sits on top.</p>
   <div class="status">
@@ -145,7 +145,7 @@ footer{padding-block:28px;color:var(--muted);font-size:13px;border-top:1px solid
     <tbody>
       <tr><td>Workflow engine, 16 workflows, guardrails, lease templates, signing page, API</td><td><span class="chip done">Working</span></td><td>Attorney review of Colorado rules and guardrail lists</td></tr>
       <tr><td>Communication AI</td><td><span class="chip done">Plug-in ready</span></td><td>Rule-based runs today. Add a Claude key, or point it at your in-house AI or voice agent</td></tr>
-      <tr><td>Texting, email, Landwell subscription billing, smart locks</td><td><span class="chip next">Written, untested live</span></td><td>Twilio (plus carrier registration), Postmark, Stripe, Seam accounts in test mode</td></tr>
+      <tr><td>Texting, email, KeyHelm subscription billing, smart locks</td><td><span class="chip next">Written, untested live</span></td><td>Twilio (plus carrier registration), Postmark, Stripe, Seam accounts in test mode</td></tr>
       <tr><td>ID check, screening, Zillow posting</td><td><span class="chip mock">Mock</span></td><td>Choose partners; each is one small adapter</td></tr>
       <tr><td>Login and database</td><td><span class="chip mock">MVP</span></td><td>Real sign-in and Postgres before many owners</td></tr>
       <tr><td>Owner app</td><td><span class="chip next">Next phase</span></td><td>Built on the existing API</td></tr>
@@ -158,21 +158,21 @@ footer{padding-block:28px;color:var(--muted);font-size:13px;border-top:1px solid
   <h2>Decided, and what's next</h2>
   <div class="next">
     <div class="card"><h3>Decided</h3><ul>
-      <li><b>Name:</b> Landwell (trademark search before Twilio registration and domain)</li>
-      <li><b>Look:</b> sky white, Landwell blue, sunny yellow</li>
+      <li><b>Name:</b> KeyHelm (trademark search before Twilio registration and domain)</li>
+      <li><b>Look:</b> sky white, KeyHelm blue, sunny yellow</li>
       <li><b>Demo home:</b> 7610 S Rosemary Cir, Centennial · vendor GlassHouse Exteriors</li>
       <li><b>AI:</b> in-house AI service on Railway, Claude underneath, rules as backup</li>
     </ul></div>
     <div class="card"><h3>Next, in order</h3><ul>
       <li><b>Private GitHub repo</b> with folders intact</li>
       <li><b>Railway:</b> <code>api</code> + <code>ai</code> services, fresh secrets, then check <code>/health</code> and <code>/play</code></li>
-      <li><b>Stripe sandbox</b> (Landwell's own billing only, never rent) · <b>Postmark</b> · <b>Twilio</b> + A2P 10DLC (start now, takes weeks)</li>
+      <li><b>Stripe sandbox</b> (KeyHelm's own billing only, never rent) · <b>Postmark</b> · <b>Twilio</b> + A2P 10DLC (start now, takes weeks)</li>
       <li><b>Then:</b> the owner app, phone and browser</li>
     </ul></div>
   </div>
 </section>
 </div>
-<footer><div class="wrap">Landwell is a working name. Sample data only. Not legal advice.</div></footer>
+<footer><div class="wrap">KeyHelm is a working name. Sample data only. Not legal advice.</div></footer>
 
 <script>
 const WF = [
@@ -204,7 +204,7 @@ function show(i) {
     if (m.k === 'note') return `<div class="note">${esc(m.t)}</div>`;
     const owner = /^OWNER/.test(m.who);
     const who = m.who.replace(/^(OWNER|TENANT|VENDOR) /, (x) => x === 'OWNER ' ? 'You · ' : x === 'TENANT ' ? 'Tenant · ' : 'Vendor · ').replace(/^\+1720555\d{4}$/, 'Prospect');
-    return `<div class="m ${m.k}${owner && m.k === 'out' ? ' owner' : ''}"><div class="w">${m.k === 'in' ? esc(who) : 'Landwell → ' + esc(who)}</div><div class="b">${esc(m.t)}</div></div>`;
+    return `<div class="m ${m.k}${owner && m.k === 'out' ? ' owner' : ''}"><div class="w">${m.k === 'in' ? esc(who) : 'KeyHelm → ' + esc(who)}</div><div class="b">${esc(m.t)}</div></div>`;
   }).join('');
 }
 tabs.innerHTML = SCENES.map((s, i) => `<button role="tab" id="tab${i}">${esc(s.title)}<small>${esc(s.time)}</small></button>`).join('');

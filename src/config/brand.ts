@@ -1,14 +1,13 @@
-// One place for the brand. "Landwell" is a working name: run a trademark
-// search before using it publicly, then change it here and in apps/site.
+// One place for the brand: KeyHelm (KeyHelm LLC). Every text, email and page uses this.
 export const BRAND = {
-  name: 'Landwell',
+  name: 'KeyHelm',
   tagline: 'Your rentals, handled. You just approve.',
-  supportEmail: 'help@landwell.example',
+  supportEmail: 'help@keyhelm.example',
   colors: {
     background: '#F6F9FF', // airy sky white
     surface: '#FFFFFF',
     ink: '#0E1B33', // navy text
-    primary: '#1B4DFF', // Landwell blue: main buttons and links
+    primary: '#1B4DFF', // KeyHelm blue: main buttons and links
     sun: '#FFC83D', // highlights and secondary buttons
     mint: '#0E9F6E', // success
     coral: '#C2410C', // attention

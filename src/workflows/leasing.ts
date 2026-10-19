@@ -221,7 +221,7 @@ export const leaseFlow: WorkflowDef<Services, LeaseRequest> = {
       return { status: 'renewed', leaseId: lease.id };
     }
 
-    // New tenancy: deposit + first month are paid to the OWNER directly (Landwell never
+    // New tenancy: deposit + first month are paid to the OWNER directly (KeyHelm never
     // handles money). We record what's due so the owner can mark it received.
     const charges = await ctx.step('move-in-charges', () =>
       ([['deposit', req.deposit], ['rent', req.rent]] as const).map(([kind, amount]) =>

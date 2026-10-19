@@ -19,7 +19,7 @@ test('full demo: every workflow runs without failures', async () => {
   assert.ok(store.list('leases', (l) => l.propertyId === store.list('properties')[1].id && l.status === 'active').length === 1, 'new lease active');
   assert.ok(store.list('charges', (c) => c.kind === 'late_fee').length === 1, 'late fee applied once, after the owner chose it');
   const sentAll = store.list('messages', (m) => m.direction === 'out').map((m) => m.body).join('\n');
-  assert.doesNotMatch(sentAll, /pay here|pay\.example|checkout\.stripe|autopay here/i, 'Landwell never sends rent pay links');
+  assert.doesNotMatch(sentAll, /pay here|pay\.example|checkout\.stripe|autopay here/i, 'KeyHelm never sends rent pay links');
   assert.ok(store.list('tasks', (t) => /Reply to/.test(t.title)).length >= 1, 'accommodation request routed to owner');
   assert.ok(store.list('audit', (a) => a.action === 'message.fyi').length >= 1, 'fair-housing question logged and sent to the owner as an FYI');
   const ownerPhone = store.list('owners')[0].phone;

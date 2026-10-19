@@ -80,7 +80,7 @@ export class ChannelRouter implements MessagingProvider {
   }
 }
 
-/* ---------------- Stripe webhooks (Landwell's own billing; see src/billing/) ---------------- */
+/* ---------------- Stripe webhooks (KeyHelm's own billing; see src/billing/) ---------------- */
 /** Stripe-Signature header: t=timestamp,v1=HMAC-SHA256(timestamp.payload). */
 export function verifyStripeSignature(secret: string, payload: string, header: string, toleranceSec = 300): boolean {
   const parts = Object.fromEntries(header.split(',').map((kv) => kv.split('=') as [string, string]));

@@ -3,7 +3,7 @@
 Today a rename takes about 15 minutes in code:
 
 1. `src/config/brand.ts`: name, tagline, colors (every text and email uses this).
-2. `apps/site/site.body.html`: the word "Landwell" in the logo, headings and copy (find and replace), then `npm run build:site`.
+2. `apps/site/site.body.html`: the word "KeyHelm" in the logo, headings and copy (find and replace), then `npm run build:site`.
 3. `EMAIL_FROM` in Railway variables.
 
 It gets harder once these exist under the old name, so decide before doing them:

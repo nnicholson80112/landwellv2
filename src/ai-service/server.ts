@@ -1,4 +1,4 @@
-// LANDWELL AI: the in-house communication AI service.
+// KEYHELM AI: the in-house communication AI service.
 //
 // A separate service (its own Railway service, same codebase) that the main app
 // calls through AI_PROVIDER=http. It owns everything that makes the AI "ours":
@@ -38,7 +38,7 @@ export function modelFrom(kind: string | undefined, env: Record<string, string |
   return undefined;
 }
 
-export class LandwellAI {
+export class KeyHelmAI {
   private chain: CommunicationAI[];
   private logDir?: string;
   stats = { requests: 0, errors: 0, handoffs: 0, blocked: 0, totalMs: 0, byIntent: {} as Record<string, number>, byProvider: {} as Record<string, number> };
@@ -105,7 +105,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const env = process.env;
   const token = env.AI_SERVICE_TOKEN;
   if (!token) { console.error('Set AI_SERVICE_TOKEN'); process.exit(1); }
-  const ai = new LandwellAI({
+  const ai = new KeyHelmAI({
     // Each paid model gets its own daily cap (a second line of defense behind the api service's caps).
     chain: [modelFrom(env.AI_MODEL_PRIMARY ?? 'anthropic', env), modelFrom(env.AI_MODEL_BACKUP, env)]
       .filter((x): x is CommunicationAI => !!x)
@@ -139,7 +139,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   });
   server.requestTimeout = 60_000;
   server.headersTimeout = 20_000;
-  server.listen(Number(env.PORT ?? 8788), () => console.log(`Landwell AI service on :${env.PORT ?? 8788} (models: ${env.AI_MODEL_PRIMARY ?? 'anthropic'}${env.AI_MODEL_BACKUP ? ' → ' + env.AI_MODEL_BACKUP : ''} → rules)`));
+  server.listen(Number(env.PORT ?? 8788), () => console.log(`KeyHelm AI service on :${env.PORT ?? 8788} (models: ${env.AI_MODEL_PRIMARY ?? 'anthropic'}${env.AI_MODEL_BACKUP ? ' → ' + env.AI_MODEL_BACKUP : ''} → rules)`));
   // Railway sends SIGTERM when a new deploy replaces this one; exit cleanly so it isn't marked Crashed.
   const stop = () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 5_000).unref(); };
   process.on('SIGTERM', stop);

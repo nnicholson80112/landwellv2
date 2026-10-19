@@ -69,7 +69,7 @@ export const PRESETS: Record<string, Preset> = {
   'demo-monthly':    { kind: 'demo', mode: 'base', title: 'Demo-day price: the original rate for your first 3 months, month-to-month', months: 3, terms: ['monthly'], days: 3 },
   'web-intro':       { kind: 'web_intro', mode: 'base', title: 'Welcome offer: your first month at the original rate', months: 1, terms: ['monthly'] },
   'web-intro-annual':{ kind: 'web_intro', mode: 'base', title: 'Welcome offer: your first 3 months at the original rate with a 12-month agreement', months: 3, terms: ['contract12'] },
-  'winback':         { kind: 'winback', mode: 'base', title: 'Come back to Landwell: the original rate for 3 months', months: 3, terms: ['monthly', 'contract12'] },
+  'winback':         { kind: 'winback', mode: 'base', title: 'Come back to KeyHelm: the original rate for 3 months', months: 3, terms: ['monthly', 'contract12'] },
   'referral':        { kind: 'referral', mode: 'base', title: 'Referred by a friend: the original rate for your first 3 months', months: 3, terms: ['monthly', 'contract12'] },
   'spring-leasing':  { kind: 'seasonal', mode: 'base', title: 'Spring Leasing Event: the original rate for 6 months with a 12-month agreement', months: 6, terms: ['contract12'], days: 14 },
   'year-end':        { kind: 'seasonal', mode: 'percent', percentOff: 20, title: 'Year-End Event: 20% off 2 months with a 12-month agreement', months: 2, terms: ['contract12'], days: 14 },

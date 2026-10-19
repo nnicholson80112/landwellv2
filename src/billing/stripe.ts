@@ -1,14 +1,14 @@
-// LANDWELL BILLING: the only money Landwell ever charges is its own subscription.
+// KEYHELM BILLING: the only money KeyHelm ever charges is its own subscription.
 // Owners pay a flat monthly price per door through Stripe Checkout, either
 // month-to-month or on a 12-month agreement billed monthly at a lower price. The
 // first month is always paid up front. Rent, deposits and vendor payments never
-// touch Landwell.
+// touch KeyHelm.
 //
 // Stripe holds the STANDARD prices (original + 15%; see src/billing/offers.ts).
 // Prices are found by lookup key, so a price change is made in the Stripe
 // dashboard (new price, move the lookup key) and in LIST_PRICE/BASE_PRICE:
-//   landwell_<plan>_monthly      month-to-month, per door / month
-//   landwell_<plan>_contract12   12-month agreement, per door / month
+//   keyhelm_<plan>_monthly      month-to-month, per door / month
+//   keyhelm_<plan>_contract12   12-month agreement, per door / month
 // where <plan> is essentials | autopilot | plus.
 //
 // Private offers (src/billing/offers.ts) become a single-use Stripe coupon created
@@ -21,9 +21,11 @@ import { BASE_PRICE } from './offers.ts';
 export type Plan = 'essentials' | 'autopilot' | 'plus';
 export const PLANS: Plan[] = ['essentials', 'autopilot', 'plus'];
 export const TERMS: BillingTerm[] = ['monthly', 'contract12'];
-export const lookupKey = (plan: Plan, term: BillingTerm) => `landwell_${plan}_${term}`;
+export const lookupKey = (plan: Plan, term: BillingTerm) => `keyhelm_${plan}_${term}`;
+// Prices made before the rename used landwell_ keys; both are read, keyhelm_ wins.
+const LEGACY_PREFIX = 'landwell';
 const fromLookupKey = (k?: string): { plan: Plan; term: BillingTerm } | undefined => {
-  const m = k?.match(/^landwell_(essentials|autopilot|plus)_(monthly|contract12)$/);
+  const m = k?.match(/^(?:keyhelm|landwell)_(essentials|autopilot|plus)_(monthly|contract12)$/);
   return m ? { plan: m[1] as Plan, term: m[2] as BillingTerm } : undefined;
 };
 
@@ -48,8 +50,11 @@ export class StripeBilling {
   }
 
   async priceFor(plan: Plan, term: BillingTerm): Promise<{ id: string; unit_amount: number }> {
-    const res = await this.api('GET', 'prices', new URLSearchParams({ active: 'true', 'lookup_keys[]': lookupKey(plan, term) }));
-    const p = res.data?.[0];
+    const q = new URLSearchParams({ active: 'true' });
+    q.append('lookup_keys[]', lookupKey(plan, term));
+    q.append('lookup_keys[]', `${LEGACY_PREFIX}_${plan}_${term}`);
+    const res = await this.api('GET', 'prices', q);
+    const p = (res.data ?? []).sort((a: any, b: any) => Number(b.lookup_key?.startsWith('keyhelm_')) - Number(a.lookup_key?.startsWith('keyhelm_')))[0];
     if (!p) throw new Error(`No active Stripe price with lookup key ${lookupKey(plan, term)}`);
     return p;
   }
@@ -70,7 +75,7 @@ export class StripeBilling {
       success_url: `${this.base}/billing/done?session={CHECKOUT_SESSION_ID}`,
       cancel_url: `${this.base}/#pricing`,
       'custom_text[submit][message]': i.term === 'contract12'
-        ? 'You are agreeing to a 12-month Landwell agreement, billed monthly per door. Your first month is charged today and each month after until the agreement ends.'
+        ? 'You are agreeing to a 12-month KeyHelm agreement, billed monthly per door. Your first month is charged today and each month after until the agreement ends.'
         : 'Month-to-month: your first month is charged today, then this plan renews automatically every month at the price shown until you cancel. Cancel anytime by emailing us; it takes effect at the end of the paid month.',
     });
     if (i.offer) {
@@ -101,13 +106,13 @@ export class StripeBilling {
     return { url: s.url, id: s.id };
   }
 
-  /** Account credit (e.g. a referral reward): lowers the owner's next Landwell invoice. */
+  /** Account credit (e.g. a referral reward): lowers the owner's next KeyHelm invoice. */
   async credit(customerId: string, cents: number, description: string): Promise<void> {
     await this.api('POST', `customers/${customerId}/balance_transactions`, new URLSearchParams({ amount: String(-Math.abs(cents)), currency: 'usd', description }));
   }
 }
 
-/** Stripe webhook events Landwell listens to (register exactly these). */
+/** Stripe webhook events KeyHelm listens to (register exactly these). */
 export const BILLING_EVENTS = ['checkout.session.completed', 'customer.subscription.updated', 'customer.subscription.deleted', 'invoice.paid', 'invoice.payment_failed'];
 
 const STATUS: Record<string, OwnerBilling['status']> = {
@@ -135,7 +140,7 @@ export function applyBillingEvent(store: Store, ev: any, now: string): BillingCh
 
   switch (ev?.type) {
     case 'checkout.session.completed': {
-      if (obj.mode !== 'subscription') return undefined; // Landwell takes no other kind of payment
+      if (obj.mode !== 'subscription') return undefined; // KeyHelm takes no other kind of payment
       const id = obj.client_reference_id ?? obj.metadata?.owner_id;
       owner = id ? store.get('owners', id) : byCustomer(obj.customer);
       const paid = obj.payment_status === 'paid' || obj.payment_status === 'no_payment_required';

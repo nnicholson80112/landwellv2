@@ -1,6 +1,6 @@
 # Billing, private offers and onboarding
 
-Landwell charges owners for Landwell only. It never collects rent.
+KeyHelm charges owners for KeyHelm only. It never collects rent.
 
 ## Plans and the pricing model
 
@@ -16,7 +16,7 @@ dollar amount off per door, so $45 lands on $35).
 | Autopilot Plus | $70 | $60 | $60 | $50 |
 
 Prices are per door per month. The first month is charged at checkout. There's no setup fee.
-Stripe holds the standard prices under lookup keys `landwell_<plan>_<monthly|contract12>`;
+Stripe holds the standard prices under lookup keys `keyhelm_<plan>_<monthly|contract12>`;
 `BASE_PRICE` and `LIST_PRICE` in `src/billing/offers.ts` must match them.
 
 > **Keep the standard price real.** US pricing rules (FTC 16 CFR 233.1) only allow a "regular"

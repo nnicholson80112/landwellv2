@@ -4,8 +4,8 @@ Two Railway services from this one repo, plus a volume each.
 
 | Service | Start command | Volume | Public URL |
 | --- | --- | --- | --- |
-| `api` (website, owner API, webhooks, workflows) | `npm start` | `/data` | yes, e.g. `app.landwell.example` |
-| `ai` (Landwell AI, the in-house brain) | `npm run ai` | `/data` | no, private networking only |
+| `api` (website, owner API, webhooks, workflows) | `npm start` | `/data` | yes, e.g. `app.keyhelm.example` |
+| `ai` (KeyHelm AI, the in-house brain) | `npm run ai` | `/data` | no, private networking only |
 
 ## Steps
 
@@ -20,15 +20,15 @@ Two Railway services from this one repo, plus a volume each.
 `api`:
 ```
 PUBLIC_URL=https://<your api domain>
-DATA_FILE=/data/landwell.json
+DATA_FILE=/data/keyhelm.json
 OWNER_API_TOKEN=<long random string>
 AI_PROVIDER=http
 AI_HTTP_URL=http://ai.railway.internal:8788/respond
 AI_HTTP_TOKEN=<same value as AI_SERVICE_TOKEN below>
-STRIPE_SECRET_KEY=sk_test_...          # sandbox first. Landwell's own subscription billing only
+STRIPE_SECRET_KEY=sk_test_...          # sandbox first. KeyHelm's own subscription billing only
 STRIPE_WEBHOOK_SECRET=whsec_...
 POSTMARK_TOKEN=...
-EMAIL_FROM=Landwell <hello@your-domain>
+EMAIL_FROM=KeyHelm <hello@your-domain>
 EMAIL_WEBHOOK_SECRET=<random>
 TWILIO_ACCOUNT_SID=...                 # when Twilio is ready
 TWILIO_AUTH_TOKEN=...
@@ -58,11 +58,11 @@ Never paste keys into chat or commit them. Set them only in Railway's Variables 
 | Twilio, texts | Phone number → Messaging → "A message comes in" | `https://<api>/webhooks/twilio/sms` |
 | Twilio, calls | Phone number → Voice → "A call comes in" | `https://<api>/webhooks/twilio/voice` |
 | Postmark inbound | Server → Inbound stream → webhook | `https://<api>/webhooks/email?key=<EMAIL_WEBHOOK_SECRET>` |
-| Stripe (Landwell billing only) | Developers → Webhooks → add endpoint, events `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed` | `https://<api>/webhooks/stripe` |
+| Stripe (KeyHelm billing only) | Developers → Webhooks → add endpoint, events `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed` | `https://<api>/webhooks/stripe` |
 
 ## Stripe prices, offers and Calendly
 
-See `docs/OFFERS.md`. Checkout finds prices by lookup key `landwell_<plan>_<monthly|contract12>`
+See `docs/OFFERS.md`. Checkout finds prices by lookup key `keyhelm_<plan>_<monthly|contract12>`
 (already created in the sandbox). To change a price, create a new one in Stripe and move the lookup key.
 
 More `api` variables:

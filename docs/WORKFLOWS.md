@@ -41,15 +41,15 @@ The owner decides from the app or by texting back the code in each request, for 
 11. Record the expense, mark paid, tell owner and tenant.
 
 ## 3. Daily rent check (`rent-cycle`) — every day 9:00 AM
-**Landwell never collects rent.** Tenants pay the owner directly (the owner's own method, quoted from their rules). 5 days before the due date: start the month's rent record and text a heads-up. Due date: reminder. After the grace period: start **Late rent**. Never chases past months when an owner first joins.
+**KeyHelm never collects rent.** Tenants pay the owner directly (the owner's own method, quoted from their rules). 5 days before the due date: start the month's rent record and text a heads-up. Due date: reminder. After the grace period: start **Late rent**. Never chases past months when an owner first joins.
 
 ## 4. Rent marked received (`payment-received`)
 **Starts:** the owner marks rent (or a deposit) received in the app, or answers YES to "Did rent arrive?". Records it in the books, thanks the tenant, stops late notices. Double taps can't double-count. Any rent question still waiting on the owner for that month is closed automatically.
 
 ## 5. Late rent (`late-rent`)
-1. **Owner** confirms whether rent arrived (Landwell can't see the owner's bank); asked once more after 2 days with no answer. `YES code $1,500` records part of it. Only if NO (or only part arrived): a polite late notice to the tenant for what's left.
-2. Rent 7+ days late → **Owner** decides whether to apply the lease's late fee, capped at the greater of $50 or 5% (SB21-173). Landwell only tells the tenant; they pay the owner.
-3. Day 12 unpaid → **Owner** picks: send the 10-day demand (we prepare it; the owner has it delivered properly), offer a payment plan (the tenant's reply goes straight to the owner), or keep waiting (asked again a week later, up to 3 times). Landwell never files anything.
+1. **Owner** confirms whether rent arrived (KeyHelm can't see the owner's bank); asked once more after 2 days with no answer. `YES code $1,500` records part of it. Only if NO (or only part arrived): a polite late notice to the tenant for what's left.
+2. Rent 7+ days late → **Owner** decides whether to apply the lease's late fee, capped at the greater of $50 or 5% (SB21-173). KeyHelm only tells the tenant; they pay the owner.
+3. Day 12 unpaid → **Owner** picks: send the 10-day demand (we prepare it; the owner has it delivered properly), offer a payment plan (the tenant's reply goes straight to the owner), or keep waiting (asked again a week later, up to 3 times). KeyHelm never files anything.
 
 ## 6. Rental application (`application`)
 1. Applicant gets the screening partner's link (they authorize and pay the partner directly). Arrival order recorded.
@@ -76,7 +76,7 @@ Listing copy with one all-in rent (HB25-1090) and an Equal Housing line ("Tours 
 At the owner's lead time (default 120 days): **Owner** offers the renewal (same rent, or `YES code $2,850 12 months`), or chooses not to renew and must pick a Colorado for-cause reason (HB24-1098, generally 90 days' notice; owner gets a to-do to deliver the written notice). Offer held until quiet hours end. Any tenant on the lease can answer: YES → owner told, renewal lease (workflow 7); NO → owner told, move-out; a question → sent to the owner and the offer stays open. One reminder after 2 weeks; after 4 weeks the owner gets a to-do and a text.
 
 ## 12. Move-out and deposit (`move-out`)
-Confirm the date with every tenant on the lease (a date after the lease ends goes to the owner to decide), ask for a forwarding address (saved when they reply with one), start the listing early, walkthrough to-do for the owner, reminders. After move-out: **Owner** chooses full return or texts the deductions (`NO code carpet cleaning $150, blinds $40`); "deductions" with none listed asks for the list instead of sending a full refund by mistake. Landwell sends the itemized statement and gives the owner a to-do to send the refund (with the forwarding address) by the deadline. Escalates at day 21; itemized statement and refund before the 30-day deadline (HB25-1249).
+Confirm the date with every tenant on the lease (a date after the lease ends goes to the owner to decide), ask for a forwarding address (saved when they reply with one), start the listing early, walkthrough to-do for the owner, reminders. After move-out: **Owner** chooses full return or texts the deductions (`NO code carpet cleaning $150, blinds $40`); "deductions" with none listed asks for the list instead of sending a full refund by mistake. KeyHelm sends the itemized statement and gives the owner a to-do to send the refund (with the forwarding address) by the deadline. Escalates at day 21; itemized statement and refund before the 30-day deadline (HB25-1249).
 
 ## 13. Tenant welcome (`tenant-welcome`)
 When the owner adds a tenant: how to text repairs, that rent is still paid to the owner as before, STOP to opt out.

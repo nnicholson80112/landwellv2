@@ -176,7 +176,7 @@ export const moveOut: WorkflowDef<Services, { ownerId: string; tenantId: string;
     const deductions = (d?.data.deductions as { reason: string; amount: number }[] | undefined) ?? [];
     const total = deductions.reduce((s, x) => s + x.amount, 0);
     const refund = Math.max(0, held - total);
-    // The owner holds the deposit and sends the refund; Landwell sends the statement and tracks the deadline.
+    // The owner holds the deposit and sends the refund; KeyHelm sends the statement and tracks the deadline.
     const fwd = tenants.map((t) => store.get('tenants', t.id)?.forwardingAddress).filter(Boolean).join('; ');
     await ctx.step('refund-task', () => store.insert('tasks', { ownerId: input.ownerId, title: `Send deposit refund of ${money(refund)}: ${address}`, detail: `Send ${money(refund)} to ${names} by ${deadline} (Colorado deadline). ${fwd ? `Forwarding address: ${fwd}.` : 'They have not given a forwarding address; mail it to their last known address or ask them.'} The itemized statement has been sent to them.`, dueAt: deadline + 'T17:00:00Z', status: 'open' }));
     const lines = deductions.map((x) => `• ${x.reason}: ${money(x.amount)}`).join('\n');

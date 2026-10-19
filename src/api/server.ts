@@ -6,7 +6,7 @@
 //   Webhooks:  POST /webhooks/twilio/sms   (texts in)
 //              POST /webhooks/email        (Postmark inbound)
 //              POST /webhooks/voice        (any voice agent: transcript in, reply out)
-//              POST /webhooks/stripe       (Landwell's own subscription billing; never rent)
+//              POST /webhooks/stripe       (KeyHelm's own subscription billing; never rent)
 //              POST /webhooks/screening    (screening partner results)
 //              POST /webhooks/identity     (ID verification results)
 //   Owner API: /api/... with  Authorization: Bearer <OWNER_API_TOKEN>
@@ -318,7 +318,7 @@ route('POST', '/api/approvals/:id', async (req, res, svc) => {
   json(res, 200, svc.store.get('approvals', a.id));
 }, true);
 
-/* Rent: the owner marks rent (or a deposit) received. Tenants pay the owner directly; Landwell never handles it. */
+/* Rent: the owner marks rent (or a deposit) received. Tenants pay the owner directly; KeyHelm never handles it. */
 route('POST', '/api/charges/:id/received', async (req, res, svc) => {
   const c = svc.store.get('charges', req.params.id);
   if (!c || c.ownerId !== req.params.ownerId) return json(res, 404, { error: 'not found' });
@@ -482,7 +482,7 @@ export function createApp(svc: Services) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const dataFile = process.env.DATA_FILE ?? join(ROOT, 'data/landwell.json');
+  const dataFile = process.env.DATA_FILE ?? join(ROOT, 'data/keyhelm.json');
   const setAside = freshStartIfOld(dataFile);
   if (setAside) console.log(`Fresh start (data version ${DATA_VERSION}): old data moved to ${setAside}`);
   const store = new MemoryStore({ file: dataFile });

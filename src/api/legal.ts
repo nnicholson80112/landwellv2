@@ -45,7 +45,7 @@ footer{padding-block:28px 40px;border-top:1px solid var(--line);color:var(--mute
 <header><a href="/">${esc(BRAND.name)}</a></header>
 <main><h1>${esc(title)}</h1><p class="meta">${effective}</p>${draft}${body}</main>
 <footer><nav aria-label="Policies">${POLICY_LINKS.map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}</nav>
-<p>${esc(b.legalName)} · ${esc(b.address)} · <a href="mailto:${esc(b.email)}">${esc(b.email)}</a></p></footer>
+<p>${esc(b.legalName)}${b.address ? ` · ${esc(b.address)}` : ''} · <a href="mailto:${esc(b.email)}">${esc(b.email)}</a></p></footer>
 </body></html>`;
 }
 
@@ -119,7 +119,7 @@ export function privacyPolicy(): string {
 <p>If we change this policy, we will update the effective date above. If the change is significant, we will tell owners by email before it takes effect.</p>
 
 <h2>Contact</h2>
-<p>${esc(BUSINESS.legalName)}, ${esc(BUSINESS.address)}. Email ${contact()}.</p>`);
+<p>${esc(BUSINESS.legalName)}${BUSINESS.address ? `, ${esc(BUSINESS.address)}` : ''}. Email ${contact()}.</p>`);
 }
 
 export function termsOfService(): string {
@@ -186,7 +186,7 @@ export function termsOfService(): string {
 <p>These terms are governed by Colorado law. [Dispute resolution, venue and any arbitration terms to be set by our attorney.]</p>
 
 <h2>15. Contact</h2>
-<p>${esc(BUSINESS.legalName)}, ${esc(BUSINESS.address)}. Email ${contact()}.</p>`);
+<p>${esc(BUSINESS.legalName)}${BUSINESS.address ? `, ${esc(BUSINESS.address)}` : ''}. Email ${contact()}.</p>`);
 }
 
 export function cookiePolicy(): string {

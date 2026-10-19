@@ -4,7 +4,7 @@ import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
-import { LandwellAI } from '../src/ai-service/server.ts';
+import { KeyHelmAI } from '../src/ai-service/server.ts';
 import type { CommunicationAI, AIInput } from '../src/ai/types.ts';
 import { MemoryStore } from '../src/store/store.ts';
 import { SystemClock } from '../src/engine/clock.ts';
@@ -15,13 +15,13 @@ import { createApp } from '../src/api/server.ts';
 
 const input = (message: string, extra: Partial<AIInput> = {}): AIInput => ({
   channel: 'sms', senderRole: 'tenant', message, mediaCount: 0, history: [], facts: [{ label: 'Rent due date', value: 'on the 1st' }],
-  allowedIntents: ['maintenance_request', 'rent_question', 'general', 'emergency', 'accommodation_request'], ownerFirstName: 'Nate', brandName: 'Landwell', ...extra,
+  allowedIntents: ['maintenance_request', 'rent_question', 'general', 'emergency', 'accommodation_request'], ownerFirstName: 'Nate', brandName: 'KeyHelm', ...extra,
 });
 
 test('in-house AI: falls back when the model fails, logs every exchange', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ai-'));
   const broken: CommunicationAI = { name: 'broken', respond: async () => { throw new Error('model down'); } };
-  const ai = new LandwellAI({ chain: [broken], logDir: dir });
+  const ai = new KeyHelmAI({ chain: [broken], logDir: dir });
   const r = await ai.respond(input('My toilet is clogged'));
   assert.equal(r.intent, 'maintenance_request');
   assert.equal(ai.stats.errors, 1);
@@ -33,12 +33,12 @@ test('in-house AI: falls back when the model fails, logs every exchange', async 
 test('in-house AI: guardrails run even if the model would answer', async () => {
   let called = false;
   const model: CommunicationAI = { name: 'm', respond: async () => { called = true; return { intent: 'general', confidence: 1, reply: 'Sure!', entities: {}, handoff: false, provider: 'm' }; } };
-  const ai = new LandwellAI({ chain: [model] });
+  const ai = new KeyHelmAI({ chain: [model] });
   const r = await ai.respond(input('I need a wheelchair ramp, I have a disability'));
   assert.equal(called, false);
   assert.equal(r.handoff, true);
   const bad: CommunicationAI = { name: 'b', respond: async () => ({ intent: 'rent_question', confidence: 1, reply: 'I can lower it to $1,500.', entities: {}, handoff: false, provider: 'b' }) };
-  const r2 = await new LandwellAI({ chain: [bad] }).respond(input('Can you lower my rent?'));
+  const r2 = await new KeyHelmAI({ chain: [bad] }).respond(input('Can you lower my rent?'));
   assert.equal(r2.handoff, true);
   assert.doesNotMatch(r2.reply, /\$1,500/);
 });

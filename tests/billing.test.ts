@@ -10,13 +10,13 @@ import { seed } from '../src/sim/seed.ts';
 import { createApp } from '../src/api/server.ts';
 import { applyBillingEvent } from '../src/billing/stripe.ts';
 
-test('billing: Stripe events update only the owner\'s Landwell subscription', () => {
+test('billing: Stripe events update only the owner\'s KeyHelm subscription', () => {
   const store = new MemoryStore();
   const s = seed(store, {});
   const now = new Date().toISOString();
   applyBillingEvent(store, { type: 'checkout.session.completed', data: { object: { mode: 'subscription', client_reference_id: s.owner.id, customer: 'cus_1', subscription: 'sub_1', payment_status: 'paid' } } }, now);
   assert.equal(store.get('owners', s.owner.id)!.billing!.status, 'active');
-  applyBillingEvent(store, { type: 'customer.subscription.updated', data: { object: { id: 'sub_1', customer: 'cus_1', status: 'active', metadata: { owner_id: s.owner.id }, items: { data: [{ quantity: 4, price: { lookup_key: 'landwell_plus_monthly', recurring: {} } }] } } } }, now);
+  applyBillingEvent(store, { type: 'customer.subscription.updated', data: { object: { id: 'sub_1', customer: 'cus_1', status: 'active', metadata: { owner_id: s.owner.id }, items: { data: [{ quantity: 4, price: { lookup_key: 'keyhelm_plus_monthly', recurring: {} } }] } } } }, now);
   const o = store.get('owners', s.owner.id)!;
   assert.equal(o.billing!.doors, 4);
   assert.equal(o.plan, 'plus');
@@ -24,7 +24,7 @@ test('billing: Stripe events update only the owner\'s Landwell subscription', ()
   assert.equal(store.get('owners', s.owner.id)!.billing!.status, 'past_due');
   applyBillingEvent(store, { type: 'customer.subscription.deleted', data: { object: { id: 'sub_1', customer: 'cus_1', status: 'canceled', items: { data: [] } } } }, now);
   assert.equal(store.get('owners', s.owner.id)!.billing!.status, 'canceled');
-  // Payment-mode checkouts (anything that isn't a subscription) are ignored: Landwell takes no other payments.
+  // Payment-mode checkouts (anything that isn't a subscription) are ignored: KeyHelm takes no other payments.
   assert.equal(applyBillingEvent(store, { type: 'checkout.session.completed', data: { object: { mode: 'payment', client_reference_id: s.owner.id } } }, now), undefined);
 });
 

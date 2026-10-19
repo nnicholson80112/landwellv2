@@ -91,7 +91,7 @@ export class OpenAICompatAI implements CommunicationAI {
 
 /**
  * Your own AI service (in-house model, a voice-agent vendor, anything).
- * Landwell POSTs the AIInput JSON and expects an AIResult JSON back.
+ * KeyHelm POSTs the AIInput JSON and expects an AIResult JSON back.
  * Contract: docs/AI-PLUGIN.md
  */
 export class HttpAI implements CommunicationAI {

@@ -34,7 +34,7 @@ test('postcheck blocks invented amounts and steering language', () => {
 
 test('rule-based AI classifies common messages', async () => {
   const ai = new RuleBasedAI();
-  const base = { channel: 'sms' as const, mediaCount: 0, history: [], facts: [{ label: 'Pet policy', value: 'Cats only.' }], ownerFirstName: 'Nate', brandName: 'Landwell' };
+  const base = { channel: 'sms' as const, mediaCount: 0, history: [], facts: [{ label: 'Pet policy', value: 'Cats only.' }], ownerFirstName: 'Nate', brandName: 'KeyHelm' };
   const all = ['maintenance_request', 'rent_question', 'listing_question', 'showing_request', 'renewal_response', 'move_out_notice', 'general', 'vendor_update', 'application_question', 'lease_question'] as any;
   assert.equal((await ai.respond({ ...base, senderRole: 'tenant', message: 'My toilet is clogged', allowedIntents: all })).entities.trade, 'plumbing');
   assert.equal((await ai.respond({ ...base, senderRole: 'prospect', message: 'Do you allow cats?', allowedIntents: all })).reply, 'Cats only. Would you like to schedule a self-guided tour?');

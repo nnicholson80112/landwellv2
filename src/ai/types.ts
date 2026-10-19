@@ -1,5 +1,5 @@
 // The plug-in point for "communication AI". Anything that implements
-// CommunicationAI can run Landwell's texting/email/voice front desk:
+// CommunicationAI can run KeyHelm's texting/email/voice front desk:
 //   - RuleBasedAI   : no model, keyword rules (always available, used as fallback)
 //   - AnthropicAI   : Claude via the Messages API
 //   - HttpAI        : your own in-house service, or any vendor, over one HTTPS endpoint

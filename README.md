@@ -1,16 +1,16 @@
-# Landwell (working name)
+# KeyHelm (working name)
 
 Software that runs small-landlord property management. Tenants, prospects and
-vendors text one number; Landwell answers, books repairs, sends rent reminders,
+vendors text one number; KeyHelm answers, books repairs, sends rent reminders,
 fills leases and keeps Colorado deadlines, and texts the owner only when a
 decision is theirs.
 
-> **Landwell never collects, holds or moves rent, deposits or vendor payments.**
+> **KeyHelm never collects, holds or moves rent, deposits or vendor payments.**
 > Tenants pay the owner directly and the owner marks rent received. The only money
-> Landwell charges is its own subscription (per door per month, month-to-month or 12-month),
+> KeyHelm charges is its own subscription (per door per month, month-to-month or 12-month),
 > billed through Stripe (`src/billing/stripe.ts`).
 
-> "Landwell" is a placeholder. Run a trademark search before using it. The name
+> "KeyHelm" is a placeholder. Run a trademark search before using it. The name
 > and colors live in `src/config/brand.ts` and `apps/site/site.body.html`.
 
 ## Quick start
@@ -57,9 +57,9 @@ curl localhost:8787/api/dashboard -H 'authorization: Bearer dev-token'
 | `src/adapters/` | Outside services: mock versions plus Twilio, Postmark, Seam, built-in e-sign |
 | `src/config/` | Brand, and `colorado.ts`: every Colorado rule the workflows enforce, with citations |
 | `src/api/server.ts` | HTTP API, webhooks (texts, email, phone calls, Stripe billing), application form, lease signing page |
-| `src/billing/` | Landwell's own subscription billing (Stripe Checkout + webhook) and private offers. Never rent. See `docs/OFFERS.md` |
+| `src/billing/` | KeyHelm's own subscription billing (Stripe Checkout + webhook) and private offers. Never rent. See `docs/OFFERS.md` |
 | `apps/admin/` | `/admin`: issue private offers, see customers and onboarding |
-| `src/ai-service/` | Landwell AI: the in-house AI service (separate Railway service) |
+| `src/ai-service/` | KeyHelm AI: the in-house AI service (separate Railway service) |
 | `src/leases/` | Turns an owner's own lease into a fill-in template |
 | `src/sim/` | Demo data and the end-to-end demo |
 | `apps/site/` | Marketing website |
@@ -82,6 +82,6 @@ curl localhost:8787/api/dashboard -H 'authorization: Bearer dev-token'
 
 1. Colorado landlord-tenant attorney reviews `src/config/colorado.ts`, `src/ai/guardrails.ts`, the sample lease and the signing page.
 2. Twilio A2P 10DLC registration approved (US carriers block unregistered business texting).
-3. Stripe live mode for Landwell's own subscription (month-to-month and 12-month prices, found by lookup key), plus an attorney-reviewed 12-month agreement.
+3. Stripe live mode for KeyHelm's own subscription (month-to-month and 12-month prices, found by lookup key), plus an attorney-reviewed 12-month agreement.
 4. Real login, Postgres, backups, error alerts.
 5. Run the founding client for one full month on text and email before turning on voice.

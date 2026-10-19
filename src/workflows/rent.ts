@@ -1,5 +1,5 @@
-// RENT: Landwell NEVER collects or holds rent. Tenants pay the owner directly
-// (however the owner already gets paid). Landwell only:
+// RENT: KeyHelm NEVER collects or holds rent. Tenants pay the owner directly
+// (however the owner already gets paid). KeyHelm only:
 //   • reminds tenants when rent is coming due,
 //   • asks the owner whether rent arrived before anyone is told it's late,
 //   • sends late notices the owner's lease allows, and tells the owner the
@@ -129,7 +129,7 @@ export const lateRent: WorkflowDef<Services, { ownerId: string; chargeId: string
     const balance = () => { const c = store.get('charges', chargeId)!; return c.amount - c.paid; };
     const isPaid = () => store.get('charges', chargeId)!.status === 'paid';
 
-    // 1. Ask the owner first. Landwell can't see the owner's bank, so no one is told rent is late until the owner says so.
+    // 1. Ask the owner first. KeyHelm can't see the owner's bank, so no one is told rent is late until the owner says so.
     //    No answer in 2 days → ask once more. "YES code $1,500" records a partial payment.
     const ask = (round: number) => ctx.approval({
       kind: 'rent_check',
@@ -155,7 +155,7 @@ export const lateRent: WorkflowDef<Services, { ownerId: string; chargeId: string
     for (const t of tenants) await noticeTenant(ctx, `late1:${t.id}`, t, `Hi ${firstName(t.name)}, your landlord hasn't received ${check?.decision === 'received' ? 'the rest of the rent' : 'rent'} (${money(owed)}) for ${address} yet. ${howToPay} If you've already paid, thank you and please ignore this.`);
     await ctx.log('rent.late-notice', `Late notice sent for ${address} (${money(balance())}).`);
 
-    // 2. Late fee: only allowed once rent is 7+ days late, capped (SB21-173). The OWNER decides; Landwell only tells the tenant.
+    // 2. Late fee: only allowed once rent is 7+ days late, capped (SB21-173). The OWNER decides; KeyHelm only tells the tenant.
     const feeDay = new Date(dueMs + CO.lateFee.minDaysLate * DAY).toISOString();
     let paid = await ctx.waitFor('charge.paid', { chargeId }, { timeoutMs: Math.max(0, Date.parse(feeDay) - (await ctx.now()).getTime()), label: 'Waiting for the owner to mark rent received' });
     if (paid) return { outcome: 'paid_before_fee' };
@@ -176,7 +176,7 @@ export const lateRent: WorkflowDef<Services, { ownerId: string; chargeId: string
       }
     }
 
-    // 3. Day 12: owner decides what happens next. "Keep waiting" asks again a week later (up to 3 times). Landwell never files anything.
+    // 3. Day 12: owner decides what happens next. "Keep waiting" asks again a week later (up to 3 times). KeyHelm never files anything.
     for (let round = 0; round < 3; round++) {
       paid = await ctx.waitFor('charge.paid', { chargeId }, { timeoutMs: (round ? 7 : 5) * DAY, label: 'Waiting for the owner to mark rent received' });
       if (paid) return { outcome: round ? 'paid_while_waiting' : 'paid_after_fee' };

@@ -1,4 +1,4 @@
-# Landwell: notes for Claude Code
+# KeyHelm: notes for Claude Code
 
 Read `docs/HANDOFF.md` first. It has the goals, firm decisions, pricing, live infrastructure,
 current issues (in priority order) and what's next.
@@ -10,10 +10,10 @@ current issues (in priority order) and what's next.
 - **Never ask him to paste API keys, tokens or secrets into chat.** They go only into Railway Variables.
 
 ## Hard rules for the code
-- Landwell never collects, holds or moves rent, deposits or vendor payments. Stripe bills only Landwell's own subscription.
+- KeyHelm never collects, holds or moves rent, deposits or vendor payments. Stripe bills only KeyHelm's own subscription.
 - Fair housing: the AI never discusses neighborhoods, safety, schools or protected traits, and never scores or recommends applicants.
 - No runtime dependencies (Node 22 built-ins only). TypeScript runs with `--experimental-strip-types`.
-- `LIST_PRICE` / `BASE_PRICE` in `src/billing/offers.ts` must match the Stripe prices (lookup keys `landwell_<plan>_<monthly|contract12>`).
+- `LIST_PRICE` / `BASE_PRICE` in `src/billing/offers.ts` must match the Stripe prices (lookup keys `keyhelm_<plan>_<monthly|contract12>`).
 
 ## Before every commit
 `npm test` (65 tests), `npm run typecheck`, and `npm run demo` should show 0 failed runs.

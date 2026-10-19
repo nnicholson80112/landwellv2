@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Landwell Test Console</title>
+<title>KeyHelm Test Console</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -47,7 +47,7 @@ button.sun{background:var(--sun);color:#0E1B33}
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><h1>Landwell test console</h1><input id="token" type="password" placeholder="Owner API token" autocomplete="off"><button id="connect">Connect</button></div>
+  <div class="top"><h1>KeyHelm test console</h1><input id="token" type="password" placeholder="Owner API token" autocomplete="off"><button id="connect">Connect</button></div>
   <p class="muted">Send messages as anyone, decide approvals, and fire partner events. Everything runs through the real workflows. Texts only reach real phones once Twilio is connected; until then, replies show up here.</p>
   <div class="grid">
     <div>
@@ -62,11 +62,11 @@ button.sun{background:var(--sun);color:#0E1B33}
       </div>
       <div class="card">
         <h2>Partner events</h2>
-        <p class="muted">Things that normally arrive from the ID-check and screening partners, plus the owner marking rent received (tenants pay the owner directly; Landwell never touches rent).</p>
+        <p class="muted">Things that normally arrive from the ID-check and screening partners, plus the owner marking rent received (tenants pay the owner directly; KeyHelm never touches rent).</p>
         <div class="row"><button class="ghost" id="ev-id">Prospect finished ID check</button><button class="ghost" id="ev-screen">Screening report arrives</button><button class="ghost" id="ev-pay">Owner marks oldest rent received</button></div>
       </div>
       <div class="card">
-        <h2>Landwell subscription</h2>
+        <h2>KeyHelm subscription</h2>
         <p class="muted" id="bill-status">Connect to load.</p>
         <label for="bill-plan">Plan</label><select id="bill-plan"><option value="essentials">Essentials</option><option value="autopilot" selected>Autopilot</option><option value="plus">Autopilot Plus</option></select>
         <label for="bill-term">Billing</label><select id="bill-term"><option value="monthly">Month-to-month</option><option value="contract12">12-month agreement (lower price)</option></select>
@@ -188,7 +188,7 @@ async function refresh() {
     const when = new Date(m.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
     // The tenant's repair choices: buttons on the newest message to them that offers any.
     const opts = m.meta?.options && m === latestTo[norm(m.to)] ? `<div class="qr"><span>${esc(who)} can tap:</span>${m.meta.options.map((o) => `<button class="ghost" data-qr-from="${esc(m.to)}" data-qr="${esc(o.key)}">${esc(o.label)}</button>`).join('')}</div>` : '';
-    return `<div class="m ${m.direction}${owner ? ' owner' : ''}"><div class="w">${m.direction === 'in' ? esc(who) : 'Landwell → ' + esc(who)} · ${m.channel} · ${when}</div><div class="b">${esc(m.body)}${m.media?.length ? ' [photo]' : ''}</div>${opts}</div>`;
+    return `<div class="m ${m.direction}${owner ? ' owner' : ''}"><div class="w">${m.direction === 'in' ? esc(who) : 'KeyHelm → ' + esc(who)} · ${m.channel} · ${when}</div><div class="b">${esc(m.body)}${m.media?.length ? ' [photo]' : ''}</div>${opts}</div>`;
   }).join('') || '<p class="muted">No messages yet. Send one on the left.</p>';
   if (atBottom) feed.scrollTop = feed.scrollHeight;
   $('#approvals').innerHTML = dash.approvals.length ? dash.approvals.map((a) => `<div class="ap"><b>${esc(a.title)}</b><p>${esc(a.body)}</p><p>Text code: <b style="display:inline">${esc(a.code ?? "")}</b></p><div class="row">${a.options.map((o, i) => `<button class="${i ? 'ghost' : 'sun'}" data-ap="${a.id}" data-d="${esc(o)}">${esc(o.replace(/_/g, ' '))}</button>`).join('')}</div></div>`).join('') : '<p class="muted">Nothing is waiting on you.</p>';

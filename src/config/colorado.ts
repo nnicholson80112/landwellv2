@@ -11,11 +11,11 @@ export const CO = {
   /** SB21-173 (C.R.S. 38-12-105): no late fee until rent is 7+ days late; fee capped at the greater of $50 or 5% of past-due rent. Must be in the lease. */
   lateFee: { minDaysLate: 7, flatCapCents: 5_000, percentCap: 0.05 },
 
-  /** Nonpayment demand period before an eviction filing (C.R.S. 13-40-104, 10 days since 2021). Landwell never files; it only prepares the notice for the owner. */
+  /** Nonpayment demand period before an eviction filing (C.R.S. 13-40-104, 10 days since 2021). KeyHelm never files; it only prepares the notice for the owner. */
   nonpaymentDemandDays: 10,
 
   /** HB25-1090: advertised rent must include all mandatory fees; a free way to pay rent must exist.
-   *  Landwell never collects rent, so the free payment method is the OWNER's to provide; we remind them at setup. */
+   *  KeyHelm never collects rent, so the free payment method is the OWNER's to provide; we remind them at setup. */
   allInRentRequired: true,
   freePaymentMethodRequired: true,
 

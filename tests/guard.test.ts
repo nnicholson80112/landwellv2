@@ -28,7 +28,7 @@ test('secrets compare safely', () => {
   assert.ok(!safeEqual('abc', 'abcd'));
 });
 
-const input = (ownerId: string): AIInput => ({ ownerId, channel: 'sms', senderRole: 'tenant', message: 'x'.repeat(5000), mediaCount: 0, history: [], facts: [], allowedIntents: ['general'], ownerFirstName: 'Nate', brandName: 'Landwell' });
+const input = (ownerId: string): AIInput => ({ ownerId, channel: 'sms', senderRole: 'tenant', message: 'x'.repeat(5000), mediaCount: 0, history: [], facts: [], allowedIntents: ['general'], ownerFirstName: 'Nate', brandName: 'KeyHelm' });
 
 test('AI budget: per-owner and service-wide daily caps, long messages trimmed', async () => {
   let seen = 0;
@@ -56,7 +56,7 @@ test('server: legal pages, favicon, cached and compressed site, request limits',
       const r = await fetch(base + p);
       assert.equal(r.status, 200, p);
       const t = await r.text();
-      assert.match(t, /Draft\./, `${p} is marked draft until an attorney reviews it`);
+      assert.doesNotMatch(t, /Draft\./, `${p} is owner-approved: no draft notice`);
       assert.doesNotMatch(t, /—/, `${p} has no em dashes`);
     }
     const fav = await fetch(base + '/favicon.svg');
