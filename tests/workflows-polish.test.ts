@@ -81,9 +81,9 @@ test('tour times follow what the prospect asked for', () => {
   const now = '2026-10-14T14:15:00Z'; // Wed 8:15 AM Denver
   const tz = 'America/Denver';
   const hours = { start: '09:00', end: '19:00' };
-  const show = (q: string) => nextSlots(now, tz, hours, 3, slotPrefs(q, now, tz)).map((x) => new Date(x).toLocaleString('en-US', { timeZone: tz, weekday: 'short', hour: 'numeric' }));
-  assert.deepEqual(show('Can I see it this weekend?'), ['Sat, 9 AM', 'Sat, 12 PM', 'Sat, 3 PM']);
-  assert.deepEqual(show('saturday morning'), ['Sat, 9 AM', 'Sat, 10 AM', 'Sat, 11 AM']);
+  const show = (q: string) => nextSlots(now, tz, hours, 3, slotPrefs(q, now, tz)).map((x) => new Date(x).toLocaleString('en-US', { timeZone: tz, weekday: 'short', hour: 'numeric' }).replace(',', ''));
+  assert.deepEqual(show('Can I see it this weekend?'), ['Sat 9 AM', 'Sat 12 PM', 'Sat 3 PM']);
+  assert.deepEqual(show('saturday morning'), ['Sat 9 AM', 'Sat 10 AM', 'Sat 11 AM']);
   assert.equal(show('anytime').length, 3);
   // A slot already booked by someone else isn't offered again.
   const taken = nextSlots(now, tz, hours, 1, slotPrefs('saturday morning', now, tz));
