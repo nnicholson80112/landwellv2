@@ -4,9 +4,9 @@ import { randomUUID } from 'node:crypto';
 import type { Tables, TableName } from '../domain/types.ts';
 
 /**
- * Storage interface used by everything else. The MVP ships a memory store that
- * snapshots to a JSON file. For production, implement the same interface on
- * Postgres (see db/schema.sql); nothing else in the code needs to change.
+ * Storage interface used by everything else. Two implementations keep the whole
+ * working set in memory: MemoryStore (snapshots to a JSON file on flush) and
+ * PgStore (src/store/pg-store.ts, journals changes to Postgres when DATABASE_URL is set).
  */
 export interface Store {
   insert<K extends TableName>(table: K, rec: Omit<Tables[K], 'id'> & { id?: string }): Tables[K];
@@ -21,7 +21,18 @@ export interface Store {
   kvList<T>(ns: string): T[];
   kvDelete(ns: string, key: string): void;
   flush(): void;
+  /** Where data is kept and whether everything is saved (shown on /health). */
+  health?(): StoreHealth;
 }
+
+export type StoreHealth = {
+  kind: 'memory' | 'file' | 'postgres';
+  /** Changes not yet saved to Postgres. */
+  unsaved?: number;
+  /** True while saving to Postgres keeps failing (changes are kept in memory and retried). */
+  failing?: boolean;
+  lastSavedAt?: string;
+};
 
 export const newId = (prefix = ''): string => (prefix ? prefix + '_' : '') + randomUUID().replace(/-/g, '').slice(0, 16);
 
@@ -31,11 +42,12 @@ const PREFIX: Record<TableName, string> = {
   applications: 'app', showings: 'shw', messages: 'msg', approvals: 'apv', audit: 'aud', tasks: 'tsk', offers: 'off',
 };
 
-type Snapshot = { tables: Record<string, Record<string, unknown>>; kv: Record<string, Record<string, unknown>> };
+/** The JSON file format (DATA_FILE). */
+export type Snapshot = { tables: Record<string, Record<string, unknown>>; kv: Record<string, Record<string, unknown>> };
 
 export class MemoryStore implements Store {
-  private tables: Record<string, Map<string, any>> = {};
-  private kv: Record<string, Map<string, any>> = {};
+  protected tables: Record<string, Map<string, any>> = {};
+  protected kv: Record<string, Map<string, any>> = {};
   private file?: string;
   private dirty = false;
 
@@ -47,6 +59,9 @@ export class MemoryStore implements Store {
       for (const [n, rows] of Object.entries(snap.kv)) this.kv[n] = new Map(Object.entries(rows));
     }
   }
+
+  /** Called after every change; PgStore overrides it to know what to write. */
+  protected changed(_kind: 'row' | 'kv', _group: string, _key: string, _removed: boolean): void {}
 
   private t(name: string): Map<string, any> {
     return (this.tables[name] ??= new Map());
@@ -60,6 +75,7 @@ export class MemoryStore implements Store {
     const row = structuredClone({ ...rec, id }) as Tables[K];
     this.t(table).set(id, row);
     this.dirty = true;
+    this.changed('row', table, id, false);
     return structuredClone(row);
   }
   get<K extends TableName>(table: K, id: string): Tables[K] | undefined {
@@ -72,6 +88,7 @@ export class MemoryStore implements Store {
     const next = { ...cur, ...structuredClone(patch), id };
     this.t(table).set(id, next);
     this.dirty = true;
+    this.changed('row', table, id, false);
     return structuredClone(next);
   }
   list<K extends TableName>(table: K, where?: (r: Tables[K]) => boolean): Tables[K][] {
@@ -84,7 +101,7 @@ export class MemoryStore implements Store {
     return undefined;
   }
   remove<K extends TableName>(table: K, id: string): void {
-    this.t(table).delete(id);
+    if (this.t(table).delete(id)) this.changed('row', table, id, true);
     this.dirty = true;
   }
   kvGet<T>(ns: string, key: string): T | undefined {
@@ -94,12 +111,13 @@ export class MemoryStore implements Store {
   kvSet<T>(ns: string, key: string, value: T): void {
     this.n(ns).set(key, structuredClone(value));
     this.dirty = true;
+    this.changed('kv', ns, key, false);
   }
   kvList<T>(ns: string): T[] {
     return [...this.n(ns).values()].map((v) => structuredClone(v));
   }
   kvDelete(ns: string, key: string): void {
-    this.n(ns).delete(key);
+    if (this.n(ns).delete(key)) this.changed('kv', ns, key, true);
     this.dirty = true;
   }
   flush(): void {
@@ -112,5 +130,8 @@ export class MemoryStore implements Store {
     writeFileSync(tmp, JSON.stringify(snap));
     renameSync(tmp, this.file); // atomic replace
     this.dirty = false;
+  }
+  health(): StoreHealth {
+    return { kind: this.file ? 'file' : 'memory' };
   }
 }
