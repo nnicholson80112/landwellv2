@@ -17,8 +17,8 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { MemoryStore } from '../store/store.ts';
-import { DATA_VERSION, freshStartIfOld } from '../store/data-version.ts';
+import { DATA_VERSION } from '../store/data-version.ts';
+import { openStore } from '../store/open-store.ts';
 import { SystemClock } from '../engine/clock.ts';
 import { createServices, type Services } from '../services.ts';
 import { install } from '../workflows/index.ts';
@@ -78,6 +78,7 @@ route('GET', '/health', (_q, res, svc) => json(res, 200, {
   // Which commit is live (Railway sets this), so a deploy can be checked from outside.
   commit: (process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT ?? 'unknown').slice(0, 7),
   dataVersion: svc.store.kvGet<number>('meta', 'dataVersion') ?? null,
+  storage: svc.store.health?.() ?? null,
   ai: svc.ai.name,
   messaging: svc.adapters.messaging.name,
   startedAt: STARTED,
@@ -483,10 +484,14 @@ export function createApp(svc: Services) {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const dataFile = process.env.DATA_FILE ?? join(ROOT, 'data/keyhelm.json');
-  const setAside = freshStartIfOld(dataFile);
-  if (setAside) console.log(`Fresh start (data version ${DATA_VERSION}): old data moved to ${setAside}`);
-  const store = new MemoryStore({ file: dataFile });
-  store.kvSet('meta', 'dataVersion', DATA_VERSION);
+  let ticker: ReturnType<typeof setInterval> | undefined;
+  // DATABASE_URL set: Postgres (imports DATA_FILE once on first run). Otherwise the JSON file. See src/store/open-store.ts.
+  const opened = await openStore({ dataFile, pg: { onSuperseded: () => clearInterval(ticker) } }).catch((e) => {
+    console.error(`Could not open storage: ${(e as Error).message}`);
+    process.exit(1);
+  });
+  const store = opened.store;
+  if (store.kvGet('meta', 'dataVersion') !== DATA_VERSION) store.kvSet('meta', 'dataVersion', DATA_VERSION);
   const svc = createServices({ store, clock: new SystemClock(), logMessages: true });
   install(svc, { log: console.log });
   if (!store.list('owners').length && process.env.SEED_DEMO !== 'false') {
@@ -495,12 +500,22 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     store.kvSet('tokens', token, s.owner.id);
     console.log(`Seeded demo owner ${s.owner.name}. API token: ${token}`);
   }
-  setInterval(() => { svc.engine.tick(); void svc.engine.drain(); }, 30_000);
+  ticker = setInterval(() => { svc.engine.tick(); void svc.engine.drain(); }, 30_000);
   svc.engine.tick();
   const port = Number(process.env.PORT ?? 8787);
   const server = createApp(svc).listen(port, () => console.log(`${BRAND.name} API on http://localhost:${port}  (AI: ${svc.ai.name}, messaging: ${svc.adapters.messaging.name}, billing: ${process.env.STRIPE_SECRET_KEY ? "stripe" : "off"})`));
-  // Railway sends SIGTERM when a new deploy replaces this one; exit cleanly so it isn't marked Crashed.
-  const stop = () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 5_000).unref(); };
+  // Railway sends SIGTERM when a new deploy replaces this one; save everything, then exit cleanly so it isn't marked Crashed.
+  let stopping = false;
+  const stop = () => {
+    if (stopping) return;
+    stopping = true;
+    clearInterval(ticker);
+    setTimeout(() => process.exit(0), 8_000).unref();
+    const closed = new Promise<void>((r) => { server.close(() => r()); setTimeout(r, 3_000).unref(); });
+    void closed.then(() => svc.engine.drain()).then(() => opened.flushNow())
+      .catch((e) => console.error(`Final save failed: ${(e as Error).message}`))
+      .finally(() => process.exit(0));
+  };
   process.on("SIGTERM", stop);
   process.on("SIGINT", stop);
 }
