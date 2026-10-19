@@ -22,6 +22,10 @@ export interface Owner {
   source?: 'demo' | 'web' | 'seed';
   /** What the owner agreed to at signup, and when. smsConsent false → owner alerts go by email. */
   consents?: { termsAcceptedAt?: ISO; termsVersion?: string; smsConsent?: boolean; smsConsentAt?: ISO; ip?: string };
+  /** Owner sign-in (src/api/auth.ts): salted scrypt hash. Never sent to any client. */
+  passwordHash?: string;
+  passwordSetAt?: ISO;
+  lastLoginAt?: ISO;
   createdAt: ISO;
 }
 

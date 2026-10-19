@@ -91,6 +91,7 @@ th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute
       <div class="card"><h2>Offers</h2><div class="tbl"><table><thead><tr><th>Offer</th><th>For</th><th>Deal</th><th>Ends</th><th>Status</th><th></th></tr></thead><tbody id="offers"><tr><td colspan="6" class="muted">Connect to load.</td></tr></tbody></table></div></div>
       <div class="card"><h2>Setup</h2><p class="muted" id="setup">Connect to load.</p><div class="row"><button class="ghost" id="cal-connect">Connect Calendly bookings</button></div></div>
       <div class="card"><h2>Customers</h2><div class="tbl"><table><thead><tr><th>Owner</th><th>Came from</th><th>Subscription</th><th>Onboarding</th></tr></thead><tbody id="owners"><tr><td colspan="4" class="muted">Connect to load.</td></tr></tbody></table></div></div>
+      <div class="card"><h2>Sign-in link</h2><p class="muted">Onboarding a customer by hand? Make a one-time link that lets them set their password and open the app. It works once, for 7 days. Send it to them yourself.</p><label for="ll-who">Customer</label><select id="ll-who"><option value="">Connect to load customers</option></select><div class="row"><button type="button" class="ghost" id="ll-make">Make sign-in link</button></div><p class="muted" id="ll-out" role="status" hidden></p></div>
     </div>
   </div>
 </div>
@@ -178,6 +179,31 @@ th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute
     if (r) { try { await api('/api/admin/offers/' + r.dataset.revoke + '/revoke', {}); toast('Offer revoked'); await load(); } catch (er) { toast(er.message); } }
   });
   if (token) load().catch(function () {});
+})();
+</script>
+<script>
+/* Sign-in links (src/api/owner-routes.ts): a one-time link to set a password, for onboarding a customer by hand. */
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var tok = function () { return $('#token').value.trim(); };
+  async function owners() {
+    var r = await fetch('/api/admin/overview', { headers: { authorization: 'Bearer ' + tok() } });
+    if (!r.ok) return;
+    var d = await r.json();
+    $('#ll-who').innerHTML = '<option value="">Pick a customer</option>' + d.owners.map(function (o) { var t = document.createElement('option'); t.value = o.id; t.textContent = o.name + ' · ' + o.email; return t.outerHTML; }).join('');
+  }
+  $('#connect').addEventListener('click', function () { setTimeout(function () { owners().catch(function () {}); }, 300); });
+  if (tok()) owners().catch(function () {});
+  $('#ll-make').addEventListener('click', async function () {
+    var id = $('#ll-who').value, out = $('#ll-out');
+    out.hidden = false;
+    if (!id) { out.textContent = 'Pick a customer first.'; return; }
+    var r = await fetch('/api/admin/owners/' + encodeURIComponent(id) + '/login-link', { method: 'POST', headers: { authorization: 'Bearer ' + tok() } });
+    var j = await r.json().catch(function () { return {}; });
+    if (!r.ok) { out.textContent = j.error || ('Error ' + r.status); return; }
+    out.textContent = (j.purpose === 'reset' ? 'Password reset link' : 'Set-up link') + ' for ' + j.owner.name + ', good until ' + new Date(j.expiresAt).toLocaleString() + ' (copied): ' + j.url;
+    try { await navigator.clipboard.writeText(j.url); } catch (e) {}
+  });
 })();
 </script>
 </body>

@@ -93,10 +93,17 @@ test('API: web signup gets a welcome offer and a discounted checkout; admin, off
     assert.ok(pat.consents?.termsAcceptedAt && pat.consents.termsVersion, 'terms acceptance recorded');
     assert.equal(pat.consents?.smsConsent, false, 'texts stay off unless they opt in');
 
-    // After checkout: straight to Calendly with name/email filled in and the account id for matching.
+    // After checkout (changed on purpose with owner sign-in): while Stripe confirms the payment, a page that refreshes itself;
+    // once paid, a one-time link to set a password, then the app. The Calendly link (name/email filled in, account id for
+    // matching) now comes from GET /api/me so the app can show "Book your onboarding call".
+    assert.equal((await fetch(`${base}/billing/done?session=cs_test_1`, { redirect: 'manual' })).status, 200, 'not paid yet: waiting page');
+    applyBillingEvent(store, { type: 'checkout.session.completed', data: { object: { mode: 'subscription', client_reference_id: pat.id, customer: 'cus_pat', subscription: 'sub_pat', payment_status: 'paid' } } }, new Date().toISOString());
     const done = await fetch(`${base}/billing/done?session=cs_test_1`, { redirect: 'manual' });
     assert.equal(done.status, 303);
-    const loc = new URL(done.headers.get('location')!);
+    assert.match(done.headers.get('location')!, /^\/login\/link\/[\w-]{40,}$/);
+    store.kvSet('tokens', 'pat-tok', pat.id);
+    const me = await (await fetch(`${base}/api/me`, { headers: { authorization: 'Bearer pat-tok' } })).json();
+    const loc = new URL(me.onboarding.calendlyUrl);
     assert.equal(loc.origin + loc.pathname, 'https://calendly.com/keyhelm/onboarding');
     assert.equal(loc.searchParams.get('email'), 'pat@example.com');
     assert.equal(loc.searchParams.get('utm_content'), pat.id);
