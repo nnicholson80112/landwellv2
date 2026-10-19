@@ -13,7 +13,7 @@
 create table if not exists kh_records (
   tbl text not null,
   id text not null,
-  data jsonb not null,
+  data json not null,
   updated_at timestamptz not null default now(),
   seq bigserial,                 -- keeps the order records were added in
   primary key (tbl, id)
@@ -25,7 +25,7 @@ create index if not exists kh_records_seq on kh_records (seq);
 create table if not exists kh_kv (
   ns text not null,
   key text not null,
-  value jsonb not null,
+  value json not null,
   updated_at timestamptz not null default now(),
   seq bigserial,
   primary key (ns, key)

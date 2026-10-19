@@ -503,10 +503,13 @@ for (const t of targets) {
       assert.equal(s3.get('owners', 'own_a')?.name, 'Alice 3');
       // Odd text that jsonb would refuse is cleaned instead of blocking saves.
       s3.insert('messages', { id: 'msg_odd', threadKey: 't', direction: 'in', channel: 'sms', body: 'nul\u0000 and half an emoji \ud83d', media: [], at: '2026-10-01T00:00:00Z' } as any);
+      // Object keys come back in the order they were written (a home's facts show in the owner's order).
+      s3.insert('properties', { id: 'prp_order', facts: { Zebra: '1', Apple: '2', Mid: '3' } } as any);
       await s3.flushNow();
       await s3.close();
       const s4 = await open(t.url, schema);
       assert.equal(s4.get('messages', 'msg_odd')?.body, 'nul and half an emoji �');
+      assert.deepEqual(Object.keys((s4.get('properties', 'prp_order') as any).facts), ['Zebra', 'Apple', 'Mid']);
       await s4.close();
     });
   });

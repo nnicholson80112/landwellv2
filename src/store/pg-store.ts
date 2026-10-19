@@ -12,8 +12,8 @@
 //   - A copy of the app that starts later takes over: older copies stop saving (no split brain).
 //
 // Tables (created automatically; also in db/schema.sql):
-//   kh_records(tbl, id, data jsonb, updated_at, seq)  one row per record (owners, leases, ...)
-//   kh_kv(ns, key, value jsonb, updated_at, seq)      engine state (workflow runs, codes, tokens)
+//   kh_records(tbl, id, data json, updated_at, seq)  one row per record (owners, leases, ...)
+//   kh_kv(ns, key, value json, updated_at, seq)      engine state (workflow runs, codes, tokens)
 //   kh_meta(key, value, updated_at)                   which copy of the app is the writer
 // `seq` keeps the original insertion order, so lists come back in the same order after a restart.
 
@@ -119,12 +119,13 @@ export class PgStore extends MemoryStore {
     const R = `${p}kh_records`;
     const K = `${p}kh_kv`;
     const META = `${p}kh_meta`;
-    const items = 'jsonb_array_elements($1::jsonb) with ordinality as x(v, n)';
+    // json (not jsonb) keeps each object's key order exactly as the app wrote it.
+    const items = 'json_array_elements($1::json) with ordinality as x(v, n)';
     this.sql = {
       ddl: `${opts.schema ? `create schema if not exists ${q(opts.schema)};` : ''}
-create table if not exists ${R} (tbl text not null, id text not null, data jsonb not null, updated_at timestamptz not null default now(), seq bigserial, primary key (tbl, id));
+create table if not exists ${R} (tbl text not null, id text not null, data json not null, updated_at timestamptz not null default now(), seq bigserial, primary key (tbl, id));
 create index if not exists kh_records_seq on ${R} (seq);
-create table if not exists ${K} (ns text not null, key text not null, value jsonb not null, updated_at timestamptz not null default now(), seq bigserial, primary key (ns, key));
+create table if not exists ${K} (ns text not null, key text not null, value json not null, updated_at timestamptz not null default now(), seq bigserial, primary key (ns, key));
 create index if not exists kh_kv_seq on ${K} (seq);
 create table if not exists ${META} (key text primary key, value text not null, updated_at timestamptz not null default now());`,
       claim: `insert into ${META} (key, value) values ('writer', '1') on conflict (key) do update set value = (${META}.value::bigint + 1)::text, updated_at = now() returning value`,
@@ -132,9 +133,9 @@ create table if not exists ${META} (key text primary key, value text not null, u
       loadRows: `select tbl, id, data from ${R} order by seq`,
       loadKv: `select ns, key, value from ${K} order by seq`,
       upRows: `insert into ${R} (tbl, id, data, updated_at) select x.v->>0, x.v->>1, x.v->2, now() from ${items} order by x.n on conflict (tbl, id) do update set data = excluded.data, updated_at = excluded.updated_at`,
-      delRows: `delete from ${R} r using jsonb_array_elements($1::jsonb) as x(v) where r.tbl = x.v->>0 and r.id = x.v->>1`,
+      delRows: `delete from ${R} r using json_array_elements($1::json) as x(v) where r.tbl = x.v->>0 and r.id = x.v->>1`,
       upKv: `insert into ${K} (ns, key, value, updated_at) select x.v->>0, x.v->>1, x.v->2, now() from ${items} order by x.n on conflict (ns, key) do update set value = excluded.value, updated_at = excluded.updated_at`,
-      delKv: `delete from ${K} k using jsonb_array_elements($1::jsonb) as x(v) where k.ns = x.v->>0 and k.key = x.v->>1`,
+      delKv: `delete from ${K} k using json_array_elements($1::json) as x(v) where k.ns = x.v->>0 and k.key = x.v->>1`,
     };
   }
 
