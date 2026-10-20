@@ -10,8 +10,8 @@ const env = process.env;
 export const BUSINESS = {
   /** Registered legal name, e.g. "KeyHelm LLC". */
   legalName: env.BUSINESS_LEGAL_NAME || 'KeyHelm LLC',
-  /** Mailing address customers can write to (a registered agent or mailbox is fine). */
-  address: env.BUSINESS_ADDRESS || '',
+  /** Mailing address customers can write to (a registered agent or mailbox is fine). Optional: pages leave it out when empty. */
+  address: (env.BUSINESS_ADDRESS || '').trim(),
   /** Where customers and tenants reach a person. */
   email: env.BUSINESS_EMAIL || BRAND.supportEmail,
   phone: env.BUSINESS_PHONE || '',

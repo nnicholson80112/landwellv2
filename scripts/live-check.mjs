@@ -33,7 +33,7 @@ ok('health', health?.ok === true);
 if (want) ok(`deployed commit ${want}`, health?.commit === want, `live is ${health?.commit}`);
 
 // 2. Public pages.
-for (const [path, must] of [['/', health?.brand ?? ''], ['/privacy', 'Privacy'], ['/terms', 'Terms'], ['/play', '<html']]) {
+for (const [path, must] of [['/', health?.brand ?? ''], ['/privacy', 'Privacy'], ['/terms', 'Terms'], ['/sms', 'Reply <b>STOP</b>'], ['/play', '<html']]) {
   try { const r = await get(path); ok(`GET ${path}`, r.status === 200 && r.text.includes(must), `status ${r.status}`); }
   catch (e) { ok(`GET ${path}`, false, String(e)); }
 }
