@@ -295,3 +295,15 @@ test('terms: a Text messaging section with program, consent, frequency, rates, H
 test('live check covers /sms', () => {
   assert.match(read('scripts/live-check.mjs'), /\['\/sms', /);
 });
+
+test('legal pages are finished: no bracketed placeholders, 12-month agreement terms spelled out', async () => {
+  const { termsOfService, refundPolicy, privacyPolicy, smsProgram, cookiePolicy } = await import('../src/api/legal.ts');
+  for (const [name, page] of [['terms', termsOfService()], ['refunds', refundPolicy()], ['privacy', privacyPolicy()], ['sms', smsProgram()], ['cookies', cookiePolicy()]] as const) {
+    const text = page.replace(/<style[\s\S]*?<\/style>/g, '').replace(/<[^>]+>/g, ' ');
+    assert.doesNotMatch(text, /\[[A-Z][^\]]{8,}\]/, `${name} still has a placeholder`);
+    assert.doesNotMatch(text, /attorney/i, `${name} mentions an attorney`);
+  }
+  assert.match(refundPolicy(), /Ending a 12-month agreement early/);
+  assert.match(termsOfService(), /continues <b>month to month at the same agreement price<\/b>/);
+  assert.match(termsOfService(), /Arapahoe County, Colorado/);
+});

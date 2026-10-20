@@ -270,7 +270,7 @@ export function termsOfService(): string {
 <ul>
 <li>Prices are per rental home ("door") per month, shown on our website at the time you sign up. Your first month is charged when you sign up.</li>
 <li><b>Month-to-month plans renew automatically every month</b> and are charged to your payment method on file until you cancel.</li>
-<li><b>12-month agreements</b> are billed monthly at a lower per-door price for 12 months. [Early cancellation, renewal at the end of the term, and notice terms to be set with our attorney before 12-month agreements are sold.]</li>
+<li><b>12-month agreements</b> are billed monthly at a lower per-door price for 12 months. We email you at least 30 days before the 12 months end. Unless you cancel or choose a new term, the agreement then continues <b>month to month at the same agreement price</b>, and you can cancel at any time after that. If you cancel before the 12 months are up, see "Ending a 12-month agreement early" in our <a href="/refunds">Refund and cancellation policy</a>.</li>
 <li>If you add or remove homes, your next charges will reflect the new number of doors.</li>
 <li>Private offers are personal, time-limited and apply only as described in the offer.</li>
 <li>We may change prices with at least 30 days' notice by email. Changes apply from your next billing period after the notice period. If you do not agree, you can cancel before the change takes effect.</li>
@@ -290,7 +290,9 @@ export function termsOfService(): string {
 <p>We work to keep the service available and accurate, but we provide it "as is" and "as available". We do not promise it will be uninterrupted or error-free, or that it will meet every legal requirement for your situation.</p>
 
 <h2>11. Limits on our liability</h2>
-<p>[Limitation of liability, disclaimer of warranties and indemnification wording to be written by our attorney. Colorado law limits how these can apply to consumers.]</p>
+<p>${esc(BRAND.name)} is software that helps you manage your rentals. It is not a law firm, a licensed property manager or a real estate broker, and it does not give legal advice. You remain the landlord: you make the decisions you approve in the service (such as applicants, repairs over your limit, fees, notices and lease terms) and you are responsible for following the laws that apply to you.</p>
+<p>To the fullest extent the law allows: (a) we are not liable for indirect, incidental, special or consequential losses, such as lost rent, lost profits or vacancy costs; and (b) our total liability for any claim related to the service is limited to the amount you paid us in the 12 months before the claim arose. These limits do not apply where the law does not allow them, such as for fraud, gross negligence or willful misconduct.</p>
+<p>You agree to cover claims, losses and reasonable costs that result from your breaking the law (including fair housing law) or these terms while using the service.</p>
 
 <h2>12. Ending these terms</h2>
 <p>You can stop using the service at any time by cancelling as described in the Refund and cancellation policy. We may suspend or end your account if you seriously or repeatedly break these terms, or if required by law. We will give notice when we reasonably can.</p>
@@ -299,7 +301,7 @@ export function termsOfService(): string {
 <p>We may update these terms. If a change is significant, we will email owners at least 30 days before it takes effect. Continuing to use the service after that means you accept the new terms.</p>
 
 <h2>14. Law and disputes</h2>
-<p>These terms are governed by Colorado law. [Dispute resolution, venue and any arbitration terms to be set by our attorney.]</p>
+<p>These terms are governed by Colorado law. If you have a concern, email ${contact()} first and we will try to resolve it within 30 days. If we can't, either of us may bring the claim in the state courts located in Arapahoe County, Colorado, or in small claims court where the claim qualifies.</p>
 
 <h2>15. Contact</h2>
 <p>${nameAndAddress()}. Email ${contact()}.</p>`);
@@ -330,7 +332,7 @@ export function refundPolicy(): string {
 <p>This policy explains how to cancel your ${esc(BRAND.name)} subscription and when we give refunds. It is part of our <a href="/terms">Terms of service</a>.</p>
 
 <h2>How to cancel</h2>
-<p>Email ${contact()} from the email address on your account and say you want to cancel. We will confirm by email. [Before launch: add a self-serve cancel button in the owner account.]</p>
+<p>Sign in, open <b>Settings</b>, and choose <b>Manage billing</b> to cancel. You can also email ${contact()} from the email address on your account and say you want to cancel. We will confirm by email.</p>
 
 <h2>Month-to-month plans</h2>
 <ul>
@@ -339,7 +341,9 @@ export function refundPolicy(): string {
 </ul>
 
 <h2>12-month agreements</h2>
-<p>[Early cancellation terms to be decided with our attorney before 12-month agreements are sold.]</p>
+<h3>Ending a 12-month agreement early</h3>
+<p>You can end a 12-month agreement early at any time. Service continues to the end of the month you have already paid for. We then charge a one-time amount equal to the difference between the month-to-month price and your agreement price, for the months you have already used. That way you never pay more than month-to-month would have cost you for the same months. No other early-cancellation fee applies.</p>
+<p>After the first 12 months, the agreement continues month to month at the agreement price, and you can cancel any time with no extra charge.</p>
 
 <h2>When we refund</h2>
 <ul>
