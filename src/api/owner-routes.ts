@@ -1,6 +1,7 @@
 // Owner sign-in and the owner app's API. Full contract: docs/notes/owner-api.md.
 //
-//   Pages:  GET /login · POST /login · POST /logout · GET+POST /login/link/:token · GET+POST /forgot · GET /app
+//   Pages:  GET /login · POST /login · POST /logout · GET+POST /login/link/:token · GET+POST /forgot
+//   App:    GET /app (and /app/rent, /app/messages/<key>...) · GET /app/manifest.webmanifest · GET /app/icon.svg
 //   Admin:  POST /api/admin/owners/:id/login-link   (Authorization: Bearer <ADMIN_API_TOKEN>)
 //   Owner (cookie "kh_session" + X-KeyHelm: 1 on changes, or Authorization: Bearer <token>):
 //     GET/PATCH /api/me · POST /api/me/password · GET/PUT /api/rules
@@ -15,7 +16,8 @@
 // 400 with a plain message ({ error, field }). Money: requests in dollars, responses in cents.
 
 import type { ServerResponse } from 'node:http';
-import { existsSync, readFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Req, Handler } from './server.ts';
@@ -27,7 +29,7 @@ import { CO } from '../config/colorado.ts';
 import { prepareTemplate } from '../leases/template.ts';
 import { termLabel } from '../billing/offers.ts';
 import { addressKey, firstName, money, optedOut } from '../workflows/lib.ts';
-import { RateLimiter, clientIp, safeEqual } from './guard.ts';
+import { RateLimiter, StaticCache, clientIp, safeEqual } from './guard.ts';
 import {
   LINK_TTL_MS, LOGIN_LIMIT, MAX_PASSWORD, RESET_TTL_MS, clearedCookie, consumeLoginLink, createSession, currentSession, emailConfigured,
   hashPassword, issueLoginLink, passwordProblem, peekLoginLink, revokeAllSessions, revokeLoginLinks, revokeSession, safeNext, sameOrigin, verifyPassword,
@@ -94,6 +96,55 @@ function signIn(req: Req, res: ServerResponse, svc: Services, ownerId: string): 
   svc.store.update('owners', ownerId, { lastLoginAt: nowIso(svc) });
   ensureRules(svc, ownerId); // workflows read the owner's rules, so a new owner starts with safe defaults
   svc.store.flush();
+}
+
+/* ======================= the owner app (apps/owner) ======================= */
+
+const APP_DIR = join(ROOT, 'apps/owner');
+/** The app's screens. /app/<tab> and /app/messages/<key> open the same page on that screen. */
+export const APP_TABS = ['today', 'rent', 'repairs', 'messages', 'homes', 'settings'] as const;
+let appCache: { mtimeMs: number; html: string } | undefined;
+
+/** apps/owner/index.html from memory (read again when the file changes), or undefined when it doesn't exist. */
+function appHtml(): string | undefined {
+  const f = join(APP_DIR, 'index.html');
+  let mtimeMs: number;
+  try { mtimeMs = statSync(f).mtimeMs; } catch { return undefined; }
+  if (appCache?.mtimeMs !== mtimeMs) appCache = { mtimeMs, html: readFileSync(f, 'utf8') };
+  return appCache.html;
+}
+
+/**
+ * The app page's Content-Security-Policy: only its own inline script and style run (a fresh nonce on every
+ * response), data comes only from this site, nothing can frame it, and Trusted Types blocks HTML string sinks
+ * (the app builds every element with DOM calls, so server data is never parsed as HTML).
+ */
+export function appCsp(nonce: string): string {
+  return [
+    "default-src 'none'", `script-src 'nonce-${nonce}'`, `style-src 'nonce-${nonce}'`, "img-src 'self' data:", "font-src 'self'",
+    "connect-src 'self'", "manifest-src 'self'", "form-action 'self'", "frame-ancestors 'none'", "base-uri 'none'", "object-src 'none'",
+    "require-trusted-types-for 'script'",
+  ].join('; ');
+}
+
+function sendApp(res: ServerResponse, page: string): void {
+  const nonce = randomBytes(18).toString('base64');
+  const body = page.replace(/<(script|style)(?=[\s>])/gi, `<$1 nonce="${nonce}"`);
+  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': appCsp(nonce) });
+  res.end(body);
+}
+
+/** The install manifest and icon: the same for everyone, so public, cached and served from memory. */
+const APP_FILES = new StaticCache();
+const APP_STATIC: [path: string, file: string, type: string, maxAge: number][] = [
+  ['/app/manifest.webmanifest', 'manifest.webmanifest', 'application/manifest+json', 86_400],
+  ['/app/icon.svg', 'icon.svg', 'image/svg+xml', 7 * 86_400],
+];
+function loadAppFiles(): void {
+  for (const [path, file, type, maxAge] of APP_STATIC) {
+    const f = join(APP_DIR, file);
+    if (existsSync(f)) APP_FILES.put(path, readFileSync(f), type, maxAge);
+  }
 }
 
 /* ======================= after checkout ======================= */
@@ -334,19 +385,27 @@ export function registerOwnerRoutes(kit: OwnerKit) {
     asJson ? json(res, 200, { ok: true, emailSent: works }) : sendHtml(res, 200, forgotSentPage(works));
   });
 
-  /* The owner app. Signed out → sign in. Signed in → apps/owner/index.html (built separately), or a simple page until it exists. */
-  route('GET', '/app', (req, res, svc) => {
+  /* The owner app (apps/owner). Install files are public; registered before /app/:tab so they answer first. */
+  loadAppFiles();
+  for (const [path] of APP_STATIC) route('GET', path, (req, res) => { if (!APP_FILES.serve(req, res, path)) json(res, 404, { error: 'not found' }); });
+
+  /* Signed out → sign in, then back to the same screen. Signed in → apps/owner/index.html, or a simple page until it exists. */
+  const openApp: Handler = (req, res, svc) => {
     const cur = currentSession(req, svc);
     if (!cur || cur === 'invalid') {
       if (cur === 'invalid') res.setHeader('set-cookie', clearedCookie(svc));
-      return redirect(res, '/login?next=%2Fapp', 302);
+      const here = safeNext(new URL(req.url ?? '/app', 'http://x').pathname);
+      return redirect(res, `/login?next=${encodeURIComponent(here)}`, 302);
     }
     if (cur.refreshCookie) res.setHeader('set-cookie', cur.refreshCookie);
-    const f = join(ROOT, 'apps/owner/index.html');
+    const page = appHtml();
+    if (page) return sendApp(res, page);
     const owner = svc.store.get('owners', cur.session.ownerId)!;
-    if (existsSync(f)) return sendHtml(res, 200, readFileSync(f, 'utf8'), { csp: false });
     sendHtml(res, 200, appPlaceholderPage(owner.name, owner.email, owner.onboarding?.status === 'booked' ? null : calendlyUrlFor(owner)));
-  });
+  };
+  route('GET', '/app', openApp);
+  route('GET', '/app/:tab', (req, res, svc) => ((APP_TABS as readonly string[]).includes(req.params.tab) ? openApp(req, res, svc) : json(res, 404, { error: 'not found' })));
+  route('GET', '/app/:tab/:item', (req, res, svc) => (req.params.tab === 'messages' ? openApp(req, res, svc) : json(res, 404, { error: 'not found' })));
 
   /* ---------------- admin: a one-time sign-in link for onboarding a client by hand ---------------- */
   route('POST', '/api/admin/owners/:id/login-link', (req, res, svc) => {
