@@ -34,7 +34,7 @@ import { seed } from '../sim/seed.ts';
 import { BRAND } from '../config/brand.ts';
 import { BUSINESS } from '../config/business.ts';
 import { RateLimiter, StaticCache, clientIp, limitsFromEnv, safeEqual, securityHeaders, tooMany } from './guard.ts';
-import { POLICY_LINKS, accessibilityStatement, cookiePolicy, privacyPolicy, refundPolicy, termsOfService } from './legal.ts';
+import { POLICY_LINKS, accessibilityStatement, cookiePolicy, privacyPolicy, refundPolicy, smsProgram, termsOfService } from './legal.ts';
 import type { TableName } from '../domain/types.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -96,7 +96,7 @@ export function loadStatic() {
   const site = existsSync(f) ? readFileSync(f, 'utf8') : page(BRAND.name, `<h1>${BRAND.name}</h1><p>Run <code>npm run build:site</code> to build the marketing site.</p>`);
   const filled = site.replaceAll('{{BUSINESS_LEGAL_NAME}}', esc(BUSINESS.legalName)).replaceAll('{{BUSINESS_ADDRESS}}', esc(BUSINESS.address)).replaceAll('{{BUSINESS_EMAIL}}', esc(BUSINESS.email)).replaceAll('{{YEAR}}', year);
   STATIC.put('/', filled, 'text/html; charset=utf-8', 300);
-  for (const [path, build] of [['/privacy', privacyPolicy], ['/terms', termsOfService], ['/cookies', cookiePolicy], ['/refunds', refundPolicy], ['/accessibility', accessibilityStatement]] as const) {
+  for (const [path, build] of [['/privacy', privacyPolicy], ['/terms', termsOfService], ['/sms', smsProgram], ['/cookies', cookiePolicy], ['/refunds', refundPolicy], ['/accessibility', accessibilityStatement]] as const) {
     STATIC.put(path, build(), 'text/html; charset=utf-8', 3600);
   }
   STATIC.put('/favicon.svg', FAVICON, 'image/svg+xml', DAY_S * 7);

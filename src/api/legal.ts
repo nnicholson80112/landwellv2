@@ -1,21 +1,24 @@
-// Legal pages: privacy, terms, cookies, refunds, accessibility.
+// Legal pages: privacy, terms, text messages (/sms), cookies, refunds, accessibility.
 //
-// These are DRAFTS written to match how the software actually works today. They are not
-// legal advice and must be reviewed by a Colorado attorney before launch. Until
-// LEGAL_REVIEWED=true is set in Railway, every page shows a draft notice.
-// Business details come from src/config/business.ts (Railway Variables).
+// Written to match how the software actually works today. KeyHelm LLC's owner reviewed them
+// against Colorado law, so they show no "draft" notice (set LEGAL_REVIEWED=false to bring it
+// back). Business details come from src/config/business.ts (Railway Variables). The address is
+// optional everywhere: when BUSINESS_ADDRESS is empty, no address line or stray comma appears.
+// The /sms page and the texting clauses below are what Twilio's A2P 10DLC reviewers read; see
+// docs/notes/twilio-a2p.md before changing them.
 
 import { BRAND } from '../config/brand.ts';
 import { BUSINESS } from '../config/business.ts';
 
 /** Bump when the Terms change in a way customers must agree to again. Stored with each signup. */
-export const TERMS_VERSION = '2026-10-draft-1';
+export const TERMS_VERSION = '2026-10-20';
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 export const POLICY_LINKS = [
   ['/privacy', 'Privacy policy'],
   ['/terms', 'Terms of service'],
+  ['/sms', 'Text messages'],
   ['/cookies', 'Cookie policy'],
   ['/refunds', 'Refund and cancellation policy'],
   ['/accessibility', 'Accessibility'],
@@ -37,7 +40,9 @@ export function legalPage(title: string, body: string): string {
 a{color:var(--brand)}:focus-visible{outline:3px solid #FFC83D;outline-offset:2px}
 header,main,footer{max-width:760px;margin:0 auto;padding-inline:20px}
 header{padding-block:20px;border-bottom:1px solid var(--line)}header a{font:800 22px 'Bricolage Grotesque',system-ui,sans-serif;color:var(--ink);text-decoration:none}
-main{padding-block:32px 48px}h1,h2{font-family:'Bricolage Grotesque',system-ui,sans-serif;line-height:1.15}h1{font-size:40px;margin:0 0 6px}h2{font-size:24px;margin:36px 0 8px}
+main{padding-block:32px 48px}h1,h2,h3{font-family:'Bricolage Grotesque',system-ui,sans-serif;line-height:1.15}h1{font-size:40px;margin:0 0 6px}h2{font-size:24px;margin:36px 0 8px}h3{font-size:19px;margin:22px 0 4px}
+.sms{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:12px 0}.sms figcaption{font-size:14px;font-weight:700;color:var(--muted);margin-bottom:6px}.sms p{margin:0;white-space:pre-line}
+blockquote{margin:10px 0;padding:10px 16px;border-left:4px solid #FFC83D;background:var(--surface);border-radius:0 10px 10px 0}
 .meta{color:var(--muted);font-size:15px;margin:0 0 20px}.draft{background:var(--sun-soft);border:1px solid #E0A800;border-radius:10px;padding:12px 16px}
 ul{padding-left:22px}li+li{margin-top:6px}table{width:100%;border-collapse:collapse;font-size:15px}th,td{text-align:left;vertical-align:top;padding:8px 10px;border-top:1px solid var(--line)}
 footer{padding-block:28px 40px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}footer nav{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px}footer a{color:var(--muted)}
@@ -45,12 +50,110 @@ footer{padding-block:28px 40px;border-top:1px solid var(--line);color:var(--mute
 <header><a href="/">${esc(BRAND.name)}</a></header>
 <main><h1>${esc(title)}</h1><p class="meta">${effective}</p>${draft}${body}</main>
 <footer><nav aria-label="Policies">${POLICY_LINKS.map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}</nav>
-<p>${esc(b.legalName)}${b.address ? ` · ${esc(b.address)}` : ''} · <a href="mailto:${esc(b.email)}">${esc(b.email)}</a></p></footer>
+<p>${esc(b.legalName)}${b.address.trim() ? ` · ${esc(b.address.trim())}` : ''} · <a href="mailto:${esc(b.email)}">${esc(b.email)}</a></p></footer>
 </body></html>`;
 }
 
 const contact = () => `<a href="mailto:${esc(BUSINESS.email)}">${esc(BUSINESS.email)}</a>`;
 const who = () => `${esc(BUSINESS.legalName)} ("${esc(BRAND.name)}", "we", "us")`;
+/** "KeyHelm LLC, 123 Main St" or just "KeyHelm LLC" when no address is set (never a stray comma). */
+const nameAndAddress = () => `${esc(BUSINESS.legalName)}${BUSINESS.address.trim() ? `, ${esc(BUSINESS.address.trim())}` : ''}`;
+
+/* ---------------- Text messages (A2P 10DLC) ---------------- */
+// One source for the texting wording: the /sms page, the Terms, the Privacy policy and
+// docs/notes/twilio-a2p.md all use these. tests/site.test.ts checks the samples against the
+// texts the workflows really send, so change both together.
+
+/** The exact words next to the optional, unchecked texting box on the signup form (apps/site/site.body.html). */
+export const OWNER_SMS_OPT_IN = `Text me ${BRAND.name} account alerts, like repair approvals and tenant updates. Optional, not required to buy. Message frequency varies. Msg and data rates may apply. Reply HELP for help or STOP to opt out.`;
+
+/** The CTIA / A2P no-sharing statement. Appears word for word on /privacy, /terms and /sms. */
+export const SMS_NO_SHARING = 'No mobile information will be shared with third parties or affiliates for marketing or promotional purposes.';
+export const SMS_CONSENT_NOT_SHARED = 'Text messaging originator opt-in data and consent are excluded from every sharing category in this policy and will not be shared with any third parties.';
+
+/**
+ * Sample texts, word for word in the form the workflows send them (names and addresses are made up).
+ * Same five go into Twilio's campaign form.
+ */
+export const SMS_SAMPLES: { label: string; text: string }[] = [
+  { label: 'Tenant welcome (the first text after the landlord adds a tenant)', text: `Hi Jordan! Your landlord now uses ${BRAND.name} for 603 Spruce Dr. Text this number anytime for repairs (send a photo) or questions. You'll keep paying rent to your landlord the same way; we'll just send you a reminder before it's due. Reply STOP to opt out of texts.` },
+  { label: 'Rent reminder', text: 'Hi Jordan, a heads-up: rent of $1,950 for 603 Spruce Dr is due Sun, Nov 1. Please pay your landlord the way you normally do.' },
+  { label: 'Repair update', text: 'Your repair is booked with Front Range Plumbing (Tue 9-11). If you need to reach them: +17205550133. Text me here if anything changes.' },
+  { label: 'Showing scheduled (prospect)', text: "You're booked for Sat, Oct 17, 12:00 PM at 88 Aspen Ct. Your door code arrives 15 minutes before." },
+  { label: 'Owner account alert (owners who opted in)', text: `${BRAND.name}: Repair $180: 603 Spruce Dr. Front Range Plumbing can do "Kitchen faucet dripping" Tue 9-11 for $180. Your limit is $150.\nReply YES K8F (Approve) or NO K8F (Decline).` },
+];
+
+/** Auto-replies to set in Twilio Advanced Opt-Out (Messaging Service). Plain GSM characters, under 160 each. */
+export function smsKeywordReplies(): { help: string; stop: string; start: string } {
+  return {
+    help: `${BRAND.name}: texts for your landlord about your rental. Help: ${BUSINESS.email}. Msg frequency varies. Msg & data rates may apply. Reply STOP to opt out.`,
+    stop: `${BRAND.name}: You're unsubscribed and won't get more texts from this number. Reply START to resume. Questions about your home? Contact your landlord.`,
+    start: `${BRAND.name}: Texts are back on. Msg frequency varies. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`,
+  };
+}
+
+/** GET /sms: the text message program page A2P 10DLC reviewers (and anyone else) can read. */
+export function smsProgram(): string {
+  const b = BUSINESS;
+  const n = esc(BRAND.name);
+  const replies = smsKeywordReplies();
+  const phone = b.phone.trim() ? ` or call ${esc(b.phone.trim())}` : '';
+  return legalPage(`${BRAND.name} text messages`, `
+<p>${n} text messages are sent by ${esc(b.legalName)} on behalf of landlords who use ${n} to run their rental homes. This page explains who sends them, what they are about, how people sign up, how often they come and how to stop them.</p>
+
+<h2>Who sends these texts</h2>
+<p>${esc(b.legalName)} ("${n}") sends every text, on behalf of the landlord of the home you rent, applied for or asked about. Texts come from the landlord's ${n} phone number. The landlord is our customer. ${n} is software, not a property manager, and never collects rent.</p>
+
+<h2>What we text about</h2>
+<ul>
+<li><b>Repair updates</b>: questions about the problem, the booked time, how to reach the vendor, and when the job is done.</li>
+<li><b>Rent reminders</b> before rent is due, and late notices after the landlord confirms rent hasn't arrived.</li>
+<li><b>Showing scheduling</b>: tour times, confirmations and door codes for self-guided tours.</li>
+<li><b>Lease, renewal, move-in and move-out notices</b>, including deposit statements.</li>
+<li><b>Replies to messages you send</b> to the landlord's ${n} number.</li>
+<li><b>Home availability</b>: only if you reply YES when we offer to text you when a home opens up.</li>
+<li><b>For landlords who opt in</b>: account alerts such as repair approvals and tenant updates.</li>
+<li><b>For vendors the landlord hires</b>: job requests and scheduling.</li>
+</ul>
+<p>We never send marketing or promotional texts.</p>
+
+<h2>How people sign up</h2>
+<h3>Tenants</h3>
+<p>The landlord adds you to ${n} with the mobile number you gave them for your tenancy. Our <a href="/terms">Terms</a> only allow landlords to add people who agreed to get texts from them about the rental. Your first text is a welcome message that names ${n}, says what we text about and tells you how to stop (see the first sample below).</p>
+<h3>Anyone who texts first: prospects, applicants and tenants</h3>
+<p>When you text a landlord's ${n} number, for example about a home for rent or a repair, we reply to your message and follow up on what you asked, like tour times. Applicants also check a box on the rental application agreeing to texts and email about their application. We only text you about other homes if you reply YES when we offer.</p>
+<h3>Vendors</h3>
+<p>The landlord adds the vendors and staff they hire, with their agreement, to receive job requests by text.</p>
+<h3>Landlords (${n} customers)</h3>
+<p>When you sign up on our <a href="/">website</a>, the form has an optional checkbox that starts <b>unchecked</b>. It says:</p>
+<blockquote>${esc(OWNER_SMS_OPT_IN)}</blockquote>
+<p>You don't have to check it to buy ${n}. If you leave it unchecked, we email your alerts instead.</p>
+
+<h2>How often</h2>
+<p>Message frequency varies. It depends on what is happening with your home, like an open repair, a tour or an upcoming rent date. Notices that can wait, such as rent reminders, are held during the landlord's quiet hours (9 PM to 8 AM unless the landlord changes them).</p>
+
+<h2>Cost</h2>
+<p>Message and data rates may apply. ${n} does not charge tenants, applicants, prospects or vendors anything for texts.</p>
+
+<h2>Help and stopping texts</h2>
+<ul>
+<li>Reply <b>STOP</b> to stop texts from that number. STOPALL, UNSUBSCRIBE, CANCEL, END and QUIT work too. You'll get one text confirming it, and then no more texts. Tenants who stop texts may still get important notices about their home by email.</li>
+<li>Reply <b>START</b> to turn texts back on.</li>
+<li>Reply <b>HELP</b> for help. We'll reply: "${esc(replies.help)}"</li>
+<li>Questions about your home, rent or lease are best answered by your landlord.</li>
+</ul>
+
+<h2>Support</h2>
+<p>Email ${contact()}${phone}. ${nameAndAddress()}.</p>
+
+<h2>Your privacy</h2>
+<p><b>${esc(SMS_NO_SHARING)}</b> Text messaging opt-in data and consent are not shared with any third parties. We only use your number to send the texts described on this page. Read our <a href="/privacy">Privacy policy</a> and the "Text messaging" section of our <a href="/terms">Terms of service</a>.</p>
+<p>Mobile carriers are not liable for delayed or undelivered messages.</p>
+
+<h2>Sample messages</h2>
+<p>Names, addresses and times are examples.</p>
+${SMS_SAMPLES.map((s) => `<figure class="sms"><figcaption>${esc(s.label)}</figcaption><p>${esc(s.text)}</p></figure>`).join('\n')}`);
+}
 
 export function privacyPolicy(): string {
   return legalPage('Privacy policy', `
@@ -66,9 +169,10 @@ export function privacyPolicy(): string {
 <h2>Information we collect</h2>
 <table>
 <tr><th scope="col">From</th><th scope="col">What</th></tr>
-<tr><td>Owners</td><td>Name, email, mobile phone, number of homes, plan choice, the rules and policies you enter, property details, vendor contacts, lease templates, and records you create (such as marking rent received).</td></tr>
+<tr><td>Owners</td><td>Name, email, mobile phone, number of homes, plan choice, the rules and policies you enter, property details, vendor contacts, lease templates, and records you create (such as marking rent received). When you sign up we record that you accepted our terms and whether you chose to get texts, and when.</td></tr>
 <tr><td>Owners (billing)</td><td>Payments are handled by Stripe. We receive your Stripe customer ID, subscription status and plan. We do not receive or store full card numbers.</td></tr>
 <tr><td>Tenants, prospects, vendors</td><td>Name, phone number, email address, the content of texts, emails and call transcripts sent to the owner's line, photos you send, and records about repairs, showings, leases, rent reminders and deposits.</td></tr>
+<tr><td>Anyone who gets texts</td><td>Mobile number, whether and when you agreed to texts, and any STOP, START or HELP replies, so we can honor them.</td></tr>
 <tr><td>Applicants</td><td>Name, email and phone from the application form. If the owner uses identity verification or tenant screening, the results from those partners are shared with the owner. ${esc(BRAND.name)} does not score, rank or recommend applicants.</td></tr>
 <tr><td>Everyone</td><td>Technical information our servers receive with each request, such as IP address, browser type and the page requested. We use it to keep the service running and secure, including limiting abusive traffic.</td></tr>
 </table>
@@ -90,7 +194,10 @@ export function privacyPolicy(): string {
 <li><b>Service providers</b> who process it for us: Railway (hosting), Stripe (subscription payments), Anthropic (AI model that drafts replies), and, when enabled, Twilio (texts and calls), Postmark (email), Calendly (scheduling setup calls), smart-lock providers for self-guided showings, and the screening and identity verification partners an owner chooses.</li>
 <li><b>Legal reasons</b>: when required by law, to protect rights and safety, or as part of a sale or reorganization of our business (in which case this policy continues to apply).</li>
 </ul>
-<p><b>Text messaging.</b> No mobile information will be shared with third parties or affiliates for marketing or promotional purposes. Text messaging opt-in data and consent are not shared with any third parties.</p>
+<p><b>Text messaging.</b> ${esc(SMS_NO_SHARING)} ${esc(SMS_CONSENT_NOT_SHARED)} Phone numbers are used only to send and receive the texts described on our <a href="/sms">text messages page</a>.</p>
+
+<h2>Text messages</h2>
+<p>${esc(BRAND.name)} texts tenants, applicants, prospects, vendors and owners only about the rental homes and accounts described on our <a href="/sms">text messages page</a>, never for marketing. Owners choose whether to get texts when they sign up; it is optional and not a condition of purchase. Message frequency varies. Message and data rates may apply. Reply <b>STOP</b> to stop texts or <b>HELP</b> for help. We keep a record of consent and opt-outs so we can honor them.</p>
 
 <h2>Cookies and tracking</h2>
 <p>Our website does not use advertising or analytics cookies and does not load third-party trackers. See our <a href="/cookies">Cookie policy</a>.</p>
@@ -119,7 +226,7 @@ export function privacyPolicy(): string {
 <p>If we change this policy, we will update the effective date above. If the change is significant, we will tell owners by email before it takes effect.</p>
 
 <h2>Contact</h2>
-<p>${esc(BUSINESS.legalName)}${BUSINESS.address ? `, ${esc(BUSINESS.address)}` : ''}. Email ${contact()}.</p>`);
+<p>${nameAndAddress()}. Email ${contact()}.</p>`);
 }
 
 export function termsOfService(): string {
@@ -147,8 +254,17 @@ export function termsOfService(): string {
 <h2>4. Automated messages and AI</h2>
 <p>The service uses automated systems, including an AI model, to reply to messages and route requests. Automated replies can be wrong or incomplete. You can review conversations at any time. Emergencies are flagged and routed, but ${esc(BRAND.name)} is not an emergency service: anyone in danger should call 911.</p>
 
-<h2>5. Text messages</h2>
-<p>If you opt in to texts, we will send account messages such as repair approvals, tenant updates and reminders. Message frequency varies. Message and data rates may apply. Reply <b>STOP</b> to cancel and <b>HELP</b> for help. Carriers are not liable for delayed or undelivered messages. Consent to receive texts is not a condition of purchase.</p>
+<h2>5. Text messaging</h2>
+<ul>
+<li><b>The program.</b> ${esc(BRAND.name)} text messages are sent by ${esc(BUSINESS.legalName)} on behalf of landlords who use ${esc(BRAND.name)}: repair updates, rent reminders and late notices, showing scheduling, lease, renewal, move-in and move-out notices, replies to messages people send, job requests to the landlord's vendors, and account alerts for owners who opt in. Details and sample messages are on our <a href="/sms">text messages page</a>. We never send marketing texts.</li>
+<li><b>Owners' consent.</b> Texts about your account are optional. You can opt in when you sign up, and consent is not a condition of purchase. If you don't opt in, we send your alerts by email.</li>
+<li><b>Tenants, applicants, prospects and vendors.</b> As an owner, you may add a person's mobile number only if they have agreed to get texts from you about your rental, and only for messages about the rental. People who text your ${esc(BRAND.name)} number first get replies to what they asked. Each tenant's first text explains the program and how to stop.</li>
+<li><b>How often.</b> Message frequency varies.</li>
+<li><b>Cost.</b> Message and data rates may apply.</li>
+<li><b>Help and stopping.</b> Reply <b>HELP</b> for help or <b>STOP</b> to cancel at any time. Reply <b>START</b> to turn texts back on. You can also email ${contact()}.</li>
+<li><b>Carriers.</b> Mobile carriers are not liable for delayed or undelivered messages.</li>
+<li><b>Privacy.</b> ${esc(SMS_NO_SHARING)} Text messaging opt-in data and consent are not shared with any third parties. See our <a href="/privacy">Privacy policy</a>.</li>
+</ul>
 
 <h2>6. Plans, billing and automatic renewal</h2>
 <ul>
@@ -186,7 +302,7 @@ export function termsOfService(): string {
 <p>These terms are governed by Colorado law. [Dispute resolution, venue and any arbitration terms to be set by our attorney.]</p>
 
 <h2>15. Contact</h2>
-<p>${esc(BUSINESS.legalName)}${BUSINESS.address ? `, ${esc(BUSINESS.address)}` : ''}. Email ${contact()}.</p>`);
+<p>${nameAndAddress()}. Email ${contact()}.</p>`);
 }
 
 export function cookiePolicy(): string {
@@ -197,7 +313,7 @@ export function cookiePolicy(): string {
 <p>Our public website <b>does not set any cookies</b>. It does not use analytics, advertising pixels, social media widgets, embedded videos or other third-party trackers. Our fonts are hosted on our own servers, so loading the site does not contact Google or any other font service.</p>
 
 <h2>Signed-in tools</h2>
-<p>When an owner or our staff signs in to an owner or admin console, the browser stores a sign-in token in local or session storage so you stay signed in. This is strictly necessary for the feature you asked for and is not used for tracking.</p>
+<p>When an owner signs in, we set one cookie, <code>kh_session</code>, that keeps them signed in for up to 30 days. Our staff's admin and test consoles keep a sign-in token in the browser's local or session storage. These are strictly necessary for the feature you asked for and are not used for tracking.</p>
 
 <h2>Pages run by our partners</h2>
 <p>When you check out, you go to a secure page run by Stripe. When you book a setup call, you go to Calendly. Those pages are on the partners' own websites and may use their own cookies, for example for fraud prevention, under their own policies.</p>
