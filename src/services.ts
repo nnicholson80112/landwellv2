@@ -8,7 +8,7 @@ import { ChannelRouter, PostmarkEmail, SeamLocks, TwilioSMS } from './adapters/l
 import { NativeESign } from './adapters/esign-native.ts';
 import type { CommunicationAI } from './ai/types.ts';
 import { RuleBasedAI } from './ai/rules.ts';
-import { AnthropicAI, BudgetAI, HttpAI, ResilientAI } from './ai/providers.ts';
+import { BudgetAI, HttpAI, ResilientAI, claudeFromEnv } from './ai/providers.ts';
 import type { Store } from './store/store.ts';
 import type { Clock } from './engine/clock.ts';
 import { Engine } from './engine/engine.ts';
@@ -33,7 +33,7 @@ export interface Services {
 export function pickAI(env: Record<string, string | undefined>): CommunicationAI {
   const mode = (env.AI_PROVIDER ?? 'rules').toLowerCase();
   let primary: CommunicationAI = new RuleBasedAI();
-  if (mode === 'anthropic' && env.ANTHROPIC_API_KEY) primary = new AnthropicAI({ apiKey: env.ANTHROPIC_API_KEY, model: env.ANTHROPIC_MODEL ?? 'claude-opus-5-5' });
+  if (mode === 'anthropic' && env.ANTHROPIC_API_KEY) primary = claudeFromEnv(env)!; // Haiku 5.5 for routine, Sonnet 5.5 for repairs (src/ai/route.ts)
   if (mode === 'http' && env.AI_HTTP_URL) primary = new HttpAI({ url: env.AI_HTTP_URL, token: env.AI_HTTP_TOKEN });
   if (!(primary instanceof RuleBasedAI)) {
     const budget = new BudgetAI(primary, { perOwnerPerDay: Number(env.AI_OWNER_DAILY_MAX) || 400, totalPerDay: Number(env.AI_DAILY_MAX) || 20_000 });

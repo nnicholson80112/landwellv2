@@ -34,7 +34,7 @@ app talks to it with `AI_PROVIDER=http`. It holds everything that makes the AI o
 - **A fallback chain**: primary model, then backup model, then rules, so tenants always get an answer
 - **Its own guardrail pass**, so a misconfigured caller can't skip the fair-housing checks
 - **Logs of every exchange** (`AI_LOG_DIR`, kept 90 days) for reviewing quality and future training
-- **`GET /stats`**: volume, intents, handoff rate, speed
+- **`GET /stats`**: volume, intents, handoff rate, speed, and AI spend (per message, per model, cache hits)
 
 What it needs: an Anthropic API key to start, or a GPU host such as RunPod, Modal or Lambda if you
 later want the model itself in-house.
@@ -44,7 +44,7 @@ later want the model itself in-house.
 | `AI_PROVIDER` | What runs | Needs |
 | --- | --- | --- |
 | `rules` (default) | Keyword rules, no network. Also the automatic fallback for the others | nothing |
-| `anthropic` | Claude via the Messages API | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` |
+| `anthropic` | Claude via the Messages API: Claude Haiku 5.5 for everyday messages, a stronger model for repairs (`docs/notes/ai-cost.md`) | `ANTHROPIC_API_KEY` (model settings optional) |
 | `http` | Your own service, in-house or any vendor | `AI_HTTP_URL`, optional `AI_HTTP_TOKEN` |
 
 If a model errors or takes longer than 15 seconds, the rule-based AI answers instead

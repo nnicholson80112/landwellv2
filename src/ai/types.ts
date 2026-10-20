@@ -79,6 +79,8 @@ export interface AIResult {
   model?: string;
   /** 'routine' (cheap model), 'complex' (stronger model) or 'escalated' (cheap first, then stronger). */
   route?: 'routine' | 'complex' | 'escalated';
+  /** Why that route was taken, e.g. "repair conversation" or "escalated: low confidence 0.42". */
+  routeReason?: string;
   /** Tokens for this message, summed over every model call it took. */
   usage?: AIUsage;
   /** What this message cost in model fees, in US dollars (all calls). */
