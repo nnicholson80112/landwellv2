@@ -19,15 +19,15 @@ test('offers: guardrails keep every discount above the price floor and inside it
   assert.match(checkOfferRules({ kind: 'demo', mode: 'base', title: 'x', months: 6, terms: ['monthly'], email: 'a@b.co', issuedBy: 'admin' })!, /1–3 months/);
   assert.equal(checkOfferRules({ kind: 'demo', mode: 'base', title: 'x', months: 12, terms: ['contract12'], email: 'a@b.co', issuedBy: 'admin' }), undefined);
   assert.match(checkOfferRules({ kind: 'seasonal', mode: 'base', title: 'x', months: 2, terms: ['monthly'], email: 'a@b.co', issuedBy: 'admin' })!, /12-month agreement/);
-  assert.match(checkOfferRules({ kind: 'winback', title: 'x', percentOff: 25, months: 1, plans: ['plus'], email: 'a@b.co', issuedBy: 'admin' }) ?? 'ok', /ok/);
+  assert.match(checkOfferRules({ kind: 'winback', title: 'x', percentOff: 25, months: 1, plans: ['pro'], email: 'a@b.co', issuedBy: 'admin' }) ?? 'ok', /ok/);
   assert.match(checkOfferRules({ kind: 'web_intro', title: 'x', percentOff: 10, months: 1, email: 'a@b.co', issuedBy: 'admin' })!, /automatically/);
   assert.match(checkOfferRules({ kind: 'seasonal', title: 'x', percentOff: 15, months: 1, issuedBy: 'admin' })!, /one owner or one email/);
 });
 
-test('pricing: whole $5 prices, and original-price offers land exactly on the original', () => {
-  assert.deepEqual(LIST_PRICE, { essentials: { monthly: 2000, contract12: 1500 }, autopilot: { monthly: 4500, contract12: 3500 }, plus: { monthly: 7000, contract12: 6000 } });
-  for (const plan of ['essentials', 'autopilot', 'plus'] as const) for (const t of ['monthly', 'contract12'] as const) { assert.equal(LIST_PRICE[plan][t] % 500, 0); assert.equal(BASE_PRICE[plan][t] % 500, 0); assert.ok(BASE_PRICE[plan][t] < LIST_PRICE[plan][t]); }
-  for (const plan of ['essentials', 'autopilot', 'plus'] as const) for (const t of ['monthly', 'contract12'] as const) assert.equal(offerPrice({ mode: 'base', percentOff: 13 }, plan, t), BASE_PRICE[plan][t]);
+test('pricing: whole-dollar prices matching the Stripe catalog, and original-price offers land exactly on the offer price', () => {
+  assert.deepEqual(LIST_PRICE, { essentials: { monthly: 1000, contract12: 800 }, autopilot: { monthly: 1500, contract12: 1200 }, pro: { monthly: 2000, contract12: 1600 } });
+  for (const plan of ['essentials', 'autopilot', 'pro'] as const) for (const t of ['monthly', 'contract12'] as const) { assert.equal(LIST_PRICE[plan][t] % 100, 0); assert.equal(BASE_PRICE[plan][t] % 100, 0); assert.ok(BASE_PRICE[plan][t] < LIST_PRICE[plan][t]); }
+  for (const plan of ['essentials', 'autopilot', 'pro'] as const) for (const t of ['monthly', 'contract12'] as const) assert.equal(offerPrice({ mode: 'base', percentOff: 13 }, plan, t), BASE_PRICE[plan][t]);
 });
 
 test('offers: private to one person, best one wins, never stacked, win-back only for former customers', () => {
@@ -74,7 +74,7 @@ test('API: web signup gets a welcome offer and a discounted checkout; admin, off
     const u = String(url);
     if (!u.startsWith('https://api.stripe.com/')) return realFetch(url, init);
     stripeCalls.push(u + ' ' + decodeURIComponent(String(init?.body ?? '')));
-    if (u.includes('/prices')) return new Response(JSON.stringify({ data: [{ id: 'price_x', unit_amount: 4500 }] }));
+    if (u.includes('/prices')) return new Response(JSON.stringify({ data: [{ id: 'price_x', unit_amount: 1500, lookup_key: 'keyhelm_autopilot_monthly' }] }));
     if (u.includes('/coupons')) return new Response(JSON.stringify({ id: 'coupon_1' }));
     return new Response(JSON.stringify({ id: 'cs_test_1', url: 'https://checkout.stripe.com/c/cs_test_1' }));
   }) as typeof fetch;
@@ -85,8 +85,8 @@ test('API: web signup gets a welcome offer and a discounted checkout; admin, off
     const out = await r.json();
     assert.equal(r.status, 200, JSON.stringify(out));
     assert.equal(out.offer.kind, 'web_intro');
-    assert.equal(out.quote.firstMonthDueToday, 3 * 3500, 'first month at the original $35/door');
-    assert.ok(stripeCalls.some((c) => c.includes('/coupons') && c.includes('amount_off=3000') && c.includes('max_redemptions=1')), 'single-use coupon worth exactly $10 × 3 doors');
+    assert.equal(out.quote.firstMonthDueToday, 3 * 1200, 'first month at the offer price of $12/door');
+    assert.ok(stripeCalls.some((c) => c.includes('/coupons') && c.includes('amount_off=900') && c.includes('max_redemptions=1')), 'single-use coupon worth exactly $3 × 3 doors');
     assert.ok(stripeCalls.some((c) => c.includes('discounts[0][coupon]=coupon_1') && !c.includes('allow_promotion_codes')), 'no public promo codes');
     const pat = store.find('owners', (o) => o.email === 'pat@example.com')!;
     assert.equal(pat.source, 'web');

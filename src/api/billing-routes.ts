@@ -5,7 +5,7 @@
 //             GET  /billing/done              after checkout → set a password → /app (book onboarding there)
 //   Webhooks: POST /webhooks/stripe           KeyHelm's own subscription only (never rent)
 //             POST /webhooks/calendly         onboarding booked / canceled
-//   Owner:    GET  /api/billing  · POST /api/billing/checkout · GET /api/offers
+//   Owner:    GET  /api/billing  · POST /api/billing/checkout · POST /api/billing/portal · GET /api/offers
 //   Admin:    GET  /admin  · GET /api/admin/overview · POST /api/admin/offers · POST /api/admin/offers/:id/revoke
 //             (Authorization: Bearer <ADMIN_API_TOKEN>)
 
@@ -20,7 +20,8 @@ import type { Req, Handler } from './server.ts';
 import type { Services } from '../services.ts';
 import type { BillingTerm, Offer, Owner, TableName } from '../domain/types.ts';
 import { verifyStripeSignature } from '../adapters/live.ts';
-import { StripeBilling, applyBillingEvent, PLANS, TERMS, type Plan } from '../billing/stripe.ts';
+import { StripeBilling, applyBillingEvent, asPlanId, asTermId, PLANS, PLAN_NAMES, type Plan } from '../billing/stripe.ts';
+import { STRIPE_KV, portalConfiguration, webhookSecrets } from '../billing/catalog.ts';
 import { BASE_PRICE, LIST_PRICE, OFFER_RULES, PRESETS, PRICE_FLOOR, MAX_MONTHS_MONTHLY, offerPrice, REFERRAL_CREDIT_CENTS, expireOffers, issueOffer, pickOffer, quote, referralCodeFor, termLabel, usableOffers, type IssueInput } from '../billing/offers.ts';
 import { BRAND } from '../config/brand.ts';
 import { checkoutDone } from './owner-routes.ts';
@@ -37,8 +38,10 @@ interface Kit {
 }
 
 const usd = (c: number) => '$' + (c / 100).toLocaleString('en-US', { minimumFractionDigits: c % 100 ? 2 : 0, maximumFractionDigits: 2 });
-const asPlan = (v: unknown, d: Plan): Plan => (PLANS.includes(v as Plan) ? (v as Plan) : d);
-const asTerm = (v: unknown, d: BillingTerm): BillingTerm => (TERMS.includes(v as BillingTerm) ? (v as BillingTerm) : d);
+/** A plan from input or an old record ('plus' = 'pro', see src/billing/plans.ts), else the fallback, else Autopilot. */
+const asPlan = (v: unknown, d?: unknown): Plan => asPlanId(v) ?? asPlanId(d) ?? 'autopilot';
+/** 'annual' (Stripe's word for the 12-month agreement) = 'contract12'. */
+const asTerm = (v: unknown, d: BillingTerm): BillingTerm => asTermId(v) ?? d;
 const asDoors = (v: unknown, d = 1) => Math.max(1, Math.min(500, Math.round(Number(v)) || d));
 const cleanEmail = (e: unknown) => String(e ?? '').trim().toLowerCase();
 const validEmail = (e: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
@@ -55,11 +58,14 @@ function isAdmin(req: Req): boolean {
   return timingSafeEqual(Buffer.from(want), Buffer.from(got));
 }
 
+/** The plans an offer works with (old offers may say 'plus'). */
+const offerPlans = (o: Offer): Plan[] => (o.plans ? [...new Set(o.plans.map(asPlanId).filter((p): p is Plan => !!p))] : PLANS);
+
 /** Public view of an offer (never internal notes). */
 const offerView = (svc: Services, o: Offer) => ({
   id: o.id, kind: o.kind, kindLabel: OFFER_RULES[o.kind].label, title: o.title, mode: o.mode ?? 'percent', percentOff: o.percentOff, months: o.months,
   pricePerDoor: Object.fromEntries(PLANS.map((p) => [p, Object.fromEntries(o.terms.map((t) => [t, offerPrice({ mode: o.mode ?? 'percent', percentOff: o.percentOff }, p, t)]))])),
-  terms: o.terms, plans: o.plans ?? null, expiresAt: o.expiresAt, status: o.status, link: `${svc.cfg.publicUrl.replace(/\/$/, '')}/offer/${o.id}`,
+  terms: o.terms, plans: o.plans ? offerPlans(o) : null, expiresAt: o.expiresAt, status: o.status, link: `${svc.cfg.publicUrl.replace(/\/$/, '')}/offer/${o.id}`,
 });
 
 export function registerBillingRoutes({ route, json, html, page, esc, mine }: Kit) {
@@ -86,7 +92,10 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
     const owner = svc.store.get('owners', req.params.ownerId)!;
     expireOffers(svc.store, svc.clock.now());
     json(res, 200, {
-      enabled: !!process.env.STRIPE_SECRET_KEY, plan: owner.plan, billing: owner.billing ?? null, onboarding: owner.onboarding ?? null,
+      enabled: !!process.env.STRIPE_SECRET_KEY, plan: asPlan(owner.plan), planNames: PLAN_NAMES,
+      billing: owner.billing ? { ...owner.billing, ...(owner.billing.plan ? { plan: asPlan(owner.billing.plan) } : {}) } : null,
+      canManageBilling: !!owner.billing?.customerId, // POST /api/billing/portal works
+      onboarding: owner.onboarding ?? null,
       offers: svc.store.list('offers', (o) => o.ownerId === owner.id || (!!o.email && o.email === cleanEmail(owner.email))).map((o) => offerView(svc, o)),
       referral: { code: referralCodeFor(svc.store, owner), link: `${svc.cfg.publicUrl.replace(/\/$/, '')}/?ref=${svc.store.get('owners', owner.id)!.referralCode}`, creditPerReferral: REFERRAL_CREDIT_CENTS },
       prices: LIST_PRICE, basePrices: BASE_PRICE,
@@ -106,6 +115,23 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
       doors: asDoors(req.body?.doors, mine(svc, 'properties', owner.id).length || 1), offerId: req.body?.offerId || undefined,
     });
     json(res, r.status, r.body);
+  }, true);
+
+  // Stripe's billing portal for the owner's own KeyHelm subscription: update the card, see invoices,
+  // cancel at the end of the paid period. The app sends the browser to the returned url.
+  route('POST', '/api/billing/portal', async (req, res, svc) => {
+    const owner = svc.store.get('owners', req.params.ownerId)!;
+    const client = billingClient(svc);
+    if (!client) return json(res, 503, { error: 'Billing is not set up yet: add STRIPE_SECRET_KEY in Railway.' });
+    const customerId = owner.billing?.customerId;
+    if (!customerId) return json(res, 409, { error: 'There is no KeyHelm subscription on this account yet. Choose a plan first, then you can manage billing here.' });
+    try {
+      const s = await client.portalSession({ customerId, returnUrl: `${svc.cfg.publicUrl.replace(/\/$/, '')}/app`, configuration: portalConfiguration(svc.store, process.env.STRIPE_SECRET_KEY!) });
+      svc.engine.audit({ ownerId: owner.id, actor: 'owner', action: 'billing.portal', detail: 'Opened the KeyHelm billing portal.' });
+      json(res, 200, { url: s.url });
+    } catch (e) {
+      json(res, 502, { error: `Stripe could not open the billing page: ${(e as Error).message}` });
+    }
   }, true);
 
   /* ---------------- Public signup (no demo needed) ---------------- */
@@ -153,7 +179,7 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
     }
 
     const r = await startCheckout(svc, svc.store.get('owners', owner.id)!, { plan, term, doors, offerId: viaOffer && viaOffer.status === 'issued' ? viaOffer.id : undefined });
-    svc.engine.audit({ ownerId: owner.id, actor: 'owner', action: 'billing.signup', detail: `Signup: ${plan}, ${termLabel(term)}, ${doors} door(s)${r.status === 200 && (r.body as any).offer ? `, offer "${(r.body as any).offer.title}"` : ''}.` });
+    svc.engine.audit({ ownerId: owner.id, actor: 'owner', action: 'billing.signup', detail: `Signup: ${PLAN_NAMES[plan]}, ${termLabel(term)}, ${doors} door(s)${r.status === 200 && (r.body as any).offer ? `, offer "${(r.body as any).offer.title}"` : ''}.` });
     if (form) {
       if (r.status === 200) { res.writeHead(303, { location: (r.body as any).url }); res.end(); return; }
       return fail(r.status, (r.body as any).error);
@@ -168,9 +194,10 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
     if (!o || o.status === 'revoked') return html(res, 404, page('Offer not found', '<h1>This offer link isn\'t valid</h1><p class="muted">Ask the person who sent it for a new one.</p>'));
     if (o.status !== 'issued') return html(res, 410, page('Offer ended', `<h1>This offer has ${o.status === 'redeemed' ? 'been used' : 'ended'}</h1><p class="muted">You can still <a href="/#pricing">see our plans</a>.</p>`));
     const owner = o.ownerId ? svc.store.get('owners', o.ownerId) : undefined;
-    const plans = (o.plans ?? PLANS) as Plan[];
+    const plans = offerPlans(o);
+    const chosen = plans.includes(asPlan(owner?.plan)) ? asPlan(owner?.plan) : plans[0];
     const ends = new Date(o.expiresAt).toLocaleString('en-US', { timeZone: svc.cfg.tz, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-    const rows = plans.map((p) => o.terms.map((t) => `<tr><td>${p[0].toUpperCase() + p.slice(1)} · ${termLabel(t)}</td><td><s class="muted">${usd(LIST_PRICE[p][t])}</s> <b>${usd(offerPrice({ mode: o.mode ?? 'percent', percentOff: o.percentOff }, p, t))}</b>/door for ${o.months} month${o.months > 1 ? 's' : ''}</td></tr>`).join('')).join('');
+    const rows = plans.map((p) => o.terms.map((t) => `<tr><td>${PLAN_NAMES[p]} · ${termLabel(t)}</td><td><s class="muted">${usd(LIST_PRICE[p][t])}</s> <b>${usd(offerPrice({ mode: o.mode ?? 'percent', percentOff: o.percentOff }, p, t))}</b>/door for ${o.months} month${o.months > 1 ? 's' : ''}</td></tr>`).join('')).join('');
     html(res, 200, page(`${BRAND.name}: your offer`, `
 <p class="muted">A private offer for ${esc(owner?.name ?? o.email ?? 'you')} · ends ${esc(ends)}</p>
 <h1>${esc(o.title)}</h1>
@@ -181,7 +208,7 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
 <label for="n">Your name</label><input id="n" name="name" required autocomplete="name" value="${esc(owner?.name ?? '')}">
 <label for="e">Email</label><input id="e" name="email" type="email" required autocomplete="email" value="${esc(owner?.email ?? o.email ?? '')}">
 <label for="ph">Mobile phone</label><input id="ph" name="phone" required autocomplete="tel" value="${esc(owner?.phone ?? '')}">
-<label for="p">Plan</label><select id="p" name="plan" style="width:100%;min-height:48px;border:1.5px solid #D8E1F2;border-radius:12px;padding:10px 14px;font:inherit">${plans.map((p) => `<option value="${p}" ${p === (owner?.plan ?? 'autopilot') ? 'selected' : ''}>${p[0].toUpperCase() + p.slice(1)}</option>`).join('')}</select>
+<label for="p">Plan</label><select id="p" name="plan" style="width:100%;min-height:48px;border:1.5px solid #D8E1F2;border-radius:12px;padding:10px 14px;font:inherit">${plans.map((p) => `<option value="${p}" ${p === chosen ? 'selected' : ''}>${PLAN_NAMES[p]}</option>`).join('')}</select>
 <label for="t">Billing</label><select id="t" name="term" style="width:100%;min-height:48px;border:1.5px solid #D8E1F2;border-radius:12px;padding:10px 14px;font:inherit">${o.terms.map((t) => `<option value="${t}">${termLabel(t)}</option>`).join('')}</select>
 <label for="d">Rental homes</label><input id="d" name="doors" type="number" min="1" max="500" value="${owner?.billing?.doors ?? 1}">
 <label class="check"><input type="checkbox" name="agree" value="yes" required><span>I agree to the <a href="/terms" target="_blank" rel="noopener">Terms of service</a> and the automatic monthly renewal, and I have read the <a href="/privacy" target="_blank" rel="noopener">Privacy policy</a> and <a href="/refunds" target="_blank" rel="noopener">Refund and cancellation policy</a>.</span></label>
@@ -201,13 +228,15 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
   /* ---------------- Webhooks ---------------- */
   // Stripe: KeyHelm's OWN subscription billing only. KeyHelm never collects rent.
   route('POST', '/webhooks/stripe', async (req, res, svc) => {
-    const secret = process.env.STRIPE_WEBHOOK_SECRET;
-    if (!secret) return json(res, 503, { error: 'STRIPE_WEBHOOK_SECRET is not set' });
-    if (!verifyStripeSignature(secret, req.raw, String(req.headers['stripe-signature'] ?? ''))) return json(res, 400, { error: 'bad signature' });
+    // STRIPE_WEBHOOK_SECRET, or the secret of the endpoint the server made itself (src/billing/catalog.ts).
+    const secrets = webhookSecrets(svc.store);
+    if (!secrets.length) return json(res, 503, { error: 'Stripe webhooks are not set up yet: set STRIPE_SECRET_KEY (the server makes the webhook) or STRIPE_WEBHOOK_SECRET' });
+    const sig = String(req.headers['stripe-signature'] ?? '');
+    if (!secrets.some((s) => verifyStripeSignature(s, req.raw, sig))) return json(res, 400, { error: 'bad signature' });
     const done = applyBillingEvent(svc.store, req.body, svc.clock.now().toISOString());
     if (done) {
       const b = done.billing;
-      svc.engine.audit({ ownerId: done.ownerId, actor: 'system', action: 'billing.updated', detail: `KeyHelm subscription: ${b.status}${b.plan ? `, ${b.plan}` : ''}${b.term ? `, ${termLabel(b.term)}` : ''}${b.doors ? `, ${b.doors} door${b.doors === 1 ? '' : 's'}` : ''} (${req.body.type}).` });
+      svc.engine.audit({ ownerId: done.ownerId, actor: 'system', action: 'billing.updated', detail: `KeyHelm subscription: ${b.status}${b.plan ? `, ${PLAN_NAMES[b.plan] ?? b.plan}` : ''}${b.term ? `, ${termLabel(b.term)}` : ''}${b.doors ? `, ${b.doors} door${b.doors === 1 ? '' : 's'}` : ''} (${req.body.type}).` });
       if (done.started) {
         const o = svc.store.get('owners', done.ownerId)!;
         if (!o.onboarding) svc.store.update('owners', o.id, { onboarding: { status: 'not_booked', updatedAt: svc.clock.now().toISOString() } });
@@ -254,9 +283,12 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
     if (!isAdmin(req)) return json(res, 401, { error: 'admin only' });
     expireOffers(svc.store, svc.clock.now());
     json(res, 200, {
-      owners: svc.store.list('owners').map((o) => ({ id: o.id, name: o.name, email: o.email, phone: o.phone, plan: o.plan, source: o.source ?? 'seed', billing: o.billing ?? null, onboarding: o.onboarding ?? null, referralCode: o.referralCode ?? null })),
+      owners: svc.store.list('owners').map((o) => ({ id: o.id, name: o.name, email: o.email, phone: o.phone, plan: asPlan(o.plan), source: o.source ?? 'seed', billing: o.billing ? { ...o.billing, ...(o.billing.plan ? { plan: asPlan(o.billing.plan) } : {}) } : null, onboarding: o.onboarding ?? null, referralCode: o.referralCode ?? null })),
       offers: svc.store.list('offers').sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((o) => ({ ...offerView(svc, o), ownerId: o.ownerId ?? null, email: o.email ?? null, issuedBy: o.issuedBy, campaign: o.campaign ?? null, note: o.note ?? null, createdAt: o.createdAt, redeemedAt: o.redeemedAt ?? null })),
       presets: PRESETS, rules: OFFER_RULES, prices: LIST_PRICE, basePrices: BASE_PRICE, floors: PRICE_FLOOR, maxMonthsMonthly: MAX_MONTHS_MONTHLY, billingEnabled: !!process.env.STRIPE_SECRET_KEY, calendly: !!process.env.CALENDLY_URL, calendlyWebhook: !!(process.env.CALENDLY_TOKEN && process.env.CALENDLY_WEBHOOK_SECRET),
+      planNames: PLAN_NAMES,
+      // What the last Stripe setup at boot found and made (src/billing/catalog.ts). Never includes secrets.
+      stripeSetup: svc.store.kvGet(STRIPE_KV, 'setupReport') ?? null,
     });
   });
 
@@ -274,11 +306,15 @@ export function registerBillingRoutes({ route, json, html, page, esc, mine }: Ki
     }
     if (!targets.length) return json(res, 400, { error: 'Pick an owner or enter at least one email' });
     if (targets.length > 200) return json(res, 400, { error: 'Up to 200 people per batch' });
+    // Plans: 'plus' is the old id for Autopilot Pro. Terms: 'annual' = the 12-month agreement. Unknown values are refused below.
+    const list = (v: unknown): unknown[] | undefined => (Array.isArray(v) ? v : v ? String(v).split(/[\s,]+/).filter(Boolean) : undefined);
+    const plansIn = list(b.plans);
+    if (plansIn?.some((p) => !asPlanId(p))) return json(res, 400, { error: `Unknown plan. Use ${PLANS.join(', ')}.` });
     const input: Omit<IssueInput, 'ownerId' | 'email'> = {
       kind: (b.kind ?? base?.kind) as Offer['kind'], title: String(b.title || base?.title || '').slice(0, 120),
       mode: (b.mode === 'base' || b.mode === 'percent' ? b.mode : base?.mode ?? 'percent') as Offer['mode'],
       percentOff: Number(b.percentOff ?? base?.percentOff), months: Number(b.months ?? base?.months),
-      terms: (b.terms ?? base?.terms) as BillingTerm[] | undefined, plans: b.plans?.length ? b.plans : undefined,
+      terms: (list(b.terms)?.map((t) => asTermId(t) ?? t) ?? base?.terms) as BillingTerm[] | undefined, plans: plansIn?.length ? plansIn.map((p) => asPlanId(p)!) : undefined,
       days: b.days !== undefined && b.days !== '' ? Number(b.days) : base?.days, campaign: b.campaign ? String(b.campaign).slice(0, 60) : undefined,
       note: b.note ? String(b.note).slice(0, 300) : undefined, issuedBy: 'admin',
     };

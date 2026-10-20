@@ -58,12 +58,13 @@ Never paste keys into chat or commit them. Set them only in Railway's Variables 
 | Twilio, texts | Phone number → Messaging → "A message comes in" | `https://<api>/webhooks/twilio/sms` |
 | Twilio, calls | Phone number → Voice → "A call comes in" | `https://<api>/webhooks/twilio/voice` |
 | Postmark inbound | Server → Inbound stream → webhook | `https://<api>/webhooks/email?key=<EMAIL_WEBHOOK_SECRET>` |
-| Stripe (KeyHelm billing only) | Developers → Webhooks → add endpoint, events `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed` | `https://<api>/webhooks/stripe` |
+| Stripe (KeyHelm billing only) | Nothing to do: with `STRIPE_SECRET_KEY` set and no `STRIPE_WEBHOOK_SECRET`, the api service makes this endpoint itself at boot (events `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`). See `docs/notes/billing.md`. | `https://<api>/webhooks/stripe` |
 
 ## Stripe prices, offers and Calendly
 
-See `docs/OFFERS.md`. Checkout finds prices by lookup key `keyhelm_<plan>_<monthly|contract12>`
-(already created in the sandbox). To change a price, create a new one in Stripe and move the lookup key.
+See `docs/OFFERS.md` and `docs/notes/billing.md`. Checkout finds prices by lookup key
+`keyhelm_<plan>_<monthly|annual>`; any that are missing are created at boot from `LIST_PRICE`
+(turn that off with `STRIPE_AUTO_SETUP=false`). To change a price, create a new one in Stripe and move the lookup key.
 
 More `api` variables:
 ```

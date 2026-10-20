@@ -12,7 +12,7 @@ export interface Owner {
   name: string;
   email: string;
   phone: string;
-  plan: 'essentials' | 'autopilot' | 'plus';
+  plan: 'essentials' | 'autopilot' | 'pro'; // 'pro' = Autopilot Pro (records saved before may say 'plus'; see src/billing/plans.ts)
   timezone: string; // e.g. America/Denver
   lineNumber?: string; // the KeyHelm phone number tenants text for this owner
   lineEmail?: string; // the KeyHelm inbox address for this owner
@@ -32,7 +32,7 @@ export interface Owner {
 /** The owner's KeyHelm subscription. This is the ONLY money KeyHelm ever charges or handles. */
 export interface OwnerBilling {
   status: 'checkout_started' | 'active' | 'past_due' | 'canceled';
-  plan?: 'essentials' | 'autopilot' | 'plus';
+  plan?: 'essentials' | 'autopilot' | 'pro';
   term?: BillingTerm;
   doors?: number;
   customerId?: string;
@@ -72,7 +72,7 @@ export interface Offer {
   percentOff: number; // 'percent' mode: 1-100. 'base' mode: the equivalent saving, for display only
   months: number; // billing months the discount covers
   terms: BillingTerm[]; // which billing terms it can be used with
-  plans?: ('essentials' | 'autopilot' | 'plus')[]; // omitted = any plan
+  plans?: ('essentials' | 'autopilot' | 'pro')[]; // omitted = any plan
   expiresAt: ISO;
   status: 'issued' | 'redeemed' | 'expired' | 'revoked';
   issuedBy: string; // 'admin' or 'system'

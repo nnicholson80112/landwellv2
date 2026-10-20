@@ -4,27 +4,29 @@ KeyHelm charges owners for KeyHelm only. It never collects rent.
 
 ## Plans and the pricing model
 
-**Standard price** = about 15% above the original price, rounded up to whole $5 steps. It's what
-anyone without an offer pays, and what every customer pays once their offer months end.
-**Original-price offers** bring it back to the offer price for a set number of months (an exact
-dollar amount off per door, so $45 lands on $35).
+**Standard price** = the price in the KeyHelm Stripe catalog. It's what anyone without an offer
+pays, and what every customer pays once their offer months end.
+**Original-price offers** bring it down to the offer price for a set number of months (an exact
+dollar amount off per door, so $15 lands on $12).
 
-| Plan | Standard, month-to-month | Standard, 12-month | Offer price, month-to-month | Offer price, 12-month |
-| --- | --- | --- | --- | --- |
-| Essentials | $20 | $15 | $15 | $10 |
-| Autopilot | $45 | $35 | $35 | $30 |
-| Autopilot Plus | $70 | $60 | $60 | $50 |
+| Plan | Standard, month-to-month | Standard, 12-month | Offer price, month-to-month | Offer price, 12-month | Floor |
+| --- | --- | --- | --- | --- | --- |
+| Essentials | $10 | $8 | $8 | $6 | $5 |
+| Autopilot | $15 | $12 | $12 | $10 | $8 |
+| Autopilot Pro | $20 | $16 | $16 | $13 | $10 |
 
 Prices are per door per month. The first month is charged at checkout. There's no setup fee.
-Stripe holds the standard prices under lookup keys `keyhelm_<plan>_<monthly|contract12>`;
-`BASE_PRICE` and `LIST_PRICE` in `src/billing/offers.ts` must match them.
+Stripe holds the standard prices under lookup keys `keyhelm_<essentials|autopilot|pro>_<monthly|annual>`
+("annual" is the 12-month agreement, billed monthly); `LIST_PRICE` in `src/billing/offers.ts` must
+match them and `BASE_PRICE` holds the offer prices. Plan ids are `essentials`, `autopilot`, `pro`
+(`plus` is still accepted as the old id for Autopilot Pro). Missing Stripe prices are created at boot:
+see `docs/notes/billing.md`.
 
 > **Keep the standard price real.** US pricing rules (FTC 16 CFR 233.1) only allow a "regular"
 > price next to a discount if it's a price you actually charge, openly and in good faith, for a
 > real period of time. That's why offers are private, expire and last a set number of months, and
 > why customers pay standard afterward. Don't hand an offer to everyone forever, and don't put
-> "was $45, now $35" on the public site unless people really pay $45. Have the attorney
-> check the pricing copy and the 12-month agreement before launch.
+> "was $15, now $12" on the public site unless people really pay $15.
 
 ## What the research showed (Oct 2026)
 

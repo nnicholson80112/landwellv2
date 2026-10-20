@@ -25,6 +25,7 @@ import { createServices, type Services } from '../services.ts';
 import { install } from '../workflows/index.ts';
 import { verifyStripeSignature, verifyTwilioSignature } from '../adapters/live.ts';
 import { registerBillingRoutes } from './billing-routes.ts';
+import { startStripeSetup } from '../billing/catalog.ts';
 import { registerOwnerRoutes } from './owner-routes.ts';
 import { sessionAuth, withoutSecrets, type AuthResult } from './auth.ts';
 import type { SignRequest } from '../adapters/esign-native.ts';
@@ -447,6 +448,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     store.kvSet('tokens', token, s.owner.id);
     console.log(`Seeded demo owner ${s.owner.name}. API token: ${token}`);
   }
+  // Stripe (only with STRIPE_SECRET_KEY, unless STRIPE_AUTO_SETUP=false): create any missing KeyHelm prices, the webhook and the
+  // billing portal, in the background. Never blocks start-up or throws. See src/billing/catalog.ts.
+  void startStripeSetup({ store, publicUrl: svc.cfg.publicUrl });
   ticker = setInterval(() => { svc.engine.tick(); void svc.engine.drain(); }, 30_000);
   svc.engine.tick();
   const port = Number(process.env.PORT ?? 8787);

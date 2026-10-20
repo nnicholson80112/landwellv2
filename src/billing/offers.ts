@@ -10,11 +10,11 @@
 //   • Hulu: deep but time-boxed intro deals, and win-back offers sent only to former
 //     subscribers by personal email link.
 //
-// PRICING MODEL: the STANDARD price (LIST_PRICE) sits above the original price (about +15%,
-// rounded up to whole $5 steps), and
-// it's what anyone without an offer pays, including every customer once their offer
-// months end. Most offers bring the price back to the ORIGINAL price (BASE_PRICE) for
-// a set number of months. Because offers are private and time-limited, the standard
+// PRICING MODEL: the STANDARD price (LIST_PRICE) is the price in Nate's Stripe catalog
+// (whole dollars per door per month), and it's what anyone without an offer pays,
+// including every customer once their offer months end. Most offers bring the price
+// down to the OFFER price (BASE_PRICE, also whole dollars, $2-$4 below standard) for a
+// set number of months. Because offers are private and time-limited, the standard
 // price stays a real, regularly charged price, which is what US pricing rules require
 // before you can advertise a discount from it (FTC 16 CFR 233.1). Never make an offer
 // that everyone gets forever: that turns the standard price into a fictitious one.
@@ -25,29 +25,34 @@
 
 import type { BillingTerm, Offer, Owner } from '../domain/types.ts';
 import type { Store } from '../store/store.ts';
-import type { Plan } from './stripe.ts';
+import { PLANS, PLAN_NAMES, asPlanId, type Plan } from './plans.ts';
 
 export const DAY_MS = 86_400_000;
 
-/** Offer prices ("original" prices), per door per month, in cents. Original-price offers bring the price back to these. Whole $5 steps. */
+/** OFFER prices ("original" prices), per door per month, in cents. "Original price" offers bring the price down to exactly these. Whole dollars. */
 export const BASE_PRICE: Record<Plan, Record<BillingTerm, number>> = {
-  essentials: { monthly: 1500, contract12: 1000 },
-  autopilot: { monthly: 3500, contract12: 3000 },
-  plus: { monthly: 6000, contract12: 5000 },
+  essentials: { monthly: 800, contract12: 600 },
+  autopilot: { monthly: 1200, contract12: 1000 },
+  pro: { monthly: 1600, contract12: 1300 },
 };
 
-/** STANDARD prices (what Stripe charges without an offer): the original prices plus about 15%, rounded up to the next $5. Must match the Stripe prices. */
+/**
+ * STANDARD prices (what Stripe charges without an offer), per door per month, in cents.
+ * Must match the Stripe prices (lookup keys keyhelm_<plan>_<monthly|annual>; 'contract12' is
+ * Stripe's 'annual': the 12-month agreement, billed monthly). The boot setup creates missing
+ * Stripe prices at exactly these amounts (src/billing/catalog.ts).
+ */
 export const LIST_PRICE: Record<Plan, Record<BillingTerm, number>> = {
-  essentials: { monthly: 2000, contract12: 1500 },
-  autopilot: { monthly: 4500, contract12: 3500 },
-  plus: { monthly: 7000, contract12: 6000 },
+  essentials: { monthly: 1000, contract12: 800 },
+  autopilot: { monthly: 1500, contract12: 1200 },
+  pro: { monthly: 2000, contract12: 1600 },
 };
 
 /**
  * The lowest per-door price any discount may reach. Set these from real cost to
  * serve (texting, AI, support) plus your minimum margin. Placeholders for now.
  */
-export const PRICE_FLOOR: Record<Plan, number> = { essentials: 900, autopilot: 2000, plus: 3500 };
+export const PRICE_FLOOR: Record<Plan, number> = { essentials: 500, autopilot: 800, pro: 1000 };
 
 /** What each kind of offer is allowed to be. maxPercent only limits custom-% offers; "back to original price" is always allowed. */
 export const OFFER_RULES: Record<Offer['kind'], { label: string; who: 'admin' | 'system'; maxPercent: number; maxMonths: number; terms: BillingTerm[]; defaultDays: number; maxDays: number }> = {
@@ -117,10 +122,12 @@ export function checkOfferRules(i: IssueInput): string | undefined {
   if (!(Number.isInteger(i.months) && i.months >= 1 && i.months <= maxMonths)) return `${r.label}: 1–${maxMonths} months${terms.includes('monthly') && maxMonths < r.maxMonths ? ' when month-to-month is allowed' : ''}`;
   const days = i.days ?? r.defaultDays;
   if (!(days >= 1 && days <= r.maxDays)) return `${r.label}: must expire within ${r.maxDays} days`;
-  for (const plan of (i.plans?.length ? i.plans : (Object.keys(LIST_PRICE) as Plan[]))) {
+  const plans = i.plans?.length ? i.plans.map(asPlanId) : PLANS;
+  if (plans.some((p) => !p)) return `Unknown plan: use ${PLANS.join(', ')}`;
+  for (const plan of plans as Plan[]) {
     for (const t of terms) {
       const price = offerPrice({ mode, percentOff: Number(i.percentOff) || 0 }, plan, t);
-      if (price < PRICE_FLOOR[plan]) return `That would put ${plan} (${termLabel(t)}) at $${(price / 100).toFixed(2)}/door, below the $${(PRICE_FLOOR[plan] / 100).toFixed(2)} floor. Lower the discount or limit it to other plans.`;
+      if (price < PRICE_FLOOR[plan]) return `That would put ${PLAN_NAMES[plan]} (${termLabel(t)}) at $${(price / 100).toFixed(2)}/door, below the $${(PRICE_FLOOR[plan] / 100).toFixed(2)} floor. Lower the discount or limit it to other plans.`;
     }
   }
   return undefined;
@@ -134,7 +141,7 @@ export function issueOffer(store: Store, i: IssueInput, now: Date): Offer {
   return store.insert('offers', {
     kind: i.kind, mode, ownerId: i.ownerId, email: clean(i.email), title: i.title.trim(),
     percentOff: mode === 'base' ? 0 : Number(i.percentOff), months: i.months,
-    terms: i.terms?.length ? i.terms : r.terms, plans: i.plans?.length ? i.plans : undefined,
+    terms: i.terms?.length ? i.terms : r.terms, plans: i.plans?.length ? [...new Set(i.plans.map((p) => asPlanId(p)!))] : undefined,
     expiresAt: new Date(now.getTime() + (i.days ?? r.defaultDays) * DAY_MS).toISOString(),
     status: 'issued', issuedBy: i.issuedBy, campaign: i.campaign, note: i.note, referrerOwnerId: i.referrerOwnerId,
     createdAt: now.toISOString(),
@@ -156,7 +163,7 @@ export function canUse(o: Offer, who: { owner?: Owner; email?: string }, plan: P
   const mine = (o.ownerId && o.ownerId === who.owner?.id) || (!!o.email && o.email === email);
   if (!mine) return 'This offer belongs to someone else';
   if (!o.terms.includes(term)) return `This offer needs ${o.terms.map(termLabel).join(' or ')}`;
-  if (o.plans && !o.plans.includes(plan)) return `This offer is for ${o.plans.join(' / ')}`;
+  if (o.plans && !o.plans.some((p) => asPlanId(p) === plan)) return `This offer is for ${o.plans.map((p) => PLAN_NAMES[asPlanId(p) ?? plan]).join(' / ')}`; // old offers may say 'plus' (= pro)
   if (o.kind === 'winback' && who.owner?.billing?.status !== 'canceled') return 'Win-back offers are for former customers';
   if ((o.kind === 'web_intro' || o.kind === 'demo' || o.kind === 'referral') && who.owner?.billing?.startedAt) return 'This offer is for new customers';
   return undefined;
@@ -183,7 +190,7 @@ export function pickOffer(store: Store, who: { owner?: Owner; email?: string }, 
 
 export const termLabel = (t: BillingTerm) => (t === 'contract12' ? '12-month agreement' : 'month-to-month');
 
-/** Short description of the deal, e.g. "$35/door for 3 months (standard $45)". */
+/** Short description of the deal, e.g. "$12/door for 3 months (standard $15)". */
 export function dealText(o: Offer, plan: Plan, term: BillingTerm): string {
   const d = (c: number) => '$' + (c / 100).toFixed(c % 100 ? 2 : 0);
   return `${d(offerPrice(o, plan, term))}/door for ${o.months} month${o.months > 1 ? 's' : ''} (standard ${d(LIST_PRICE[plan][term])})`;

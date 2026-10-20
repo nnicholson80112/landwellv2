@@ -4,12 +4,14 @@
 // first month is always paid up front. Rent, deposits and vendor payments never
 // touch KeyHelm.
 //
-// Stripe holds the STANDARD prices (original + 15%; see src/billing/offers.ts).
-// Prices are found by lookup key, so a price change is made in the Stripe
-// dashboard (new price, move the lookup key) and in LIST_PRICE/BASE_PRICE:
-//   keyhelm_<plan>_monthly      month-to-month, per door / month
-//   keyhelm_<plan>_contract12   12-month agreement, per door / month
-// where <plan> is essentials | autopilot | plus.
+// Stripe holds the STANDARD prices (LIST_PRICE in src/billing/offers.ts). Prices are
+// found by lookup key (see ./plans.ts):
+//   keyhelm_<plan>_monthly   month-to-month, per door / month
+//   keyhelm_<plan>_annual    12-month agreement, billed monthly, per door / month
+// where <plan> is essentials | autopilot | pro. Older keys (keyhelm_<plan>_contract12,
+// landwell_*) are still read. When a key has no active price, the server creates it at
+// boot (./catalog.ts). To change a price: make a new price in Stripe, move the lookup key
+// to it, and change LIST_PRICE/BASE_PRICE.
 //
 // Private offers (src/billing/offers.ts) become a single-use Stripe coupon created
 // at checkout time. Nothing is ever a public promotion code.
@@ -17,17 +19,28 @@
 import type { Store } from '../store/store.ts';
 import type { BillingTerm, Offer, Owner, OwnerBilling } from '../domain/types.ts';
 import { BASE_PRICE } from './offers.ts';
+import { PLAN_NAMES, asPlanId, asTermId, lookupKey, lookupKeyCandidates, planTermFromLookupKey, termName, type Plan } from './plans.ts';
 
-export type Plan = 'essentials' | 'autopilot' | 'plus';
-export const PLANS: Plan[] = ['essentials', 'autopilot', 'plus'];
-export const TERMS: BillingTerm[] = ['monthly', 'contract12'];
-export const lookupKey = (plan: Plan, term: BillingTerm) => `keyhelm_${plan}_${term}`;
-// Prices made before the rename used landwell_ keys; both are read, keyhelm_ wins.
-const LEGACY_PREFIX = 'landwell';
-const fromLookupKey = (k?: string): { plan: Plan; term: BillingTerm } | undefined => {
-  const m = k?.match(/^(?:keyhelm|landwell)_(essentials|autopilot|plus)_(monthly|contract12)$/);
-  return m ? { plan: m[1] as Plan, term: m[2] as BillingTerm } : undefined;
-};
+export type { Plan } from './plans.ts';
+export { PLANS, TERMS, PLAN_NAMES, asPlanId, asTermId, lookupKey, lookupKeyCandidates, planTermFromLookupKey } from './plans.ts';
+
+/** True for a live-mode key (sk_live_ / rk_live_). */
+export const isLiveKey = (key: string) => /^[sr]k_live_/.test(key);
+
+/** One call to Stripe's API (form-encoded, as Stripe expects). Throws with Stripe's own message. */
+export async function stripeCall(key: string, method: 'GET' | 'POST' | 'DELETE', path: string, params: URLSearchParams = new URLSearchParams()): Promise<any> {
+  const qs = method === 'POST' ? '' : String(params);
+  const url = 'https://api.stripe.com/v1/' + path + (qs ? '?' + qs : '');
+  const r = await fetch(url, {
+    method,
+    headers: { authorization: `Bearer ${key}`, ...(method === 'POST' ? { 'content-type': 'application/x-www-form-urlencoded' } : {}) },
+    body: method === 'POST' ? params : undefined,
+    signal: AbortSignal.timeout(20_000),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(`Stripe ${path}: ${data?.error?.message ?? r.status}`);
+  return data;
+}
 
 export class StripeBilling {
   private key: string;
@@ -37,24 +50,18 @@ export class StripeBilling {
     this.base = o.publicUrl.replace(/\/$/, '');
   }
 
-  private async api(method: 'GET' | 'POST', path: string, params: URLSearchParams): Promise<any> {
-    const url = 'https://api.stripe.com/v1/' + path + (method === 'GET' ? '?' + params : '');
-    const r = await fetch(url, {
-      method,
-      headers: { authorization: `Bearer ${this.key}`, ...(method === 'POST' ? { 'content-type': 'application/x-www-form-urlencoded' } : {}) },
-      body: method === 'POST' ? params : undefined,
-    });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(`Stripe ${path}: ${data?.error?.message ?? r.status}`);
-    return data;
+  private api(method: 'GET' | 'POST' | 'DELETE', path: string, params?: URLSearchParams): Promise<any> {
+    return stripeCall(this.key, method, path, params);
   }
 
-  async priceFor(plan: Plan, term: BillingTerm): Promise<{ id: string; unit_amount: number }> {
-    const q = new URLSearchParams({ active: 'true' });
-    q.append('lookup_keys[]', lookupKey(plan, term));
-    q.append('lookup_keys[]', `${LEGACY_PREFIX}_${plan}_${term}`);
+  /** The active price for this plan and term: today's lookup key first, then older keys. */
+  async priceFor(plan: Plan, term: BillingTerm): Promise<{ id: string; unit_amount: number; lookup_key?: string }> {
+    const keys = lookupKeyCandidates(plan, term);
+    const q = new URLSearchParams({ active: 'true', limit: '100' });
+    for (const k of keys) q.append('lookup_keys[]', k);
     const res = await this.api('GET', 'prices', q);
-    const p = (res.data ?? []).sort((a: any, b: any) => Number(b.lookup_key?.startsWith('keyhelm_')) - Number(a.lookup_key?.startsWith('keyhelm_')))[0];
+    const rank = (p: any) => { const i = keys.indexOf(p?.lookup_key); return i < 0 ? keys.length : i; };
+    const p = [...(res.data ?? [])].sort((a: any, b: any) => rank(a) - rank(b))[0];
     if (!p) throw new Error(`No active Stripe price with lookup key ${lookupKey(plan, term)}`);
     return p;
   }
@@ -74,9 +81,7 @@ export class StripeBilling {
       'line_items[0][quantity]': String(Math.max(1, i.doors)),
       success_url: `${this.base}/billing/done?session={CHECKOUT_SESSION_ID}`,
       cancel_url: `${this.base}/#pricing`,
-      'custom_text[submit][message]': i.term === 'contract12'
-        ? 'You are agreeing to a 12-month KeyHelm agreement, billed monthly per door. Your first month is charged today and each month after until the agreement ends.'
-        : 'Month-to-month: your first month is charged today, then this plan renews automatically every month at the price shown until you cancel. Cancel anytime by emailing us; it takes effect at the end of the paid month.',
+      'custom_text[submit][message]': checkoutTerms(i.plan, i.term),
     });
     if (i.offer) {
       // One single-use coupon per offer: it can't be reused, shared or found by anyone else.
@@ -110,9 +115,29 @@ export class StripeBilling {
   async credit(customerId: string, cents: number, description: string): Promise<void> {
     await this.api('POST', `customers/${customerId}/balance_transactions`, new URLSearchParams({ amount: String(-Math.abs(cents)), currency: 'usd', description }));
   }
+
+  /**
+   * A Stripe customer portal page where the owner updates their card, sees invoices or
+   * cancels (at the end of the paid period). `configuration` is the portal setup KeyHelm made
+   * (./catalog.ts); without it Stripe uses the account's default portal settings.
+   */
+  async portalSession(i: { customerId: string; returnUrl: string; configuration?: string }): Promise<{ url: string; id: string }> {
+    const p = new URLSearchParams({ customer: i.customerId, return_url: i.returnUrl });
+    if (i.configuration) p.set('configuration', i.configuration);
+    const s = await this.api('POST', 'billing_portal/sessions', p);
+    return { url: s.url, id: s.id };
+  }
 }
 
-/** Stripe webhook events KeyHelm listens to (register exactly these). */
+/** The plain-words agreement shown above the pay button on Stripe Checkout. */
+export function checkoutTerms(plan: Plan, term: BillingTerm): string {
+  const name = `KeyHelm ${PLAN_NAMES[plan]}, ${termName(term)}`;
+  return term === 'contract12'
+    ? `${name}: you are agreeing to a 12-month KeyHelm agreement, billed monthly per door. Your first month is charged today and each month after until the agreement ends.`
+    : `${name}: your first month is charged today, then this plan renews automatically every month at the price shown until you cancel. Cancel anytime by emailing us; it takes effect at the end of the paid month.`;
+}
+
+/** Stripe webhook events KeyHelm listens to (register exactly these; ./catalog.ts does it for you). */
 export const BILLING_EVENTS = ['checkout.session.completed', 'customer.subscription.updated', 'customer.subscription.deleted', 'invoice.paid', 'invoice.payment_failed'];
 
 const STATUS: Record<string, OwnerBilling['status']> = {
@@ -144,7 +169,7 @@ export function applyBillingEvent(store: Store, ev: any, now: string): BillingCh
       const id = obj.client_reference_id ?? obj.metadata?.owner_id;
       owner = id ? store.get('owners', id) : byCustomer(obj.customer);
       const paid = obj.payment_status === 'paid' || obj.payment_status === 'no_payment_required';
-      const term: BillingTerm = obj.metadata?.term === 'contract12' ? 'contract12' : 'monthly';
+      const term: BillingTerm = asTermId(obj.metadata?.term) ?? 'monthly';
       patch = { status: paid ? 'active' : 'checkout_started', customerId: obj.customer, subscriptionId: obj.subscription, term, ...(obj.metadata?.offer_id ? { offerId: obj.metadata.offer_id } : {}) };
       if (obj.metadata?.offer_id) {
         const o = store.get('offers', obj.metadata.offer_id);
@@ -156,11 +181,12 @@ export function applyBillingEvent(store: Store, ev: any, now: string): BillingCh
     case 'customer.subscription.deleted': {
       owner = (obj.metadata?.owner_id && store.get('owners', obj.metadata.owner_id)) || byCustomer(obj.customer);
       const item = obj.items?.data?.[0];
-      const pt = fromLookupKey(item?.price?.lookup_key);
+      const pt = planTermFromLookupKey(item?.price?.lookup_key);
+      const metaPlan = asPlanId(obj.metadata?.plan);
       const deleted = ev.type.endsWith('deleted');
       patch = {
         status: deleted ? 'canceled' : STATUS[obj.status] ?? 'past_due', subscriptionId: obj.id, customerId: obj.customer,
-        ...(pt ? { plan: pt.plan, term: pt.term } : obj.metadata?.plan ? { plan: obj.metadata.plan } : {}),
+        ...(pt ? { plan: pt.plan, term: pt.term } : metaPlan ? { plan: metaPlan } : {}),
         ...(item?.quantity ? { doors: item.quantity } : {}),
         ...(deleted ? { canceledAt: now } : {}),
       };
@@ -181,13 +207,16 @@ export function applyBillingEvent(store: Store, ev: any, now: string): BillingCh
 
   const prev = owner.billing;
   const billing: OwnerBilling = { ...(prev ?? { status: 'checkout_started' }), ...patch, updatedAt: now } as OwnerBilling;
+  // Records saved before the rename may say 'plus': always written back as 'pro'.
+  if (billing.plan !== undefined) { const p = asPlanId(billing.plan); if (p) billing.plan = p; else delete billing.plan; }
   let started = false;
   if (billing.status === 'active' && !billing.startedAt) {
     billing.startedAt = now;
     if (billing.term === 'contract12') billing.contractEndsAt = addMonths(now, 12);
     started = true;
   }
-  store.update('owners', owner.id, billing.plan && billing.plan !== owner.plan ? { billing, plan: billing.plan } : { billing });
+  const plan = billing.plan ?? asPlanId(owner.plan);
+  store.update('owners', owner.id, plan && plan !== owner.plan ? { billing, plan } : { billing });
 
   // Referral reward: once, after the referred owner's first paid month.
   let referralReward: BillingChange['referralReward'];
