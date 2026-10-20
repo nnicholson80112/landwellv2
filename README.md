@@ -72,16 +72,19 @@ curl localhost:8787/api/dashboard -H 'authorization: Bearer dev-token'
 | --- | --- |
 | Workflow engine, all 16 workflows, guardrails, lease templating, API, signing page | Working and tested |
 | AI | Rule-based works offline. Claude and in-house HTTP providers are written; add a key to turn them on |
-| Twilio SMS, Postmark email, Stripe subscription billing, Seam locks | Written against each vendor's API; **not yet run against live accounts**. Test in each vendor's sandbox first |
+| Twilio SMS, Postmark email, Seam locks | Written against each vendor's API; turn on by adding keys in Railway Variables. Twilio needs A2P 10DLC registration (`docs/notes/twilio-a2p.md`) |
+| Stripe subscription billing | Live in test mode. On boot the server creates any missing prices, the webhook and the billing portal (`src/billing/catalog.ts`) |
 | ID verification, screening, listing syndication | Mock links today. Pick partners (e.g. Stripe Identity, a screening company, the Zillow rental feed) and implement the adapter interface |
-| Owner app (dashboard UI) | Next phase. The API it will use is done (`/api/dashboard`, `/api/approvals`, …) |
-| Login | MVP bearer token. Replace with a real auth provider before launch |
-| Storage | JSON file. Move to Postgres (`db/schema.sql`) before you have many owners |
+| Owner app | `/app`: homes, tenants, vendors, rules, leases, approvals, rent received, messages, billing. See `docs/notes/owner-ui.md` |
+| Login | Email and password (scrypt), session cookie, one-time sign-in links, password reset. See `docs/notes/owner-api.md` |
+| Storage | JSON file, or Postgres when `DATABASE_URL` is set (`docs/notes/postgres.md`). Daily backups |
 
 ## Before real tenants touch it
 
-1. Colorado landlord-tenant attorney reviews `src/config/colorado.ts`, `src/ai/guardrails.ts`, the sample lease and the signing page.
+The full click list is in `docs/HANDOFF.md` (section 5, "Go-live checklist"). In short:
+
+1. Add Postgres in Railway and set `DATABASE_URL`.
 2. Twilio A2P 10DLC registration approved (US carriers block unregistered business texting).
-3. Stripe live mode for KeyHelm's own subscription (month-to-month and 12-month prices, found by lookup key), plus an attorney-reviewed 12-month agreement.
-4. Real login, Postgres, backups, error alerts.
+3. Swap Stripe to live keys; the server creates the live prices, webhook and portal itself.
+4. Set `SEED_DEMO=false` and `DEV_TOOLS=false`.
 5. Run the founding client for one full month on text and email before turning on voice.

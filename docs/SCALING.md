@@ -27,7 +27,7 @@ Written for Nate: what is in place now, what each piece does, and what to build 
 | Security headers | Stop the site being framed, sniffed or loaded over plain HTTP. | in code |
 | Page cache | The website, legal pages, fonts and icon are built once, compressed (Brotli and gzip) and served from memory, with cache headers so browsers and a CDN can reuse them. Repeat visits get a tiny "not changed" reply. | in code |
 
-**What an AI cap costs at most:** an AI reply on Claude Opus 5.5 costs roughly 2 to 3 cents (an estimate: about 2,000 tokens in and a few hundred out). At the 20,000 cap that's roughly $400 to $600 a day in the very worst case. Lower `AI_DAILY_MAX` to match your budget, and set the Anthropic console monthly limit lower still while testing.
+**What an AI cap costs at most:** everyday messages go to Claude Haiku 5.5 (about 0.02 to 0.04 cents each) and repair conversations to Claude Sonnet 5.5 (about 1 to 2 cents each), so the blend is about half a cent per message (estimates; the real numbers are in the AI service's `/stats`). Even if all 20,000 capped replies were long repair chats, that's about $400 a day in the very worst case, and a normal day is a small fraction of that. Lower `AI_DAILY_MAX` to match your budget, and set the Anthropic console monthly limit lower still while testing.
 
 ### Set these spending ceilings yourself (5 minutes)
 

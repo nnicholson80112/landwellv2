@@ -3,7 +3,7 @@
    → TENANT Lisa Chen (sms)
      Sorry about that! Could you reply with a photo? I'll get the repair booked and text you the time.
    → OWNER Nate (sms)
-     Landwell weekly report, Mon, Oct 5 to Mon, Oct 12:
+     KeyHelm weekly report, Mon, Oct 5 to Mon, Oct 12:
      • Rent you marked received: $0
      • Repairs: 1 new, 0 finished
      • Messages answered for you: 1
@@ -12,17 +12,17 @@
    → TENANT Lisa Chen (sms)
      Got the photo, thank you! Booking the repair now.
    → VENDOR GlassHouse Exteriors (sms)
-     New job for Nate's rental (via Landwell): The window screen in the back bedroom is torn and the windows are filthy after the storm at 7610 S Rosemary Cir. Photo: https://example.test/photo-screen.jpg Reply YES with your time and estimate (example: "YES Tue 9-11 $140"), or NO.
+     New job for Nate's rental (via KeyHelm): The window screen in the back bedroom is torn and the windows are filthy after the storm at 7610 S Rosemary Cir. Photo: https://example.test/photo-screen.jpg Reply YES with your time and estimate (example: "YES Tue 9-11 $140"), or NO.
 
 ━━ 2. Your window company accepts, quote is over the $150 limit ━━  Mon, Oct 12, 8:15 AM
    ← VENDOR GlassHouse Exteriors: "YES Wed 10-12 $180"
    → VENDOR GlassHouse Exteriors (sms)
      Great, thank you. We'll confirm with the resident.
    → OWNER Nate (sms)
-     Landwell: Repair $180: 7610 S Rosemary Cir. GlassHouse Exteriors can do "The window screen in the back bedroom is torn and the windows are filthy after the storm" Wed 10-12 for $180. Your limit is $150.
-     Reply YES K8F (Approve) or NO K8F (Decline).
+     KeyHelm: Repair $180: 7610 S Rosemary Cir. GlassHouse Exteriors can do "The window screen in the back bedroom is torn and the windows are filthy after the storm" Wed 10-12 for $180. Your limit is $150.
+     Reply YES A6G (Approve) or NO A6G (Decline).
    (owner replies to the approval text)
-   ← OWNER Nate: "YES K8F"
+   ← OWNER Nate: "YES A6G"
    → OWNER Nate (sms)
      Got it: Approve. (Repair $180: 7610 S Rosemary Cir)
    → VENDOR GlassHouse Exteriors (sms)
@@ -47,12 +47,12 @@
    → +17205550177 (sms)
      I can share facts about the home itself, like the price, size, features and availability. For information about the area, the city's website and public resources are the best source. Is there anything about the home I can help with?
    → OWNER Nate (sms)
-     Landwell FYI: A prospect (+17205550177) asked "Is it a safe neighborhood for kids?" That's a fair-housing topic, so I sent a neutral reply about the home only. Nothing for you to do.
+     KeyHelm FYI: A prospect (+17205550177) asked "Is it a safe neighborhood for kids?" That's a fair-housing topic, so I sent a neutral reply about the home only. Nothing for you to do.
    ← +17205550177: "Can I tour it this weekend?"
    → +17205550177 (sms)
      Happy to help you see it! I'll text you the next steps right now.
    → +17205550177 (sms)
-     Great! Self-guided tours of 88 Aspen Ct run daily 9 AM to 7 PM. First, verify your ID here (takes about a minute): https://verify.example.test/shw_55b515b6cda348bd
+     Great! Self-guided tours of 88 Aspen Ct run daily 9 AM to 7 PM. First, verify your ID here (takes about a minute): https://verify.example.test/shw_8da3da8398374438
    (prospect completes the ID check)
    → +17205550177 (sms)
      Thanks, you're verified. Reply 1, 2 or 3 to pick a time:
@@ -71,25 +71,25 @@
    → TENANT Lisa Chen (sms)
      Thank you for letting us know. I've passed this directly to the owner, who handles every accommodation request personally. They'll follow up with you soon.
    → OWNER Nate (sms)
-     Landwell: Lisa Chen (+17205550111) wrote "Could I install grab bars in the bathroom? I have a disability." It is an accommodation or disability-related request, and those always come to you. Please reply to them directly.
+     KeyHelm: Lisa Chen (+17205550111) wrote "Could I install grab bars in the bathroom? I have a disability." It is an accommodation or disability-related request, and those always come to you. Please reply to them directly.
 
 ━━ 6. Application → screening → owner decides → lease → signatures ━━  Fri, Oct 16, 8:15 AM
    → +17205550177 (sms)
-     Thanks for applying for 88 Aspen Ct! Next step: complete your screening here: https://screening.example.test/apply/app_a62cfb36a14f45ef (you'll authorize it and pay the screening company directly). Every applicant is reviewed against the same written criteria, in the order received.
+     Thanks for applying for 88 Aspen Ct! Next step: complete your screening here: https://screening.example.test/apply/app_e71873c5f0ea4b54 (you'll authorize it and pay the screening company directly). Every applicant is reviewed against the same written criteria, in the order received.
    (screening partner returns the report)
    → +17205550177 (sms)
      Thanks, Jordan: your screening for 88 Aspen Ct is complete. The owner reviews every application against the same written criteria, and you'll hear back here.
    → OWNER Nate (sms)
-     Landwell: Application: Jordan Morales for 88 Aspen Ct. Applicant #1 for this home. Your criteria vs. the screening report: • Monthly income at least 3x rent: $6,800/month (meets) • No evictions in the last 5 years: 0 in last 5 years (meets) • No rental collections in the last 2 years: 0 in last 2 years (meets) • At least 1 positive landlord reference: 2 confirmed (meets) The decision is yours. Apply the same criteria to every applicant.
-     Reply YES E8H (Approve) or NO E8H (Deny).
+     KeyHelm: Application: Jordan Morales for 88 Aspen Ct. Applicant #1 for this home. Your criteria vs. the screening report: • Monthly income at least 3x rent: $6,800/month (meets) • No evictions in the last 5 years: 0 in last 5 years (meets) • No rental collections in the last 2 years: 0 in last 2 years (meets) • At least 1 positive landlord reference: 2 confirmed (meets) The decision is yours. Apply the same criteria to every applicant.
+     Reply YES R4G (Approve) or NO R4G (Deny).
    (owner approves in the app with a Nov 1 start)
    → +17205550177 (sms)
      Good news: your application for 88 Aspen Ct was approved! Your lease is being prepared and will arrive for e-signature shortly.
    → +17205550177 (sms)
-     Your lease for 88 Aspen Ct is ready. Please review and sign: http://localhost:8787/sign/Mkmj1o-idQhWBLlVOvq-rtCT
+     Your lease for 88 Aspen Ct is ready. Please review and sign: http://localhost:8787/sign/-sa7V31EMsRZNzi8EaoVEVvE
    (Jordan signs on the signing page, then the owner)
    → OWNER Nate (sms)
-     Jordan Morales signed the lease for 88 Aspen Ct. Your turn: http://localhost:8787/sign/NGsCCcBJZbu2xs_h7Wc7lDYF
+     Jordan Morales signed the lease for 88 Aspen Ct. Your turn: http://localhost:8787/sign/hYUFbWxG9zcRRl6u6ujiCwBe
    → +17205550177 (sms)
      Welcome, Jordan! Before move-in on Sun, Nov 1, your security deposit ($1,850) and first month's rent ($1,850) are due to your landlord. Pay the owner by Zelle to nate@example.com (free), or mail a check.
 
@@ -100,7 +100,7 @@
    → OWNER Nate (sms)
      EMERGENCY at 7610 S Rosemary Cir: Resident reports: "I smell gas in the kitchen". Contacting your emergency vendor now. Lisa Chen: +17205550111.
    → VENDOR Front Range Plumbing (sms)
-     EMERGENCY job for Nate's rental (via Landwell): Resident reports: "I smell gas in the kitchen" at 7610 S Rosemary Cir. Reply YES with your time and estimate (example: "YES Tue 9-11 $140"), or NO.
+     EMERGENCY job for Nate's rental (via KeyHelm): Resident reports: "I smell gas in the kitchen" at 7610 S Rosemary Cir. Reply YES with your time and estimate (example: "YES Tue 9-11 $140"), or NO.
    ← VENDOR Front Range Plumbing: "YES on my way, 30 min. $250"
    → VENDOR Front Range Plumbing (sms)
      Great, thank you. We'll confirm with the resident.
@@ -118,28 +118,28 @@
 
 ━━ 8. Rent: reminders, owner confirms, late notice, owner OKs the Colorado-capped fee ━━  Sat, Oct 17, 2:30 AM
    → OWNER Nate (sms)
-     Landwell: Renewal: 7610 S Rosemary Cir (lease ends Sun, Feb 14, 2027). Lisa Chen pays $2,750/month. Offer a 12-month renewal at the same rent? To change the rent or term, add it after your YES (like "YES code $2,850 12 months").
-     Reply YES A7P (Offer the renewal) or NO A7P (Don't renew).
+     KeyHelm: Renewal: 7610 S Rosemary Cir (lease ends Sun, Feb 14, 2027). Lisa Chen pays $2,750/month. Offer a 12-month renewal at the same rent? To change the rent or term, add it after your YES (like "YES code $2,850 12 months").
+     Reply YES G4K (Offer the renewal) or NO G4K (Don't renew).
    → +17205550177 (sms)
-     Your door code for 88 Aspen Ct is 2701. It works until Sat, Oct 17, 12:45 PM. Please lock up when you leave. Please take shoes off inside.
+     Your door code for 88 Aspen Ct is 9266. It works until Sat, Oct 17, 12:45 PM. Please lock up when you leave. Please take shoes off inside.
    → +17205550177 (sms)
-     Thanks for touring 88 Aspen Ct! What did you think? If you'd like to apply: http://localhost:8787/apply/prp_088cf2406aff4986
+     Thanks for touring 88 Aspen Ct! What did you think? If you'd like to apply: http://localhost:8787/apply/prp_8e5f8daf2ebd4472
    → OWNER Nate (sms)
      Reminder: Renewal: 7610 S Rosemary Cir (lease ends Sun, Feb 14, 2027). Lisa Chen pays $2,750/month. Offer a 12-month renewal at the same rent? To change the rent or term, add it after your YES (like "YES code $2,850 12 months").
-     Reply YES A7P (Offer the renewal) or NO A7P (Don't renew).
+     Reply YES G4K (Offer the renewal) or NO G4K (Don't renew).
    → OWNER Nate (sms)
-     Landwell weekly report, Mon, Oct 12 to Mon, Oct 19:
+     KeyHelm weekly report, Mon, Oct 12 to Mon, Oct 19:
      • Rent you marked received: $0
      • Repairs: 2 new, 2 finished
      • Messages answered for you: 3
-     Waiting on you: Renewal: 7610 S Rosemary Cir (lease ends Sun, Feb 14, 2027) (code A7P).
+     Waiting on you: Renewal: 7610 S Rosemary Cir (lease ends Sun, Feb 14, 2027) (code G4K).
      To-dos: 2, starting with "Reply to Lisa Chen (+17205550111)".
    → OWNER Nate (sms)
-     Landwell weekly report, Mon, Oct 19 to Mon, Oct 26:
+     KeyHelm weekly report, Mon, Oct 19 to Mon, Oct 26:
      • Rent you marked received: $0
      • Repairs: 0 new, 0 finished
      • Messages answered for you: 0
-     Waiting on you: Renewal: 7610 S Rosemary Cir (lease ends Sun, Feb 14, 2027) (code A7P).
+     Waiting on you: Renewal: 7610 S Rosemary Cir (lease ends Sun, Feb 14, 2027) (code G4K).
      To-dos: 2, starting with "Reply to Lisa Chen (+17205550111)".
    → TENANT Lisa Chen (sms)
      Hi Lisa, a heads-up: rent of $2,750 for 7610 S Rosemary Cir is due Sun, Nov 1. Pay the owner by Zelle to nate@example.com (free), or mail a check.
@@ -156,26 +156,26 @@
    → TENANT Lisa Chen (sms)
      Friendly reminder: rent of $2,750 is due today. Pay the owner by Zelle to nate@example.com (free), or mail a check. If you've already paid, thank you!
    → OWNER Nate (sms)
-     Landwell weekly report, Mon, Oct 26 to Mon, Nov 2:
+     KeyHelm weekly report, Mon, Oct 26 to Mon, Nov 2:
      • Rent you marked received: $1,850
      • Repairs: 0 new, 0 finished
      • Messages answered for you: 0
-     Waiting on you: Renewal: 7610 S Rosemary Cir (lease ends Sun, Feb 14, 2027) (code A7P).
+     Waiting on you: Renewal: 7610 S Rosemary Cir (lease ends Sun, Feb 14, 2027) (code G4K).
      To-dos: 2, starting with "Reply to Lisa Chen (+17205550111)".
    → OWNER Nate (sms)
-     Landwell: Did rent arrive? 7610 S Rosemary Cir ($2,750). Rent was due Sun, Nov 1. If only part arrived, add the amount after YES (like "YES code $1,500"). If it hasn't arrived, I'll send Lisa a polite note.
-     Reply YES F6Q (Yes, it arrived) or NO F6Q (No, it hasn't).
+     KeyHelm: Did rent arrive? 7610 S Rosemary Cir ($2,750). Rent was due Sun, Nov 1. If only part arrived, add the amount after YES (like "YES code $1,500"). If it hasn't arrived, I'll send Lisa a polite note.
+     Reply YES F7W (Yes, it arrived) or NO F7W (No, it hasn't).
    (owner checks their account: not there)
-   ← OWNER Nate: "NO F6Q"
+   ← OWNER Nate: "NO F7W"
    → OWNER Nate (sms)
      Got it: No, it hasn't. (Did rent arrive? 7610 S Rosemary Cir ($2,750))
    → TENANT Lisa Chen (sms)
      Hi Lisa, your landlord hasn't received rent ($2,750) for 7610 S Rosemary Cir yet. Pay the owner by Zelle to nate@example.com (free), or mail a check. If you've already paid, thank you and please ignore this.
    → OWNER Nate (sms)
-     Landwell: Late fee for 7610 S Rosemary Cir: up to $50. Rent is now 7 days late. Your lease's late fee, capped by Colorado law (greater of $50 or 5% of past-due rent), is $50. If you apply it, I'll tell the tenant; they pay it to you, not us.
-     Reply YES X6R (Apply the late fee) or NO X6R (Skip the fee).
+     KeyHelm: Late fee for 7610 S Rosemary Cir: up to $50. Rent is now 7 days late. Your lease's late fee, capped by Colorado law (greater of $50 or 5% of past-due rent), is $50. If you apply it, I'll tell the tenant; they pay it to you, not us.
+     Reply YES B6Y (Apply the late fee) or NO B6Y (Skip the fee).
    (owner chooses to apply the lease's late fee)
-   ← OWNER Nate: "YES X6R"
+   ← OWNER Nate: "YES B6Y"
    → OWNER Nate (sms)
      Got it: Apply the late fee. (Late fee for 7610 S Rosemary Cir: up to $50)
    → TENANT Lisa Chen (sms)
@@ -185,7 +185,7 @@
    (owner offers renewal at the same rent)
    (it's the middle of the night, so the offer waits for the morning)
    → OWNER Nate (sms)
-     Landwell weekly report, Mon, Nov 2 to Mon, Nov 9:
+     KeyHelm weekly report, Mon, Nov 2 to Mon, Nov 9:
      • Rent you marked received: $0
      • Repairs: 0 new, 0 finished
      • Messages answered for you: 0
@@ -198,7 +198,7 @@
    → OWNER Nate (sms)
      Lisa accepted the renewal for 7610 S Rosemary Cir ($2,750/month, 12 months). The lease is going out for signatures now.
    → TENANT Lisa Chen (sms)
-     Your lease for 7610 S Rosemary Cir is ready. Please review and sign: http://localhost:8787/sign/6XoFgRnH6EYAQwdxMSKZ8GHQ
+     Your lease for 7610 S Rosemary Cir is ready. Please review and sign: http://localhost:8787/sign/sHsfWU6ZSDcySJY5fLkYRJpJ
 
 ━━ Summary ━━  Mon, Nov 9, 8:30 AM
    Workflow runs: 88 (86 completed, 2 waiting, 0 failed)
