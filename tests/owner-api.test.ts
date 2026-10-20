@@ -142,7 +142,7 @@ test('checkout → one-time setup link → password → session → /api/me (wit
 
     const page = await fetch(t.base + linkPath);
     assert.equal(page.status, 200);
-    assert.equal(page.headers.get('referrer-policy'), 'no-referrer');
+    assert.equal(page.headers.get('referrer-policy'), 'same-origin', 'the link never leaks to another site, and the form keeps its Origin');
     const pageHtml = await page.text();
     assert.match(pageHtml, /Create your password/);
     assert.match(pageHtml, /pat@example\.com/);

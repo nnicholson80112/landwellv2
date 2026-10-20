@@ -279,9 +279,11 @@ export function registerOwnerRoutes(kit: OwnerKit) {
     asJson ? json(res, 200, { ok: true }) : redirect(res, '/login?signed_out=1');
   });
 
-  /* One-time links: set a password (after checkout, from admin, or "forgot password"). Used up only on POST, so link scanners can't burn them. */
+  /* One-time links: set a password (after checkout, from admin, or "forgot password"). Used up only on POST, so link scanners can't burn them.
+     Referrer-Policy same-origin: the token in the URL never goes to another site, and the browser still sends this site's
+     Origin on the password form (with no-referrer, browsers send "Origin: null" and the same-site check refuses it). */
   route('GET', '/login/link/:token', (req, res, svc) => {
-    res.setHeader('referrer-policy', 'no-referrer');
+    res.setHeader('referrer-policy', 'same-origin');
     const rec = peekLoginLink(svc, req.params.token);
     if (!rec) return sendHtml(res, 410, linkInvalidPage());
     const owner = svc.store.get('owners', rec.ownerId)!;
@@ -289,7 +291,7 @@ export function registerOwnerRoutes(kit: OwnerKit) {
   });
 
   route('POST', '/login/link/:token', async (req, res, svc) => {
-    res.setHeader('referrer-policy', 'no-referrer');
+    res.setHeader('referrer-policy', 'same-origin');
     const asJson = wantsJson(req);
     const b = isObj(req.body) ? req.body : {};
     const rec = peekLoginLink(svc, req.params.token);
