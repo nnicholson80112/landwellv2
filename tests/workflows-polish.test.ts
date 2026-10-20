@@ -55,6 +55,8 @@ test('texting words: STOP, yes/no, addresses', () => {
   assert.equal(textingKeyword('Stop.'), 'stop');
   assert.equal(textingKeyword('stop the leak please'), undefined);
   assert.equal(textingKeyword('START'), 'start');
+  assert.equal(textingKeyword('HELP'), 'help');
+  assert.equal(textingKeyword('help me, the sink is leaking'), undefined);
   assert.equal(yesNo('Yes! We would love to renew.'), 'yes');
   assert.equal(yesNo('No, we are moving to Denver'), 'no');
   assert.equal(yesNo('Can we do 6 months instead?'), undefined);

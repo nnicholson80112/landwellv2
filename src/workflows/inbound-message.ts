@@ -69,6 +69,12 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
     /* ---------------- STOP / START ---------------- */
     // Carriers handle the confirmation text; we stop (or restart) our own texts to this number.
     const kw = m.channel === 'sms' ? textingKeyword(m.body) : undefined;
+    if (kw === 'help') {
+      // Twilio's Advanced Opt-Out sends the HELP reply (docs/notes/twilio-a2p.md); a second answer
+      // from the assistant and a "please reply" ping to the owner would only add noise.
+      await ctx.log('texts.help', `${party.role === 'tenant' ? party.tenant.name : m.from} texted HELP.`);
+      return { keyword: kw };
+    }
     if (kw) return optOutChange(ctx, kw, party, ownerId, m.from);
 
     /* ---------------- owner commands ---------------- */
@@ -481,10 +487,11 @@ function vendorWithOpenJob(store: C['store'], from: string, ownerId: string) {
 
 /* ---------------- texting keywords ---------------- */
 
-export function textingKeyword(body: string): 'stop' | 'start' | undefined {
-  const t = body.trim().toLowerCase().replace(/[.!]+$/, '');
+export function textingKeyword(body: string): 'stop' | 'start' | 'help' | undefined {
+  const t = body.trim().toLowerCase().replace(/[.!?]+$/, '');
   if (/^(stop|stopall|stop all|unsubscribe|cancel|end|quit|opt ?out|optout|revoke)$/.test(t)) return 'stop';
   if (/^(start|unstop|resume|opt ?in)$/.test(t)) return 'start';
+  if (/^(help|info)$/.test(t)) return 'help';
   return undefined;
 }
 
