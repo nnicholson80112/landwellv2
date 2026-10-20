@@ -24,6 +24,7 @@ import { guessTrade, summarize } from '../ai/rules.ts';
 import { addressKey, buildFacts, contactOf, firstName, identify, money, propertyName, quote, send, tellOwner, type C } from './lib.ts';
 import { optionLabel, replyHint } from './owner.ts';
 import { fmtTime, slotPrefs } from './showings-listings.ts';
+import { routeUnknownSender } from '../ops/lines.ts';
 
 export interface InboundPayload {
   from: string;
@@ -54,7 +55,7 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
     const svc = ctx.svc;
     const media = m.media ?? [];
     const party = identify(store, m.from, m.ownerId);
-    const ownerId = party.role === 'owner' ? party.owner.id : party.role === 'unknown' ? m.ownerId : party.ownerId;
+    let ownerId = party.role === 'owner' ? party.owner.id : party.role === 'unknown' ? m.ownerId : party.ownerId;
     if (ownerId) ctx.setOwner(ownerId);
 
     await ctx.step('record', () =>
@@ -80,8 +81,11 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
     }
 
     if (!ownerId) {
-      await ctx.log('message.unrouted', `Message from ${m.from} could not be matched to an owner.`);
-      return { routed: false };
+      // Shared number, new sender: the home they name picks the owner; otherwise ask once, then alert the admin (src/ops/lines.ts).
+      const routed = await routeUnknownSender(ctx, m, (body) => reply(body));
+      if (!routed) return { routed: false };
+      ownerId = routed.ownerId;
+      if (routed.body) m = { ...m, body: routed.body }; // answering our "which home?": their first question plus the address
     }
     const owner = store.get('owners', ownerId)!;
     const rules = store.get('rules', ownerId);

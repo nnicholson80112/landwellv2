@@ -36,6 +36,9 @@ import { BUSINESS } from '../config/business.ts';
 import { RateLimiter, StaticCache, clientIp, limitsFromEnv, safeEqual, securityHeaders, tooMany } from './guard.ts';
 import { POLICY_LINKS, accessibilityStatement, cookiePolicy, privacyPolicy, refundPolicy, smsProgram, termsOfService } from './legal.ts';
 import type { TableName } from '../domain/types.ts';
+import { callerEmergencyOwner, ownerForLine as lineOwner } from '../ops/lines.ts';
+import { registerOpsRoutes } from '../ops/routes.ts';
+import { noteTick, ops, startOps } from '../ops/index.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -165,11 +168,9 @@ route('POST', '/sign/:token', async (req, res, svc) => {
 
 /* ======================= WEBHOOKS ======================= */
 
+/** An owner's own number → that owner. The shared TWILIO_FROM → the one (active) owner on it, else the front desk decides (src/ops/lines.ts). */
 function ownerForLine(svc: Services, to?: string): string | undefined {
-  if (!to) return svc.store.list('owners').length === 1 ? svc.store.list('owners')[0].id : undefined;
-  const k = addressKey(to);
-  return svc.store.find('owners', (o) => (!!o.lineNumber && addressKey(o.lineNumber) === k) || (!!o.lineEmail && o.lineEmail.toLowerCase() === k))?.id
-    ?? (svc.store.list('owners').length === 1 ? svc.store.list('owners')[0].id : undefined);
+  return lineOwner(svc.store, to, ops(svc).env);
 }
 
 /** Too many messages from one phone number or email: drop quietly instead of paying for AI replies. */
@@ -261,7 +262,8 @@ route('POST', '/webhooks/twilio/voice/turn', async (req, res, svc) => {
   const reply = svc.store.list('messages', (m) => m.direction === 'out' && m.threadKey === addressKey(b.From) && m.channel === 'voice' && m.at >= since).pop()?.body
     ?? "Thanks, I've passed that along to the owner.";
   const emergency = svc.store.list('workOrders', (w) => w.urgency === 'emergency' && w.createdAt >= since).length > 0;
-  const owner = ownerId ? svc.store.get('owners', ownerId) : undefined;
+  // Shared number: no owner from the dialed line, so use the owner of the emergency this caller just reported.
+  const owner = ownerId ? svc.store.get('owners', ownerId) : callerEmergencyOwner(svc.store, b.From, since);
   if (emergency && owner?.phone) {
     return twiml(res, `<Say voice="${VOICE}">${xml(reply)} I'm connecting you to the owner now.</Say><Dial timeout="25">${xml(owner.phone)}</Dial><Say voice="${VOICE}">The owner didn't pick up, but they've been alerted and the emergency vendor is being contacted. Goodbye.</Say>`);
   }
@@ -364,6 +366,7 @@ route('GET', '/play', (_req, res) => {
 });
 
 registerBillingRoutes({ route, json, html, page, esc, mine });
+registerOpsRoutes({ route, json }); // /api/admin/status, /api/admin/owners/:id/line (src/ops/routes.ts)
 
 /* ======================= SERVER ======================= */
 
@@ -433,8 +436,9 @@ export function createApp(svc: Services) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const dataFile = process.env.DATA_FILE ?? join(ROOT, 'data/keyhelm.json');
   let ticker: ReturnType<typeof setInterval> | undefined;
+  let stopOps = () => {};
   // DATABASE_URL set: Postgres (imports DATA_FILE once on first run). Otherwise the JSON file. See src/store/open-store.ts.
-  const opened = await openStore({ dataFile, pg: { onSuperseded: () => clearInterval(ticker) } }).catch((e) => {
+  const opened = await openStore({ dataFile, pg: { onSuperseded: () => { clearInterval(ticker); stopOps(); } } }).catch((e) => {
     console.error(`Could not open storage: ${(e as Error).message}`);
     process.exit(1);
   });
@@ -451,8 +455,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // Stripe (only with STRIPE_SECRET_KEY, unless STRIPE_AUTO_SETUP=false): create any missing KeyHelm prices, the webhook and the
   // billing portal, in the background. Never blocks start-up or throws. See src/billing/catalog.ts.
   void startStripeSetup({ store, publicUrl: svc.cfg.publicUrl });
-  ticker = setInterval(() => { svc.engine.tick(); void svc.engine.drain(); }, 30_000);
+  ticker = setInterval(() => { svc.engine.tick(); noteTick(svc); void svc.engine.drain(); }, 30_000);
   svc.engine.tick();
+  noteTick(svc);
+  // Admin alerts (past due, held-back alerts) and the daily backup of the JSON file, every minute. See src/ops/index.ts.
+  stopOps = startOps(svc, { dataFile, storeKind: opened.kind });
   const port = Number(process.env.PORT ?? 8787);
   const server = createApp(svc).listen(port, () => console.log(`${BRAND.name} API on http://localhost:${port}  (AI: ${svc.ai.name}, messaging: ${svc.adapters.messaging.name}, billing: ${process.env.STRIPE_SECRET_KEY ? "stripe" : "off"})`));
   // Railway sends SIGTERM when a new deploy replaces this one; save everything, then exit cleanly so it isn't marked Crashed.
@@ -461,6 +468,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     if (stopping) return;
     stopping = true;
     clearInterval(ticker);
+    stopOps();
     setTimeout(() => process.exit(0), 8_000).unref();
     const closed = new Promise<void>((r) => { server.close(() => r()); setTimeout(r, 3_000).unref(); });
     void closed.then(() => svc.engine.drain()).then(() => opened.flushNow())

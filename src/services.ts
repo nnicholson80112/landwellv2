@@ -13,6 +13,7 @@ import type { Store } from './store/store.ts';
 import type { Clock } from './engine/clock.ts';
 import { Engine } from './engine/engine.ts';
 import { BRAND } from './config/brand.ts';
+import { aiFellBack } from './ops/alerts.ts';
 
 export interface Config {
   publicUrl: string; // where the API/app is reachable, used in links
@@ -41,7 +42,10 @@ export function pickAI(env: Record<string, string | undefined>): CommunicationAI
     primary = budget;
   }
   const r = new ResilientAI(primary);
-  r.onError = (e) => console.error('[ai] provider failed, used rules fallback:', e instanceof Error ? e.message : e);
+  r.onError = (e) => {
+    console.error('[ai] provider failed, used rules fallback:', e instanceof Error ? e.message : e);
+    aiFellBack(r, e); // 3 fallbacks in 15 minutes → admin alert (src/ops/alerts.ts)
+  };
   return r;
 }
 
