@@ -1542,8 +1542,10 @@ function billingSection(me) {
       location.assign(u);
     } catch (e) {
       if (e.status === 401) return;
-      // No billing page yet (or billing isn't set up): support handles changes by email.
-      fill(out, h('p', { class: 'note' }, e.status === 0 ? e.message : ['To change your plan, card or billing details, email ', supportLink(), " and we'll take care of it."]));
+      // 409: no subscription yet (the server says so in plain words). Anything else (billing not set up,
+      // Stripe unreachable, no billing page on this server): support handles changes by email.
+      const help = ['To change your plan, card or billing details, email ', supportLink(), " and we'll take care of it."];
+      fill(out, h('p', { class: 'note' }, e.status === 0 ? e.message : e.status === 409 ? [e.message, ' ', ...help] : help));
     }
   }));
   return sectionWithId('set-billing', 'Billing', h('div', { class: 'card' }, kv(rows),

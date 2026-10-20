@@ -61,8 +61,10 @@ Back button, bookmarks and the install shortcuts work: `/app` (Today), `/app/ren
    - Profile: name, mobile, email (asks for the current password when the email changes), text alerts on/off.
      Change password.
    - Billing: plan, status, billing term, doors, dates. **Manage billing** calls `POST /api/billing/portal` and opens
-     the `url` it returns (https only). Until that route exists (or when billing isn't set up) it shows "email
-     <support email> and we'll take care of it". KeyHelm only bills for its own subscription; the page says so.
+     the `url` it returns (https only; Stripe sends the owner back to `/app`). A 409 (no subscription yet) shows the
+     server's own words; anything else (billing not set up, Stripe unreachable, or a server without that route)
+     shows "email <support email> and we'll take care of it". KeyHelm only bills for its own subscription; the page
+     says so.
    - Sign out, or sign out on all devices.
 
 Everywhere: loading and error states in plain words with **Try again**, empty states that say what will show up,
@@ -140,8 +142,10 @@ no outside requests**, twice in a row:
 
 ## Known limits
 
-- **Manage billing** needs `POST /api/billing/portal` returning `{ url }` (an https Stripe portal link). Until the
-  billing branch adds it, the app shows the support email instead. No change is needed in the app when it lands.
+- **Manage billing** uses `POST /api/billing/portal` → `{ url }`, which the billing branch added to `kh/integrate`
+  after this branch started (contract checked: 200 `{url}`, 409 no subscription, 503 not set up, 502 Stripe error).
+  This branch alone doesn't have the route, so here the button shows the support email; after the merge it opens
+  Stripe's page. Nothing to change in the app.
 - No offline mode: there's no service worker, so the app needs a connection (the banner says so). No
   `apple-touch-icon` PNG (no image tools without dependencies), so iPhones use a page snapshot as the home screen icon.
 - Lease upload takes plain text only (a .txt file or pasted text); for PDF or Word the page says to copy and paste.
