@@ -75,6 +75,30 @@ export interface AIResult {
   handoff: boolean; // true → the owner must see this
   handoffReason?: string;
   provider: string;
+  /** Model that wrote the final answer, when a paid model answered. */
+  model?: string;
+  /** 'routine' (cheap model), 'complex' (stronger model) or 'escalated' (cheap first, then stronger). */
+  route?: 'routine' | 'complex' | 'escalated';
+  /** Tokens for this message, summed over every model call it took. */
+  usage?: AIUsage;
+  /** What this message cost in model fees, in US dollars (all calls). */
+  costUsd?: number;
+  /** One entry per model call (an escalated message has two). */
+  calls?: AICall[];
+}
+
+/** Token counts as the Messages API reports them. */
+export interface AIUsage {
+  input_tokens: number; // uncached input, full price
+  output_tokens: number; // reply + thinking
+  cache_creation_input_tokens: number; // written to the prompt cache (1.25x input price)
+  cache_read_input_tokens: number; // read from the prompt cache (about 0.1x input price)
+}
+
+export interface AICall {
+  model: string;
+  usage: AIUsage;
+  costUsd?: number; // undefined when the model is not in the price table
 }
 
 export interface CommunicationAI {
