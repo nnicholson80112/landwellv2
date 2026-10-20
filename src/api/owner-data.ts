@@ -352,6 +352,8 @@ export interface Field {
   max?: number;
   readOnly?: boolean;
   help?: string;
+  /** Deposit decisions: the deposit held, in dollars, so the app can show the refund as deductions are typed. */
+  held?: number;
 }
 
 const toDollars = (c: unknown) => (typeof c === 'number' ? c / 100 : undefined);
@@ -377,8 +379,14 @@ export function approvalFields(svc: Services, a: Approval): Field[] {
         { name: 'months', label: 'Lease length in months', type: 'months', forOption: 'offer_renewal', required: false, value: d.months ?? 12, min: 1, max: 36 },
       ];
     }
-    case 'deposit': case 'deposit-final': case 'deposit-list':
-      return [{ name: 'deductions', label: 'Deductions', type: 'deductions', forOption: 'deductions_entered', required: true, value: ((d.deductions as { reason: string; amount: number }[] | undefined) ?? []).map((x) => ({ reason: x.reason, amount: x.amount / 100 })), help: 'List each one with its amount. Only damage beyond normal wear and tear, unpaid rent or unpaid utilities can be deducted.' }];
+    case 'deposit': case 'deposit-final': case 'deposit-list': {
+      // The move-out run records which lease it is for (step "lease"); the deposit held is on that lease.
+      const run = svc.engine.getRun(a.runId);
+      const leaseId = (run?.steps?.lease?.v ?? run?.input?.leaseId) as string | undefined;
+      const lease = leaseId ? svc.store.get('leases', leaseId) : undefined;
+      const held = lease ? toDollars(lease.depositHeld || lease.deposit) : undefined;
+      return [{ name: 'deductions', label: 'Deductions', type: 'deductions', forOption: 'deductions_entered', required: true, value: ((d.deductions as { reason: string; amount: number }[] | undefined) ?? []).map((x) => ({ reason: x.reason, amount: x.amount / 100 })), help: 'List each one with its amount. Only damage beyond normal wear and tear, unpaid rent or unpaid utilities can be deducted.', ...(held !== undefined ? { held } : {}) }];
+    }
     case 'lease_fields':
       return ((d.missing as string[] | undefined) ?? []).map((f) => ({ name: f, group: 'values', label: humanize(f), type: 'text' as const, forOption: 'send', required: false, value: (d.values as Record<string, string> | undefined)?.[f] ?? '' }));
     case 'showing_request':

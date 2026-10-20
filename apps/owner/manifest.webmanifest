@@ -1,0 +1,24 @@
+{
+  "name": "KeyHelm",
+  "short_name": "KeyHelm",
+  "description": "Run your rentals from your phone: decisions, rent, repairs, messages and homes in one place.",
+  "id": "/app/",
+  "start_url": "/app/today",
+  "scope": "/app/",
+  "display": "standalone",
+  "orientation": "any",
+  "lang": "en-US",
+  "dir": "ltr",
+  "background_color": "#F6F9FF",
+  "theme_color": "#F6F9FF",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "/app/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/app/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Today", "url": "/app/today" },
+    { "name": "Messages", "url": "/app/messages" },
+    { "name": "Rent", "url": "/app/rent" }
+  ]
+}

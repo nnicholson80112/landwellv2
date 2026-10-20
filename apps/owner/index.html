@@ -1,0 +1,1583 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Today | KeyHelm</title>
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F6F9FF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B1324" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="KeyHelm">
+<link rel="manifest" href="/app/manifest.webmanifest">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/figtree-latin.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+/* KeyHelm owner app. One file: no frameworks, no outside requests. Fonts are served from this site. */
+@font-face{font-family:'Bricolage Grotesque';font-style:normal;font-weight:200 800;font-display:swap;src:url(/fonts/bricolage-grotesque-latin.woff2) format('woff2')}
+@font-face{font-family:'Figtree';font-style:normal;font-weight:300 900;font-display:swap;src:url(/fonts/figtree-latin.woff2) format('woff2')}
+:root{
+  --bg:#F6F9FF;--surface:#FFFFFF;--tint:#E8EFFF;--sun:#FFC83D;--sun-soft:#FFF3CF;--ink:#0E1B33;--muted:#4A5A78;--line:#D8E1F2;
+  --brand:#1B4DFF;--brand-ink:#FFFFFF;--brand-deep:#1238C2;--mint:#0E9F6E;--mint-ink:#0B7A55;--mint-soft:#DDF6EC;--coral:#9A3412;--coral-soft:#FFE7DA;
+  --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;--body:'Figtree','Segoe UI',system-ui,sans-serif;
+  --nav-w:248px;--shadow:0 14px 34px -28px rgba(14,27,51,.55);color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0B1324;--surface:#121D33;--tint:#17264A;--sun-soft:#3A3115;--ink:#EEF3FF;--muted:#A9B7D3;--line:#24365C;
+  --brand:#5B82FF;--brand-ink:#08112A;--brand-deep:#7C9BFF;--mint:#3DD39B;--mint-ink:#3DD39B;--mint-soft:#123A2D;--coral:#FF9B6B;--coral-soft:#3D2416;
+  --shadow:none;color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--body);min-height:100vh}
+h1,h2,h3,h4{font-family:var(--display);letter-spacing:-0.02em;line-height:1.15;margin:0;text-wrap:balance}
+p{margin:0}
+a{color:var(--brand)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+[tabindex="-1"]:focus{outline:none}
+.sr{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.skip{position:absolute;left:12px;top:-60px;z-index:60;background:var(--surface);color:var(--ink);padding:12px 16px;border-radius:10px;font-weight:700;border:2px solid var(--brand)}
+.skip:focus{top:12px}
+.ic{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- layout: bottom tabs on phones, side nav on wide screens ---------- */
+.offline{position:sticky;top:0;z-index:40;background:var(--sun);color:#0E1B33;font-weight:700;text-align:center;padding:10px 16px}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.nav ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,1fr)}
+.nav li a{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:62px;padding:6px 2px;color:var(--muted);text-decoration:none;font-size:12px;font-weight:700;letter-spacing:.01em}
+.nav li a:hover{color:var(--ink)}
+.nav li a[aria-current="page"]{color:var(--brand)}
+.nav li a[aria-current="page"]::before{content:'';position:absolute;top:0;left:22%;right:22%;height:3px;border-radius:0 0 3px 3px;background:var(--brand)}
+.nav .count{position:absolute;top:6px;left:calc(50% + 6px);min-width:20px;height:20px;padding:0 5px;border-radius:6px;background:var(--sun);color:#0E1B33;font-size:12px;font-weight:800;line-height:20px;text-align:center}
+.brand{display:none;align-items:center;gap:10px;font:800 22px var(--display);letter-spacing:-0.03em;color:var(--ink);text-decoration:none;min-height:48px;padding:0 10px;margin-bottom:18px}
+.brand svg{width:32px;height:32px}
+main{display:block;max-width:1000px;margin:0 auto;padding:12px 16px calc(96px + env(safe-area-inset-bottom,0px))}
+.top{display:flex;align-items:center;gap:12px;min-height:56px;margin-bottom:6px}
+.top .mark{width:30px;height:30px;flex:none}
+.top h1{flex:1;font-size:clamp(28px,7vw,36px);font-weight:800}
+@media (min-width:900px){
+  .nav{top:0;right:auto;width:var(--nav-w);border-top:0;border-right:1px solid var(--line);padding:22px 14px;display:flex;flex-direction:column}
+  .brand{display:flex}
+  .nav ul{display:flex;flex-direction:column;gap:4px}
+  .nav li a{flex-direction:row;justify-content:flex-start;gap:14px;min-height:50px;padding:0 14px;border-radius:10px;font-size:16px}
+  .nav li a[aria-current="page"]{background:var(--tint)}
+  .nav li a[aria-current="page"]::before{top:12px;bottom:12px;left:0;right:auto;width:4px;height:auto;border-radius:0 3px 3px 0}
+  .nav .count{position:static;margin-left:auto}
+  main{margin-left:var(--nav-w);margin-right:0;max-width:none;padding:26px 40px 56px}
+  .view,.top{max-width:1040px}
+  .top .mark{display:none}
+}
+
+/* ---------- building blocks ---------- */
+.lead{font-size:18px;color:var(--muted);margin:0 0 18px}
+.lead strong{color:var(--ink)}
+.block{margin:26px 0}
+.block>h2,.block-head h2{font-size:22px;font-weight:800;margin:0 0 12px}
+.block-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.block-head h2{margin:0}
+.stack{display:grid;gap:14px}
+.plain{list-style:none;margin:0;padding:0}
+.grid2{display:grid;gap:14px}
+@media (min-width:700px){.grid2{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow)}
+.card h3{font-size:19px;font-weight:700;margin:0 0 6px}
+.card h4{font:700 15px var(--body);letter-spacing:0;margin:16px 0 6px;color:var(--muted);text-transform:uppercase}
+.meta{color:var(--muted);font-size:15px}
+.muted{color:var(--muted)}
+.pre{white-space:pre-line}
+.bad{color:var(--coral);font-weight:700}
+.note{background:var(--sun-soft);border-radius:12px;padding:12px 14px;margin:10px 0}
+.note.info{background:var(--tint)}
+.empty{border:1.5px dashed var(--line);border-radius:16px;padding:20px;color:var(--muted);background:var(--surface)}
+.loading{color:var(--muted);padding:24px 0;font-weight:600}
+.error-card{border-color:var(--coral)}
+.error-card p{margin-bottom:12px;font-weight:600}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;background:var(--tint);color:var(--ink);font-size:13px;font-weight:700;line-height:20px;vertical-align:middle}
+.tag.bad{background:var(--coral-soft);color:var(--coral)}
+.tag.warn{background:var(--sun-soft);color:var(--ink)}
+.tag.ok{background:var(--mint-soft);color:var(--mint-ink)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 16px;margin:12px 0 0}
+.kv dt{color:var(--muted);font-weight:600}
+.kv dd{margin:0;overflow-wrap:anywhere}
+.row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px}
+.row-actions,.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.actions{margin-top:18px}
+details.block>summary{display:flex;align-items:center;gap:12px;min-height:48px;cursor:pointer;font-weight:700;color:var(--brand);list-style:none}
+details.block>summary::-webkit-details-marker{display:none}
+details.block>summary::before{content:'';width:8px;height:8px;border-right:2.5px solid currentColor;border-bottom:2.5px solid currentColor;transform:rotate(-45deg);transition:transform .15s}
+details.block[open]>summary::before{transform:rotate(45deg)}
+.list li{padding:12px 0;border-bottom:1px solid var(--line)}
+.list li:last-child{border-bottom:0}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:10px 18px;border-radius:10px;border:1.5px solid transparent;font:700 16px/1.2 var(--body);cursor:pointer;text-decoration:none;text-align:center;transition:background .15s,border-color .15s}
+.btn.primary{background:var(--brand);color:var(--brand-ink);box-shadow:0 8px 22px -12px var(--brand)}
+.btn.primary:hover{background:var(--brand-deep)}
+.btn.ghost{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--brand)}
+.btn.sun{background:var(--sun);color:#0E1B33;box-shadow:0 8px 22px -14px #C78E00}
+.btn.choice{background:var(--surface);color:var(--ink);border-color:var(--ink)}
+.btn.danger{background:var(--surface);color:var(--coral);border-color:var(--coral)}
+.btn.big{min-height:56px;font-size:17px;padding:12px 22px}
+.btn.icon-only{width:48px;padding:0}
+.btn[disabled]{opacity:.65;cursor:progress}
+.options{display:grid;gap:10px;margin-top:14px}
+.options .btn{min-height:56px;font-size:17px;width:100%}
+@media (min-width:560px){.options{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}}
+
+/* ---------- forms ---------- */
+.form{display:grid;gap:4px}
+.field{margin:12px 0 0;min-width:0}
+.field>label,.field>.label,.field>legend{display:block;font-weight:700;margin:0 0 6px;padding:0}
+.opt{font-weight:500;color:var(--muted)}
+fieldset.field{border:0;padding:0;margin:14px 0 0;min-width:0}
+fieldset.group{border:1px solid var(--line);border-radius:14px;padding:12px 14px 14px}
+fieldset.group>legend{padding:0 6px}
+input:not([type=checkbox]):not([type=radio]),select,textarea{width:100%;min-height:48px;border:1.5px solid var(--line);border-radius:12px;padding:10px 14px;background:var(--surface);color:var(--ink)}
+textarea{resize:vertical;line-height:1.45}
+input:focus,select:focus,textarea:focus{border-color:var(--brand)}
+input[readonly]{background:var(--bg);color:var(--muted)}
+[aria-invalid="true"]{border-color:var(--coral)!important}
+.affix{display:flex;align-items:stretch}
+.affix .prefix{display:flex;align-items:center;padding:0 12px;border:1.5px solid var(--line);border-right:0;border-radius:12px 0 0 12px;background:var(--bg);color:var(--muted);font-weight:700}
+.affix input{border-radius:0 12px 12px 0!important}
+.help{color:var(--muted);font-size:14px;margin:6px 0 0}
+.err{color:var(--coral);font-weight:700;font-size:15px;margin:6px 0 0}
+.form-err{background:var(--coral-soft);color:var(--coral);font-weight:700;border-radius:12px;padding:12px 14px;margin:0 0 6px}
+.two{display:grid;gap:0 12px}
+@media (min-width:520px){.two{grid-template-columns:1fr 1fr}}
+.check{display:grid;grid-template-columns:28px minmax(0,1fr);align-items:center;column-gap:8px}
+.check input{width:22px;height:22px;margin:0;accent-color:var(--brand)}
+.check>label{margin:0;min-height:48px;display:flex;align-items:center;font-weight:600;cursor:pointer}
+.check .help{grid-column:2;margin-top:0}
+.radio{display:grid;grid-template-columns:28px minmax(0,1fr);align-items:center;column-gap:8px}
+.radio input{width:22px;height:22px;margin:0;accent-color:var(--brand)}
+.radio label{min-height:48px;display:flex;flex-direction:column;justify-content:center;font-weight:600;cursor:pointer;padding:4px 0}
+.radio .sub{font-weight:400;font-size:14px;color:var(--muted)}
+.radios.inline{display:flex;flex-wrap:wrap;gap:0 20px}
+.radios.inline>legend{width:100%}
+.checks{display:grid;gap:0 12px}
+@media (min-width:520px){.checks{grid-template-columns:1fr 1fr}}
+.rows-ed{display:grid;gap:10px}
+.row-ed{display:grid;gap:0 10px;align-items:end;border:1px solid var(--line);border-radius:14px;padding:4px 12px 12px}
+.row-ed .field{margin-top:8px}
+@media (min-width:620px){.row-ed{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto}.row-ed.crit{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) minmax(0,.7fr) auto}}
+.total{font-weight:700;margin:12px 0 0}
+.form.card>h3{margin:24px 0 0;padding-top:18px;border-top:1px solid var(--line)}
+.form.card>h3:first-child{margin-top:0;padding-top:0;border-top:0}
+.panel{margin-top:14px;border-top:1px solid var(--line);padding-top:6px}
+.confirm-q{font-weight:700;margin-top:10px}
+
+/* ---------- Today ---------- */
+.setup{border:2px solid var(--sun)}
+.setup h2{font-size:22px;font-weight:800;margin-bottom:6px}
+progress{display:block;width:100%;height:12px;margin:12px 0 4px;border:0;border-radius:6px;background:var(--tint);overflow:hidden;-webkit-appearance:none;appearance:none}
+progress::-webkit-progress-bar{background:var(--tint);border-radius:6px}
+progress::-webkit-progress-value{background:var(--mint);border-radius:6px}
+progress::-moz-progress-bar{background:var(--mint);border-radius:6px}
+.steps{list-style:none;margin:10px 0 0;padding:0}
+.steps li{display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;gap:6px 10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.steps li:last-child{border-bottom:0}
+.steps .tick{width:26px;height:26px;border-radius:8px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center}
+.steps .done .tick{background:var(--mint);border-color:var(--mint);color:#fff}
+.steps .done .step-title{color:var(--muted)}
+.steps .tick .ic{width:18px;height:18px;stroke-width:3}
+.steps li .btn{grid-column:2;justify-self:start}
+@media (min-width:700px){.steps li{grid-template-columns:30px minmax(0,1fr) auto}.steps li .btn{grid-column:auto}}
+.cta-row{margin-top:16px;display:grid;gap:8px;justify-items:start}
+.decision .kicker{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+.decision .question{font-weight:800;font-size:17px;margin-top:14px}
+.decision .body{margin-top:6px}
+.task{display:grid;gap:4px}
+.task.late{border-color:var(--coral)}
+.task h3{font-size:17px}
+.week li{display:flex;gap:10px;align-items:flex-start;padding:6px 0}
+.week .ic{color:var(--mint-ink);margin-top:1px}
+.activity li{display:grid;gap:2px}
+
+/* ---------- Rent, repairs, homes ---------- */
+.charge.late{border-color:var(--coral);box-shadow:inset 5px 0 0 var(--coral)}
+.amount{text-align:right}
+.big-num{font:800 26px var(--display);letter-spacing:-0.02em}
+.wo.urgent{border-color:var(--coral)}
+.home-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.tenants li{padding:12px 0;border-top:1px solid var(--line)}
+.tenants li:first-child{border-top:0}
+.person{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.person strong{font-size:17px}
+.fields-found{columns:2;column-gap:20px;margin:8px 0 0;padding-left:20px}
+
+/* ---------- Messages ---------- */
+.msgs .thread-pane{display:none}
+.msgs.open .list-pane{display:none}
+.msgs.open .thread-pane{display:block}
+.thread{display:grid;gap:3px;padding:14px 16px;min-height:72px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);text-decoration:none;margin-bottom:10px}
+.thread:hover{border-color:var(--brand)}
+.thread.active{border-color:var(--brand);box-shadow:inset 4px 0 0 var(--brand)}
+.thread .who{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.thread .name{font-weight:800;font-size:17px}
+.thread .last{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thread-head{display:grid;gap:4px;margin-bottom:10px}
+.thread-head h2{font-size:24px;font-weight:800}
+.thread-head .btn{justify-self:start}
+.log{list-style:none;margin:10px 0;padding:12px;display:flex;flex-direction:column;gap:10px;max-height:56vh;overflow:auto;border:1px solid var(--line);border-radius:16px;background:var(--bg)}
+.msg{max-width:min(560px,86%);padding:10px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--line);align-self:flex-start}
+.msg.out{align-self:flex-end;background:var(--tint);border-color:transparent}
+.msg.out.owner{background:var(--brand);color:var(--brand-ink)}
+.msg.out.owner .msg-meta,.msg.out.owner a{color:var(--brand-ink)}
+.msg-meta{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:2px}
+.msg-body{white-space:pre-line;overflow-wrap:anywhere}
+.pick{padding:30px 0}
+@media (min-width:1100px){
+  .msgs{display:grid;grid-template-columns:340px minmax(0,1fr);gap:24px;align-items:start}
+  .msgs .list-pane,.msgs.open .list-pane{display:block;position:sticky;top:16px;max-height:calc(100vh - 120px);overflow:auto;padding-right:4px}
+  .msgs .thread-pane{display:block}
+  .thread-head .back{display:none}
+  .log{max-height:calc(100vh - 380px);min-height:240px}
+}
+
+/* ---------- sheet (dialog), toasts ---------- */
+dialog.sheet{width:min(640px,calc(100vw - 32px));max-width:none;max-height:min(92vh,920px);padding:0;border:0;border-radius:18px;background:var(--surface);color:var(--ink);box-shadow:0 30px 80px -30px rgba(14,27,51,.6)}
+dialog.sheet::backdrop{background:rgba(14,27,51,.5)}
+.sheet-inner{display:flex;flex-direction:column;max-height:inherit}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 12px 12px 20px;border-bottom:1px solid var(--line)}
+.sheet-head h2{font-size:22px;font-weight:800}
+.sheet-body{overflow:auto;padding:6px 20px 24px}
+@media (max-width:640px){dialog.sheet{width:100vw;max-width:100vw;margin:auto 0 0;border-radius:18px 18px 0 0;max-height:94vh}.sheet-body{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}}
+.toasts{position:fixed;left:16px;right:16px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:50;display:grid;gap:8px;justify-items:center;pointer-events:none}
+.toasts>div{display:grid;gap:8px;justify-items:center}
+.toast{pointer-events:auto;max-width:520px;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;font-weight:700;box-shadow:0 14px 30px -14px rgba(14,27,51,.6)}
+.toast.bad{background:var(--coral);color:#fff}
+@media (min-width:900px){.toasts{left:auto;right:28px;bottom:28px;justify-items:end}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div id="offline" class="offline" role="status" hidden>You're offline. What you see may be out of date, and changes can't be saved until you're back online.</div>
+<noscript><p class="note">The KeyHelm app needs JavaScript. Turn it on in your browser settings, then reload this page.</p></noscript>
+
+<nav class="nav" aria-label="Main">
+  <a class="brand" href="/app" data-nav><svg viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="8" fill="#1B4DFF"/><circle cx="24.5" cy="10" r="4" fill="#FFC83D"/><path d="M8 18.5 15.5 11.5 23 18.5M10.5 16.5V25h10v-8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>KeyHelm</span></a>
+  <ul>
+    <li><a href="/app" data-nav data-tab="today"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16v13H4zM4 10.5h16M8.5 4v4M15.5 4v4M9 15l2 2 4-4"/></svg><span class="label">Today</span><span class="count" hidden></span></a></li>
+    <li><a href="/app/rent" data-nav data-tab="rent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7h17v10h-17zM6.5 10v4M17.5 10v4"/><circle cx="12" cy="12" r="2.5"/></svg><span class="label">Rent</span><span class="count" hidden></span></a></li>
+    <li><a href="/app/repairs" data-nav data-tab="repairs"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5a4 4 0 0 0-5 5L4 16l4 4 5.5-5.5a4 4 0 0 0 5-5l-2.6 2.6-2.9-.5-.5-2.9z"/></svg><span class="label">Repairs</span><span class="count" hidden></span></a></li>
+    <li><a href="/app/messages" data-nav data-tab="messages"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10.5H10l-6 4z"/></svg><span class="label">Messages</span><span class="count" hidden></span></a></li>
+    <li><a href="/app/homes" data-nav data-tab="homes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11 12 4l8.5 7M6 9.5V20h12V9.5M10 20v-5h4v5"/></svg><span class="label">Homes</span><span class="count" hidden></span></a></li>
+    <li><a href="/app/settings" data-nav data-tab="settings"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M15 4.5v5M4 17h3M11 17h9M9 14.5v5"/></svg><span class="label">Settings</span><span class="count" hidden></span></a></li>
+  </ul>
+</nav>
+
+<main id="main" tabindex="-1">
+  <header class="top">
+    <svg class="mark" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="8" fill="#1B4DFF"/><circle cx="24.5" cy="10" r="4" fill="#FFC83D"/><path d="M8 18.5 15.5 11.5 23 18.5M10.5 16.5V25h10v-8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <h1 id="page-title" tabindex="-1">Today</h1>
+    <button type="button" id="refresh" class="btn ghost icon-only" aria-label="Refresh"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg></button>
+  </header>
+  <section id="view-today" class="view" data-view="today" aria-labelledby="page-title"></section>
+  <section id="view-rent" class="view" data-view="rent" aria-labelledby="page-title" hidden></section>
+  <section id="view-repairs" class="view" data-view="repairs" aria-labelledby="page-title" hidden></section>
+  <section id="view-messages" class="view" data-view="messages" aria-labelledby="page-title" hidden></section>
+  <section id="view-homes" class="view" data-view="homes" aria-labelledby="page-title" hidden></section>
+  <section id="view-settings" class="view" data-view="settings" aria-labelledby="page-title" hidden></section>
+</main>
+
+<div class="toasts"><div id="toasts" role="status" aria-live="polite"></div><div id="alerts" role="alert" aria-live="assertive"></div></div>
+<dialog id="sheet" class="sheet"></dialog>
+
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   DOM helpers. Every piece of server data goes in as text (textContent,
+   text nodes, attributes), never parsed as HTML.
+   ===================================================================== */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const PROPS = new Set(['checked', 'disabled', 'hidden', 'required', 'readOnly', 'multiple', 'selected', 'open']);
+
+function h(tag, props, ...kids) {
+  const el = document.createElement(tag);
+  let value;
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v === undefined || v === null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'value') value = v;
+    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
+    else if (PROPS.has(k)) el[k] = v;
+    else el.setAttribute(k, v === true ? '' : String(v));
+  }
+  add(el, kids);
+  if (value !== undefined) el.value = String(value);
+  return el;
+}
+function add(el, kids) {
+  for (const k of kids.flat(Infinity)) {
+    if (k === null || k === undefined || k === false || k === '') continue;
+    el.append(k instanceof Node ? k : String(k));
+  }
+  return el;
+}
+const fill = (el, ...kids) => { el.replaceChildren(); return add(el, kids); };
+
+const ICON = {
+  check: 'M5 12.5l4.5 4.5L19 7.5', close: 'M6 6l12 12M18 6L6 18', back: 'M15 5l-7 7 7 7', plus: 'M12 5v14M5 12h14',
+  phone: 'M6.5 3.5h3l1.5 4-2 1.2a11 11 0 0 0 6.3 6.3l1.2-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z',
+  chat: 'M4 5.5h16v10.5H10l-6 4z', ext: 'M14 4h6v6M20 4l-9 9M18 14v5H5V6h5',
+};
+function icon(name) {
+  const s = document.createElementNS(SVG_NS, 'svg');
+  s.setAttribute('viewBox', '0 0 24 24');
+  s.setAttribute('aria-hidden', 'true');
+  s.setAttribute('focusable', 'false');
+  s.setAttribute('class', 'ic');
+  const p = document.createElementNS(SVG_NS, 'path');
+  p.setAttribute('d', ICON[name]);
+  s.append(p);
+  return s;
+}
+
+/* =====================================================================
+   Words, money and dates
+   ===================================================================== */
+const S = { me: null, rules: null, props: [], tenants: [], vendors: [], leases: [], threads: [], openCharges: [] };
+const tz = () => (S.me && S.me.owner && S.me.owner.timezone) || 'America/Denver';
+const isYmd = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s));
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const cap = (s) => (s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : '');
+const humanize = (f) => cap(String(f || '').replace(/_/g, ' '));
+const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || '';
+/** People by first name ("Lisa"); businesses by their whole name ("Mile High Handyman"). */
+const callName = (name, role) => (role === 'vendor' ? String(name || '') : firstName(name));
+const prettyPhones = (s) => String(s || '').replace(/\+1\d{10}\b/g, (p) => phoneText(p));
+const oneLine = (s, n = 110) => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1).trimEnd() + '...' : t; };
+
+/** Cents to "$1,234" (or "$1,234.50"). */
+function money(c) {
+  if (typeof c !== 'number' || !isFinite(c)) return '';
+  const d = Math.abs(c) / 100;
+  return (c < 0 ? '-$' : '$') + d.toLocaleString('en-US', { minimumFractionDigits: c % 100 ? 2 : 0, maximumFractionDigits: 2 });
+}
+/** Cents to what goes in a dollar box: "2,750" or "2,750.50". */
+const dollarBox = (c) => (typeof c === 'number' ? (c / 100).toLocaleString('en-US', { minimumFractionDigits: c % 100 ? 2 : 0, maximumFractionDigits: 2 }) : '');
+const amountOf = (s) => { const n = parseFloat(String(s || '').replace(/[$,\s]/g, '')); return isFinite(n) ? n : 0; };
+
+const ymdIn = (d, zone) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+const today = () => ymdIn(new Date(), tz());
+function addDays(ymd, n) { const d = new Date(ymd + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+/** "Sun, Nov 1" (with the year when it isn't this year, or when asked). */
+function day(s, o = {}) {
+  if (!s) return '';
+  const ymd = isYmd(s);
+  const d = new Date(ymd ? s + 'T12:00:00Z' : s);
+  if (isNaN(d.getTime())) return '';
+  const zone = ymd ? 'UTC' : tz();
+  const opt = { weekday: 'short', month: 'short', day: 'numeric', timeZone: zone };
+  if (o.year || ymdIn(d, zone).slice(0, 4) !== today().slice(0, 4)) opt.year = 'numeric';
+  return d.toLocaleDateString('en-US', opt);
+}
+const time = (s) => new Date(s).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: tz() });
+/** Today: "2:14 PM". Yesterday: "Yesterday, 2:14 PM". Earlier: "Sun, Nov 1, 2:14 PM". */
+function stamp(s) {
+  const d = ymdIn(new Date(s), tz());
+  if (d === today()) return time(s);
+  if (d === addDays(today(), -1)) return `Yesterday, ${time(s)}`;
+  return `${day(s)}, ${time(s)}`;
+}
+function greeting() {
+  const hr = Number(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: tz() }).format(new Date()));
+  return hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
+}
+function phoneText(p) { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(String(p || '')); return m ? `(${m[1]}) ${m[2]}-${m[3]}` : String(p || ''); }
+const telHref = (p) => 'tel:' + String(p).replace(/[^\d+]/g, '');
+const mailHref = (e) => 'mailto:' + encodeURIComponent(String(e)).replace(/%40/g, '@');
+function httpsUrl(u) { try { const x = new URL(String(u)); return x.protocol === 'https:' ? x.href : null; } catch { return null; } }
+const isLate = (c) => c.status === 'open' && ((c.notices || []).includes('late') || addDays(c.dueDate, (S.rules && S.rules.graceDays) ?? 5) < today());
+
+const TRADES = [['general', 'General handyman'], ['plumbing', 'Plumbing'], ['electrical', 'Electrical'], ['hvac', 'Heating and cooling'], ['appliance', 'Appliances'], ['windows', 'Windows'], ['locks', 'Locks'], ['pest', 'Pest control'], ['roofing', 'Roofing'], ['exterior_cleaning', 'Exterior cleaning'], ['landscaping', 'Landscaping'], ['cleaning', 'Cleaning'], ['painting', 'Painting'], ['flooring', 'Flooring']];
+const TRADE = Object.fromEntries(TRADES);
+const ROLE = { tenant: 'Tenant', vendor: 'Vendor', prospect: 'Prospect', applicant: 'Applicant', owner: 'You', unknown: 'New contact' };
+const CHANNEL = { sms: 'Text', email: 'Email', voice: 'Phone call', app: 'App' };
+const HOME_STATUS = { occupied: ['Occupied', 'ok'], vacant: ['Vacant', 'warn'], listed: ['Listed for rent', ''], turnover: ['Between tenants', 'warn'] };
+const LOCK = { smart: 'Smart lock (self-tours with one-time codes)', lockbox: 'Lockbox', none: 'Regular keys' };
+const BILL_STATUS = { active: 'Active', past_due: 'Payment past due', canceled: 'Canceled', checkout_started: 'Checkout not finished' };
+const WO_STATUS = {
+  new: 'Just reported', triaged: 'Being sorted out', awaiting_vendor: 'Waiting for a vendor to reply', awaiting_owner: 'Waiting for your OK (see Today)',
+  scheduled: 'Booked', in_progress: 'Work in progress', completed: 'Work done, waiting for the invoice', invoice_review: 'Invoice waiting for your review (see Today)',
+  paid: 'Closed', cancelled: 'Cancelled',
+};
+
+/* =====================================================================
+   Talking to the server. Same site only; every change carries the
+   X-KeyHelm header so other websites can't act as you.
+   ===================================================================== */
+class ApiError extends Error {
+  constructor(message, status, field) { super(message); this.status = status; this.field = field; }
+}
+const STATUS_WORDS = {
+  400: 'Please check what you entered and try again.', 403: 'That was blocked to keep your account safe. Refresh the page and try again.',
+  404: "We couldn't find that. It may have been removed. Refresh to see the latest.", 409: 'That was already done. Refresh to see the latest.',
+  413: "That's too big to send. Try something shorter.", 429: 'Too many tries in a short time. Please wait a minute and try again.',
+};
+let leaving = false;
+function signInAgain() {
+  if (leaving) return;
+  leaving = true;
+  location.assign('/login?next=' + encodeURIComponent(location.pathname));
+}
+async function api(method, path, body) {
+  const headers = { accept: 'application/json' };
+  const init = { method, headers, credentials: 'same-origin', cache: 'no-store' };
+  if (method !== 'GET') {
+    headers['X-KeyHelm'] = '1';
+    if (body !== undefined) { headers['content-type'] = 'application/json'; init.body = JSON.stringify(body); }
+  }
+  let r;
+  try { r = await fetch(path, init); } catch {
+    throw new ApiError(navigator.onLine === false ? "You're offline. Try again when you're back online." : "We couldn't reach KeyHelm. Check your connection and try again.", 0);
+  }
+  if (r.status === 401) { signInAgain(); throw new ApiError('Please sign in again.', 401); }
+  let data = null;
+  try { data = await r.json(); } catch { data = null; }
+  if (!r.ok) {
+    const said = data && typeof data.error === 'string' && /^[A-Z]/.test(data.error) ? data.error : '';
+    throw new ApiError(said || STATUS_WORDS[r.status] || 'Something went wrong on our side. Please try again in a minute.', r.status, data && typeof data.field === 'string' ? data.field : undefined);
+  }
+  return data;
+}
+const get = (path) => api('GET', path);
+const post = (path, body) => api('POST', path, body === undefined ? {} : body);
+const id = (s) => encodeURIComponent(s);
+
+/* =====================================================================
+   Toasts, busy buttons, small pieces
+   ===================================================================== */
+function toast(msg, kind) {
+  const region = kind === 'error' ? $('#alerts') : $('#toasts');
+  const t = h('div', { class: 'toast' + (kind === 'error' ? ' bad' : '') }, msg);
+  region.append(t);
+  // At most two at a time, so they never cover the screen.
+  $$('.toast', $('.toasts')).slice(0, -2).forEach((x) => x.remove());
+  setTimeout(() => t.remove(), kind === 'error' ? 9000 : 4500);
+}
+async function busy(btn, label, fn) {
+  if (!btn) return fn();
+  const old = Array.from(btn.childNodes);
+  btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
+  fill(btn, label);
+  try { return await fn(); } finally { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.replaceChildren(...old); }
+}
+let seq = 0;
+const nid = (p = 'f') => `${p}${++seq}`;
+const tag = (text, kind) => h('span', { class: 'tag' + (kind ? ' ' + kind : '') }, text);
+const empty = (msg, ...more) => h('div', { class: 'empty' }, h('p', null, msg), more);
+const btn = (label, onclick, cls = 'ghost', extra = {}) => h('button', { type: 'button', class: 'btn ' + cls, onclick, ...extra }, label);
+const kv = (rows) => h('dl', { class: 'kv' }, rows.filter(Boolean).map(([k, v]) => [h('dt', null, k), h('dd', null, v)]));
+function section(title, action, ...kids) {
+  const hid = nid('s');
+  return h('section', { class: 'block', 'aria-labelledby': hid }, action ? h('div', { class: 'block-head' }, h('h2', { id: hid, tabindex: '-1' }, title), action) : h('h2', { id: hid, tabindex: '-1' }, title), kids);
+}
+function errorCard(e) {
+  return h('div', { class: 'card error-card', role: 'alert' }, h('p', null, (e && e.message) || 'Something went wrong. Please try again.'), btn('Try again', () => refresh(), 'primary'));
+}
+const supportLink = () => { const e = (S.me && S.me.support && S.me.support.email) || ''; return e ? h('a', { href: mailHref(e) }, e) : 'KeyHelm support'; };
+
+/* =====================================================================
+   Forms: labeled fields, plain-words errors next to the field
+   ===================================================================== */
+function field(o) {
+  const fid = nid(), help = o.help ? fid + 'h' : null, err = fid + 'e';
+  const common = { id: fid, name: o.name, required: o.required, readOnly: o.readOnly, autocomplete: o.autocomplete, placeholder: o.placeholder, maxlength: o.maxlength, 'aria-describedby': [help, err].filter(Boolean).join(' ') };
+  let input;
+  if (o.type === 'textarea') input = h('textarea', { ...common, rows: o.rows || 3, value: o.value ?? '' });
+  else if (o.type === 'select') input = h('select', { ...common, value: o.value ?? '' }, o.options.map(([v, t]) => h('option', { value: v }, t)));
+  else input = h('input', { ...common, type: o.type || 'text', inputmode: o.inputmode, min: o.min, max: o.max, step: o.step, value: o.value ?? '' });
+  return h('div', { class: 'field', 'data-field': o.field || o.name },
+    h('label', { for: fid }, o.label, o.optional ? h('span', { class: 'opt' }, ' (optional)') : null),
+    o.prefix ? h('div', { class: 'affix' }, h('span', { class: 'prefix', 'aria-hidden': 'true' }, o.prefix), input) : input,
+    help ? h('p', { class: 'help', id: help }, o.help) : null,
+    h('p', { class: 'err', id: err, hidden: true }));
+}
+function check(o) {
+  const fid = nid(), help = o.help ? fid + 'h' : null;
+  return h('div', { class: 'field check', 'data-field': o.field || o.name },
+    h('input', { type: 'checkbox', id: fid, name: o.name, value: o.value, checked: !!o.checked, 'aria-describedby': help }),
+    h('label', { for: fid }, o.label),
+    help ? h('p', { class: 'help', id: help }, o.help) : null);
+}
+function radios(o) {
+  const help = o.help ? nid() : null, err = nid();
+  return h('fieldset', { class: 'field radios' + (o.inline ? ' inline' : ''), 'data-field': o.field || o.name, 'aria-describedby': [help, err].filter(Boolean).join(' ') },
+    h('legend', null, o.label),
+    o.options.map(([v, t, sub]) => {
+      const rid = nid();
+      return h('div', { class: 'radio' }, h('input', { type: 'radio', id: rid, name: o.name, value: v, checked: String(o.value) === String(v) }), h('label', { for: rid }, t, sub ? h('span', { class: 'sub' }, sub) : null));
+    }),
+    help ? h('p', { class: 'help', id: help }, o.help) : null,
+    h('p', { class: 'err', id: err, hidden: true }));
+}
+function timeRange(o) {
+  const v = o.value || {}, err = nid(), help = o.help ? nid() : null;
+  return h('fieldset', { class: 'field group', 'data-field': o.name, 'aria-describedby': [help, err].filter(Boolean).join(' ') },
+    h('legend', null, o.label),
+    h('div', { class: 'two' }, field({ label: 'From', name: o.name + 'Start', type: 'time', value: v.start || '' }), field({ label: 'Until', name: o.name + 'End', type: 'time', value: v.end || '' })),
+    help ? h('p', { class: 'help', id: help }, o.help) : null,
+    h('p', { class: 'err', id: err, hidden: true }));
+}
+const val = (form, name) => { const el = form.elements.namedItem(name); return el && typeof el.value === 'string' ? el.value.trim() : ''; };
+const checked = (form, name) => { const el = form.elements.namedItem(name); return !!(el && el.checked); };
+const actions = (label, cancel = true) => h('div', { class: 'actions' }, h('button', { type: 'submit', class: 'btn primary big' }, label), cancel ? btn('Cancel', () => closeSheet()) : null);
+
+function clearErrors(form) {
+  $$('.err', form).forEach((e) => { e.hidden = true; e.textContent = ''; });
+  $$('[aria-invalid]', form).forEach((e) => e.removeAttribute('aria-invalid'));
+  $$('.form-err', form).forEach((e) => e.remove());
+}
+function showError(form, e) {
+  clearErrors(form);
+  const msg = (e && e.message) || 'Something went wrong. Please try again.';
+  const key = e && e.field;
+  let wrap = key ? form.querySelector(`[data-field="${CSS.escape(key)}"]`) : null;
+  if (!wrap && key && key.includes('.')) wrap = form.querySelector(`[data-field="${CSS.escape(key.split('.')[0])}"]`);
+  if (wrap && !wrap.hidden) {
+    const err = wrap.querySelector(':scope > .err') || wrap.querySelector('.err');
+    if (err) { err.textContent = msg; err.hidden = false; }
+    const input = wrap.querySelector('input:not([type=hidden]),select,textarea');
+    if (input) { input.setAttribute('aria-invalid', 'true'); input.focus(); }
+    return;
+  }
+  const top = h('p', { class: 'form-err', role: 'alert', tabindex: '-1' }, msg);
+  form.prepend(top);
+  top.focus();
+}
+/** Submit handler for a form: busy button, plain errors, never a page reload. */
+function onSubmit(form, fn, working = 'Saving...') {
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearErrors(form);
+    const b = form.querySelector('button[type=submit]');
+    await busy(b, working, async () => {
+      try { await fn(); } catch (err) { if (err && err.status !== 401) showError(form, err); }
+    });
+  });
+}
+const invalid = (message, fieldName) => new ApiError(message, 400, fieldName);
+
+/** Rows of name + value (home details, facts the assistant may quote). */
+function factsEditor(name, facts, label, help) {
+  const rows = h('div', { class: 'rows-ed' });
+  const addRow = (k = '', v = '') => {
+    const row = h('div', { class: 'row-ed', role: 'group', 'aria-label': 'Detail' },
+      field({ label: 'Name', name: name + '-k', value: k, placeholder: 'Parking', maxlength: 60 }),
+      field({ label: 'Details', name: name + '-v', value: v, placeholder: 'One-car garage plus street parking', maxlength: 300 }),
+      btn('Remove', () => row.remove()));
+    rows.append(row);
+    return row;
+  };
+  Object.entries(facts || {}).forEach(([k, v]) => addRow(k, v));
+  if (!rows.childElementCount) addRow();
+  return h('div', { class: 'field', 'data-field': name },
+    h('p', { class: 'label' }, label), help ? h('p', { class: 'help' }, help) : null, rows,
+    h('div', { class: 'row-actions' }, btn([icon('plus'), 'Add a detail'], () => { addRow().querySelector('input').focus(); })),
+    h('p', { class: 'err', hidden: true }));
+}
+function readFacts(form, name) {
+  const out = {};
+  $$(`[data-field="${name}"] .row-ed`, form).forEach((r) => {
+    const k = r.querySelector(`[name="${name}-k"]`).value.trim(), v = r.querySelector(`[name="${name}-v"]`).value.trim();
+    if (k && v) out[k] = v;
+  });
+  return out;
+}
+
+/* =====================================================================
+   The sheet: one dialog for every add/edit form
+   ===================================================================== */
+const sheet = $('#sheet');
+let sheetReturn = null;
+function openSheet(title, ...body) {
+  if (!sheet.open) sheetReturn = document.activeElement;
+  const tid = nid('t');
+  fill(sheet, h('div', { class: 'sheet-inner' },
+    h('div', { class: 'sheet-head' }, h('h2', { id: tid, tabindex: '-1' }, title), h('button', { type: 'button', class: 'btn ghost icon-only', 'aria-label': 'Close', onclick: () => closeSheet() }, icon('close'))),
+    h('div', { class: 'sheet-body' }, body)));
+  sheet.setAttribute('aria-labelledby', tid);
+  if (!sheet.open) sheet.showModal();
+  $('#' + tid).focus();
+}
+const closeSheet = () => { if (sheet.open) sheet.close(); };
+sheet.addEventListener('close', () => {
+  sheet.replaceChildren();
+  const r = sheetReturn;
+  sheetReturn = null;
+  if (r && r.isConnected && typeof r.focus === 'function') r.focus();
+});
+
+/* =====================================================================
+   Screens and navigation
+   ===================================================================== */
+const TABS = ['today', 'rent', 'repairs', 'messages', 'homes', 'settings'];
+const TITLE = { today: 'Today', rent: 'Rent', repairs: 'Repairs', messages: 'Messages', homes: 'Homes', settings: 'Settings' };
+const LOADING = { today: 'Loading what needs you...', rent: 'Loading rent...', repairs: 'Loading repairs...', messages: 'Loading messages...', homes: 'Loading your homes...', settings: 'Loading settings...' };
+const pathFor = (tab, item) => (tab === 'today' ? '/app' : '/app/' + tab) + (item ? '/' + encodeURIComponent(item) : '');
+function where() {
+  const parts = location.pathname.split('/').filter(Boolean);
+  const tab = TABS.includes(parts[1]) ? parts[1] : 'today';
+  let item = null;
+  if (tab === 'messages' && parts[2]) { try { item = decodeURIComponent(parts[2]); } catch { item = null; } }
+  return { tab, item };
+}
+let drawSeq = 0, lastDraw = 0, lastPath = '', then = null;
+
+/** Go to a screen. `next` runs once it's drawn (open a form, jump to a field). */
+function go(tab, item, next) {
+  const path = pathFor(tab, item);
+  if (path !== location.pathname) history.pushState(null, '', path);
+  then = next || null;
+  show(true);
+}
+async function show(userNav) {
+  if (location.pathname === '/app/' || location.pathname === '/app/today') history.replaceState(null, '', '/app');
+  lastPath = location.pathname;
+  const { tab, item } = where();
+  $$('.nav a[data-tab]').forEach((a) => (a.dataset.tab === tab ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
+  $$('.view').forEach((v) => { v.hidden = v.dataset.view !== tab; });
+  $('#page-title').textContent = TITLE[tab];
+  document.title = `${TITLE[tab]} | KeyHelm`;
+  const el = $('#view-' + tab);
+  if (!el.childElementCount) fill(el, h('p', { class: 'loading', role: 'status' }, LOADING[tab]));
+  if (userNav) { window.scrollTo(0, 0); $('#page-title').focus({ preventScroll: true }); }
+  const mine = ++drawSeq;
+  const stale = () => mine !== drawSeq;
+  try {
+    await VIEWS[tab](el, stale, item);
+    if (stale()) return;
+    lastDraw = Date.now();
+    if (then) { const f = then; then = null; f(); }
+  } catch (e) {
+    if (stale() || (e && e.status === 401)) return;
+    fill(el, errorCard(e));
+  }
+}
+function refresh() { show(false); badges(); }
+
+document.addEventListener('click', (e) => {
+  const a = e.target instanceof Element ? e.target.closest('a[data-nav]') : null;
+  if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const u = new URL(a.href, location.href);
+  if (u.origin !== location.origin) return;
+  e.preventDefault();
+  if (u.pathname !== location.pathname) history.pushState(null, '', u.pathname);
+  then = null;
+  show(true);
+});
+window.addEventListener('popstate', () => { if (location.pathname !== lastPath) show(true); });
+$('#refresh').addEventListener('click', () => { refresh(); toast('Up to date.'); });
+
+/** Counts on the tabs: decisions and to-dos, late rent, people waiting for a reply. */
+async function badges() {
+  try {
+    const [me, threads, charges] = await Promise.all([get('/api/me'), get('/api/messages/threads'), get('/api/charges?status=open')]);
+    if (!S.rules) S.rules = await get('/api/rules');
+    S.me = me; S.threads = threads; S.openCharges = charges;
+    setBadge('today', me.counts.pendingApprovals + me.counts.openTasks, 'need you');
+    setBadge('rent', charges.filter(isLate).length, 'late');
+    setBadge('messages', threads.filter((t) => t.needsReply).length, 'waiting for a reply');
+  } catch { /* the counts are a nicety; each screen shows its own errors */ }
+}
+function setBadge(tab, n, words) {
+  const a = $(`.nav a[data-tab="${tab}"]`);
+  const b = a && $('.count', a);
+  if (!b) return;
+  b.hidden = !n;
+  b.textContent = n > 99 ? '99+' : String(n);
+  if (n) a.setAttribute('aria-label', `${TITLE[tab]}, ${n} ${words}`); else a.removeAttribute('aria-label');
+}
+
+/* =====================================================================
+   1) TODAY: decisions, to-dos, setup, what KeyHelm handled
+   ===================================================================== */
+const KIND_TAG = {
+  repair_over_limit: 'Repair', invoice_review: 'Repair', vendor_needed: 'Repair', application: 'Applicant', renewal_terms: 'Renewal', non_renewal_reason: 'Renewal',
+  rent_check: 'Rent', late_fee: 'Rent', late_rent_next_step: 'Rent', deposit: 'Deposit', 'deposit-final': 'Deposit', 'deposit-list': 'Deposit',
+  lease_fields: 'Lease', showing_request: 'Showing', listing: 'Listing',
+};
+const QUESTION = {
+  repair_over_limit: 'Approve this repair?', invoice_review: 'Does this invoice look right?', vendor_needed: 'No vendor could take it. What next?',
+  application: 'Your decision on this applicant:', renewal_terms: 'Offer a renewal?', non_renewal_reason: 'Why are you not renewing?',
+  rent_check: 'Did rent arrive?', late_fee: 'Apply the late fee?', late_rent_next_step: 'Rent is still unpaid. What next?',
+  deposit: 'How should the deposit go back?', 'deposit-final': 'How should the deposit go back?', 'deposit-list': 'List the deductions, or return the full deposit:',
+  lease_fields: 'Fill in the blanks, then send the lease:', showing_request: 'Confirm this showing?', listing: 'Publish this listing?',
+};
+/** Choices that say no or stop something get a second tap. */
+const CAREFUL = new Set(['deny', 'decline', 'do_not_renew', 'dispute', 'cancel_request', 'cancel']);
+const STEP_LABEL = { homes: 'Add a home', lease: 'Add your lease', tenants: 'Add a tenant', vendors: 'Add a vendor', rules: 'Set your rules', howToPay: 'Add how they pay' };
+const STEP_GO = {
+  homes: () => go('homes', null, () => homeForm()),
+  lease: () => go('homes', null, () => leaseForm()),
+  tenants: () => go('homes', null, () => tenantForm(null)),
+  vendors: () => go('homes', null, () => vendorForm()),
+  rules: () => go('settings', null, () => jumpTo('set-rules')),
+  howToPay: () => go('settings', null, () => focusField('howToPay')),
+};
+function jumpTo(hid) { const el = document.getElementById(hid); if (el) { el.scrollIntoView({ block: 'start' }); el.focus({ preventScroll: true }); } }
+function focusField(name) {
+  const el = $(`#view-settings [data-field="${name}"] input, #view-settings [data-field="${name}"] textarea`);
+  if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); }
+}
+
+/** The text version of a decision explains how to answer by text; the app has buttons for that. */
+function cleanBody(s) {
+  return String(s || '').split('\n')
+    .map((line) => line.replace(/[^.!?\n]*\b(?:reply (?:YES|NO)|after (?:your )?YES|(?:YES|NO) (?:with the )?code)\b[^.!?\n]*[.!?]?\s*/gi, ' ').replace(/ {2,}/g, ' ').trim())
+    .join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+async function viewToday(el, stale) {
+  const [me, approvals, tasks, activity] = await Promise.all([get('/api/me'), get('/api/approvals?status=pending'), get('/api/tasks?status=open'), get('/api/activity?limit=200')]);
+  if (stale()) return;
+  S.me = me;
+  const ob = me.onboarding || {};
+  const setup = !ob.complete;
+  const todos = tasks.filter((t) => !(setup && t.setupStep)); // the setup card already lists these
+  const n = approvals.length, m = todos.length;
+  const first = firstName(me.owner && me.owner.name);
+  const summary = n || m ? `${[n ? plural(n, 'decision') : '', m ? plural(m, 'to-do') : ''].filter(Boolean).join(' and ')} ${n + m === 1 ? 'needs' : 'need'} you.` : 'Nothing needs you right now.';
+  fill(el,
+    h('p', { class: 'lead' }, `${greeting()}${first ? ', ' + first : ''}. `, h('strong', null, summary)),
+    setup ? setupCard(me) : bookedCard(ob),
+    section('Decisions waiting', null, n ? h('div', { class: 'stack' }, approvals.map(decisionCard)) : empty('No decisions waiting. When something needs your OK, it shows up here and by text.')),
+    section('Your to-dos', null, m ? h('ul', { class: 'stack plain' }, todos.map(taskItem)) : empty("You're all caught up.")),
+    section('What KeyHelm handled this week', null, weekly(activity)));
+}
+
+function setupCard(me) {
+  const ob = me.onboarding;
+  const cal = httpsUrl(ob.calendlyUrl);
+  return h('section', { class: 'card setup block', 'aria-labelledby': 'setup-h' },
+    h('h2', { id: 'setup-h', tabindex: '-1' }, 'Get set up'),
+    h('p', { class: 'muted' }, `${ob.done} of ${ob.total} done. Finish these and KeyHelm can run your homes for you.`),
+    h('progress', { max: ob.total, value: ob.done, 'aria-label': `Setup: ${ob.done} of ${ob.total} done` }),
+    ob.status === 'booked' ? bookedLine(ob) : cal ? h('div', { class: 'cta-row' },
+      h('a', { class: 'btn sun big', href: cal, target: '_blank', rel: 'noopener' }, 'Book your onboarding call', h('span', { class: 'sr' }, ' (opens a new tab)')),
+      h('p', { class: 'help' }, 'A short video call to set up your homes, lease, tenants and vendors together. Or do it yourself below.')) : null,
+    h('ol', { class: 'steps' }, (ob.steps || []).map((s) => h('li', { class: s.done ? 'done' : '' },
+      h('span', { class: 'tick' }, s.done ? icon('check') : null),
+      h('span', { class: 'step-title' }, s.title, h('span', { class: 'sr' }, s.done ? ' (done)' : ' (not done yet)')),
+      s.done || !STEP_GO[s.key] ? null : btn(STEP_LABEL[s.key] || 'Do it', STEP_GO[s.key])))));
+}
+const bookedLine = (ob) => h('p', { class: 'note info' }, ob.startTime ? `Your onboarding call is booked for ${day(ob.startTime)} at ${time(ob.startTime)}.` : 'Your onboarding call is booked.');
+const bookedCard = (ob) => (ob.status === 'booked' && ob.startTime && Date.parse(ob.startTime) > Date.now() ? bookedLine(ob) : null);
+
+function decisionCard(a) {
+  const hid = nid('d');
+  const neutral = a.kind === 'application'; // fair housing: the app never nudges toward a choice on an applicant
+  const fieldsFor = (v) => (a.fields || []).filter((f) => f.forOption === v);
+  const choices = h('div', { class: 'options' });
+  const panel = h('div', { class: 'panel', hidden: true });
+  const back = () => { panel.hidden = true; panel.replaceChildren(); choices.hidden = false; const b = choices.querySelector('button'); if (b) b.focus(); };
+  async function send(c, body, form, button) {
+    await busy(button, 'Sending...', async () => {
+      try {
+        await post(`/api/approvals/${id(a.id)}`, { decision: c.value, ...body });
+        toast(`Sent: ${c.label}. KeyHelm takes it from here.`);
+        refresh();
+      } catch (e) {
+        if (e.status === 401) return;
+        if (e.status === 409) { toast(e.message); refresh(); return; }
+        if (form) showError(form, e); else toast(e.message, 'error');
+      }
+    });
+  }
+  function withFields(c, fs) {
+    const form = h('form', { novalidate: true });
+    for (const f of fs) form.append(f.type === 'deductions' ? deductionsEditor(f) : decisionField(f));
+    const submit = h('button', { type: 'submit', class: 'btn big ' + (neutral ? 'choice' : 'primary') }, c.label);
+    form.append(h('div', { class: 'actions' }, submit, btn('Back', back)));
+    form.addEventListener('submit', (e) => { e.preventDefault(); clearErrors(form); send(c, collect(form, fs), form, submit); });
+    fill(panel, form);
+    panel.hidden = false;
+    choices.hidden = true;
+    (form.querySelector('input:not([readonly]),textarea') || submit).focus();
+  }
+  function confirmFirst(c) {
+    const yes = h('button', { type: 'button', class: 'btn danger big' }, `Yes, ${c.label.charAt(0).toLowerCase()}${c.label.slice(1)}`);
+    yes.addEventListener('click', () => send(c, {}, null, yes));
+    fill(panel, h('p', { class: 'confirm-q' }, `Choose "${c.label}"? This can't be undone.`), h('div', { class: 'actions' }, yes, btn('Go back', back)));
+    panel.hidden = false;
+    choices.hidden = true;
+    yes.focus();
+  }
+  for (const [i, c] of (a.choices || []).entries()) {
+    const b = h('button', { type: 'button', class: 'btn ' + (neutral ? 'choice' : i === 0 ? 'primary' : 'ghost') }, c.label);
+    b.addEventListener('click', () => {
+      const fs = fieldsFor(c.value);
+      if (fs.length) withFields(c, fs);
+      else if (CAREFUL.has(c.value)) confirmFirst(c);
+      else send(c, {}, null, b);
+    });
+    choices.append(b);
+  }
+  const body = cleanBody(a.body);
+  return h('article', { class: 'card decision', 'aria-labelledby': hid },
+    h('div', { class: 'kicker' }, tag(KIND_TAG[a.kind] || 'Decision', 'warn'), h('span', { class: 'meta' }, `Asked ${day(a.createdAt)}`)),
+    h('h3', { id: hid }, a.title),
+    body ? h('p', { class: 'body pre' }, body) : null,
+    neutral ? h('p', { class: 'help' }, 'Compare the report with your written criteria. Use the same criteria for every applicant. KeyHelm never scores or recommends applicants.') : null,
+    h('p', { class: 'question' }, QUESTION[a.kind] || 'What would you like to do?'),
+    choices, panel);
+}
+
+function decisionField(f) {
+  const dollarsType = f.type === 'dollars';
+  let value = f.value === undefined || f.value === null ? '' : f.value;
+  if (dollarsType && typeof value === 'number') value = value.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  return field({
+    label: f.label, name: f.name, field: f.in === 'note' ? 'note' : f.name, type: f.type === 'date' ? 'date' : 'text', value,
+    prefix: dollarsType ? '$' : undefined, inputmode: dollarsType ? 'decimal' : f.type === 'months' ? 'numeric' : undefined,
+    help: f.help, readOnly: !!f.readOnly, optional: !f.required && !f.readOnly, min: f.type === 'date' ? today() : undefined, maxlength: f.type === 'text' ? 300 : undefined,
+  });
+}
+/** What the server expects for a decision: data[name], data[group][name], or the note. */
+function collect(form, fs) {
+  let note;
+  const data = {};
+  for (const f of fs) {
+    if (f.readOnly) continue;
+    let v;
+    if (f.type === 'deductions') v = readDeductions(form);
+    else { v = val(form, f.name); if (v === '') continue; }
+    if (f.in === 'note') note = v;
+    else if (f.group) (data[f.group] = data[f.group] || {})[f.name] = v;
+    else data[f.name] = v;
+  }
+  return { ...(note !== undefined ? { note } : {}), ...(Object.keys(data).length ? { data } : {}) };
+}
+function deductionsEditor(f) {
+  const rows = h('div', { class: 'rows-ed' });
+  const total = h('p', { class: 'total', 'aria-live': 'polite' });
+  const held = typeof f.held === 'number' ? Math.round(f.held * 100) : null;
+  const recalc = () => {
+    const c = Math.round($$('[name="ded-amount"]', rows).reduce((s, i) => s + Math.max(0, amountOf(i.value)), 0) * 100);
+    if (held === null) { total.textContent = `Deductions: ${money(c)}`; return; }
+    total.textContent = c <= held ? `Deposit ${money(held)} minus deductions ${money(c)}: refund ${money(held - c)}.` : `Deductions (${money(c)}) are more than the ${money(held)} deposit, so the refund is $0.`;
+  };
+  const addRow = (r = {}) => {
+    const row = h('div', { class: 'row-ed', role: 'group', 'aria-label': 'Deduction' },
+      field({ label: 'Reason', name: 'ded-reason', value: r.reason || '', placeholder: 'Carpet cleaning', maxlength: 120 }),
+      field({ label: 'Amount', name: 'ded-amount', value: r.amount ?? '', prefix: '$', inputmode: 'decimal' }),
+      btn('Remove', () => { row.remove(); recalc(); }));
+    rows.append(row);
+    return row;
+  };
+  rows.addEventListener('input', recalc);
+  (Array.isArray(f.value) && f.value.length ? f.value : [{}]).forEach(addRow);
+  recalc();
+  return h('div', { class: 'field', 'data-field': 'deductions' },
+    h('p', { class: 'label' }, f.label), f.help ? h('p', { class: 'help' }, f.help) : null, rows,
+    h('div', { class: 'row-actions' }, btn([icon('plus'), 'Add a deduction'], () => { addRow().querySelector('input').focus(); recalc(); })),
+    total, h('p', { class: 'err', hidden: true }));
+}
+const readDeductions = (form) => $$('.row-ed', form).map((r) => ({ reason: r.querySelector('[name="ded-reason"]').value.trim(), amount: r.querySelector('[name="ded-amount"]').value.trim() })).filter((x) => x.reason || x.amount);
+
+/** "Reply to Lisa Chen (+17205550111)" to-dos open that conversation. */
+const replyKey = (title) => { const m = /\((\+\d{10,15}|[^()\s@]+@[^()\s]+)\)\s*$/.exec(String(title || '')); return m ? m[1] : null; };
+function taskItem(t) {
+  const late = !!t.dueAt && Date.parse(t.dueAt) < Date.now();
+  const done = h('button', { type: 'button', class: 'btn ghost', 'aria-label': `Done: ${t.title}` }, icon('check'), 'Done');
+  done.addEventListener('click', () => busy(done, 'Saving...', async () => {
+    try { await post(`/api/tasks/${id(t.id)}/done`); toast('Marked done.'); refresh(); } catch (e) { if (e.status !== 401) toast(e.message, 'error'); }
+  }));
+  const key = replyKey(t.title);
+  return h('li', { class: 'card task' + (late ? ' late' : '') },
+    h('h3', null, prettyPhones(t.title)),
+    t.detail && t.detail !== 'Setup step' ? h('p', { class: 'pre' }, prettyPhones(t.detail)) : null,
+    t.dueAt ? h('p', { class: 'meta' + (late ? ' bad' : '') }, late ? `Overdue: it was due ${day(t.dueAt)}.` : `Due ${day(t.dueAt)}`) : null,
+    h('div', { class: 'row-actions' },
+      key ? h('a', { class: 'btn ghost', href: pathFor('messages', key), 'data-nav': '' }, icon('chat'), 'Open messages') : null,
+      t.setupStep && STEP_GO[t.setupStep] ? btn(STEP_LABEL[t.setupStep], STEP_GO[t.setupStep]) : null,
+      done));
+}
+
+const WEEK = [
+  [['message.answered', 'message.thanks'], (n) => `Answered ${plural(n, 'message')} from tenants, prospects and vendors`],
+  [['message.emergency'], (n) => `Handled ${plural(n, 'emergency report')}`],
+  [['repair.created'], (n) => `Took ${plural(n, 'repair request')}`],
+  [['repair.self-fixed'], (n) => `Walked tenants through ${n === 1 ? '1 quick fix' : `${n} quick fixes`}`],
+  [['repair.scheduled'], (n) => `Booked ${plural(n, 'repair')} with your vendors`],
+  [['repair.closed'], (n) => `Closed ${plural(n, 'finished repair')}`],
+  [['rent.reminders'], (n) => `Sent ${plural(n, 'rent reminder')}`],
+  [['rent.late-notice'], (n) => `Sent ${plural(n, 'late notice')}`],
+  [['showing.completed'], (n) => `Ran ${plural(n, 'self-tour')}`],
+  [['application.received'], (n) => `Took ${plural(n, 'rental application')}`],
+  [['lease.signed'], (n) => `Got ${plural(n, 'lease')} signed`],
+  [['tenant.welcomed'], (n) => `Welcomed ${plural(n, 'new tenant')}`],
+  [['listing.published'], (n) => `Published ${plural(n, 'listing')}`],
+  [['deposit.statement'], (n) => `Sent ${plural(n, 'deposit statement')}`],
+];
+const ACTIVITY_LABEL = {
+  'repair.created': 'Repair request', 'repair.scheduled': 'Repair booked', 'repair.closed': 'Repair closed', 'repair.self-fixed': 'Fixed by the tenant',
+  'repair.merged': 'Repair update', 'rent.late-notice': 'Late notice', 'rent.recorded': 'Rent recorded', 'message.emergency': 'Emergency', 'message.fyi': 'For your information',
+  'application.received': 'Application', 'lease.signed': 'Lease signed', 'lease.move-in': 'Move-in', 'showing.completed': 'Self-tour', 'tenant.welcomed': 'Welcome sent',
+  'tenant.forwarding': 'Forwarding address', 'listing.published': 'Listing', 'deposit.statement': 'Deposit statement',
+};
+const cleanDetail = (s) => cap(String(s || '').replace(/\b(?:wo|chg|app|lse|ten|prp|ven|tsk|run|own|apr)_[a-z0-9]{6,}\b:?\s*/gi, '').trim());
+function weekly(list) {
+  const since = Date.now() - 7 * 86_400_000;
+  const recent = list.filter((a) => Date.parse(a.at) >= since && a.actor !== 'owner');
+  const count = {};
+  for (const a of recent) {
+    count[a.action] = (count[a.action] || 0) + 1;
+    if (a.action === 'rent.sweep') { const m = /(\d+) reminders?/.exec(a.detail || ''); if (m) count['rent.reminders'] = (count['rent.reminders'] || 0) + Number(m[1]); }
+  }
+  const lines = WEEK.map(([keys, say]) => { const n = keys.reduce((s, k) => s + (count[k] || 0), 0); return n ? say(n) : null; }).filter(Boolean);
+  const items = recent.filter((a) => ACTIVITY_LABEL[a.action]).slice(0, 15);
+  if (!lines.length && !items.length) return empty('Nothing yet this week. As KeyHelm answers tenants, books repairs and sends reminders, a short summary shows up here.');
+  return [
+    lines.length ? h('ul', { class: 'card plain week' }, lines.map((l) => h('li', null, icon('check'), h('span', null, l)))) : null,
+    items.length ? h('details', { class: 'block' }, h('summary', null, 'See the details'),
+      h('ul', { class: 'plain list activity' }, items.map((a) => h('li', null, h('span', { class: 'meta' }, stamp(a.at)), h('span', null, `${ACTIVITY_LABEL[a.action]}: ${cleanDetail(a.detail)}`))))) : null,
+  ];
+}
+
+/* =====================================================================
+   2) RENT: what's owed, by home and month. Tenants pay the owner directly.
+   ===================================================================== */
+async function viewRent(el, stale) {
+  const [open, paid, rules] = await Promise.all([get('/api/charges?status=open'), get('/api/charges?status=paid'), get('/api/rules')]);
+  if (stale()) return;
+  S.rules = rules;
+  S.openCharges = open;
+  const late = open.filter(isLate);
+  const owed = open.reduce((s, c) => s + (c.balance || 0), 0);
+  const homes = new Map();
+  for (const c of open.slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate))) {
+    const k = c.propertyAddress || 'Other';
+    if (!homes.has(k)) homes.set(k, []);
+    homes.get(k).push(c);
+  }
+  fill(el,
+    h('div', { class: 'note' },
+      h('p', null, h('strong', null, 'Tenants pay you directly. '), 'KeyHelm never collects or holds rent. When a payment reaches you, mark it received here so reminders stop.'),
+      rules.howToPay ? h('p', { class: 'help' }, `Reminders tell tenants: "${rules.howToPay}"`) : h('p', null, btn('Tell us how tenants pay you', STEP_GO.howToPay))),
+    open.length ? h('p', { class: 'lead' }, `${money(owed)} still owed across ${plural(open.length, 'item')}.`, late.length ? h('strong', { class: 'bad' }, ` ${late.length} ${late.length === 1 ? 'is' : 'are'} late.`) : null) : null,
+    open.length ? Array.from(homes, ([addr, list]) => section(addr, null, h('div', { class: 'stack' }, list.map(chargeCard)))) : empty('All caught up. No rent is waiting right now.'),
+    paid.length ? h('details', { class: 'block' }, h('summary', null, `Recently received (${Math.min(paid.length, 12)})`),
+      h('ul', { class: 'plain list' }, paid.slice(0, 12).map((c) => h('li', null, h('strong', null, `${c.label}: ${money(c.amount)}`), h('p', { class: 'meta' }, [c.propertyAddress, (c.tenantNames || []).join(' and ')].filter(Boolean).join(' · ')))))) : null);
+}
+function chargeCard(c) {
+  const late = isLate(c);
+  const mark = btn('Mark received', null, 'primary');
+  const panel = h('div', { class: 'panel', hidden: true });
+  mark.addEventListener('click', () => {
+    const form = h('form', { novalidate: true },
+      field({ label: 'Amount that arrived', name: 'amount', value: dollarBox(c.balance), prefix: '$', inputmode: 'decimal', help: `All of it is ${money(c.balance)}. Change it if only part arrived.` }),
+      h('div', { class: 'actions' }, h('button', { type: 'submit', class: 'btn primary' }, 'Save'), btn('Cancel', () => { panel.hidden = true; panel.replaceChildren(); mark.hidden = false; mark.focus(); })));
+    onSubmit(form, async () => {
+      const amount = val(form, 'amount');
+      if (!amount) throw invalid('Enter the amount that arrived.', 'amount');
+      const r = await post(`/api/charges/${id(c.id)}/received`, { amount });
+      toast(r.status === 'paid' ? `Marked received. Reminders for this one stop.` : `Marked ${money(amountOf(amount) * 100)} received. ${money(r.balance)} is still owed.`);
+      refresh();
+    });
+    fill(panel, form);
+    panel.hidden = false;
+    mark.hidden = true;
+    form.querySelector('input').focus();
+  });
+  return h('article', { class: 'card charge' + (late ? ' late' : '') },
+    h('div', { class: 'row' },
+      h('div', null,
+        h('h3', null, c.label),
+        h('p', { class: 'meta' }, (c.tenantNames || []).join(' and ') || 'No tenant on file'),
+        h('p', { class: 'meta' + (late ? ' bad' : '') }, `Due ${day(c.dueDate)}`, late ? ' (late)' : '')),
+      h('div', { class: 'amount' },
+        h('p', { class: 'big-num' }, money(c.balance)),
+        c.paid > 0 ? h('p', { class: 'meta' }, `${money(c.paid)} of ${money(c.amount)} received`) : null,
+        late ? tag('Late', 'bad') : null)),
+    h('div', { class: 'row-actions' }, mark), panel);
+}
+
+/* =====================================================================
+   3) REPAIRS
+   ===================================================================== */
+async function viewRepairs(el, stale) {
+  const [open, closed, props, tenants] = await Promise.all([get('/api/work-orders?status=open'), get('/api/work-orders?status=closed'), get('/api/properties'), get('/api/tenants?status=active')]);
+  if (stale()) return;
+  S.props = props;
+  S.tenants = tenants;
+  fill(el,
+    h('div', { class: 'toolbar' }, btn([icon('plus'), 'Request a repair'], () => repairForm(), 'primary big')),
+    section('Open repairs', null, open.length ? h('div', { class: 'stack' }, open.map(woCard)) : empty('No open repairs. When a tenant reports something, KeyHelm books one of your vendors and it shows up here.')),
+    closed.length ? h('details', { class: 'block' }, h('summary', null, `Finished repairs (${closed.length})`),
+      h('ul', { class: 'plain list' }, closed.slice(0, 30).map((w) => h('li', null, h('strong', null, cap(oneLine(w.summary, 90))),
+        h('p', { class: 'meta' }, [w.propertyAddress, w.vendorName, typeof w.invoice === 'number' ? money(w.invoice) : null, day(w.createdAt), w.status === 'cancelled' ? 'Cancelled' : null].filter(Boolean).join(' · ')))))) : null);
+}
+function woCard(w) {
+  const startBy = w.respondBy && ['new', 'triaged', 'awaiting_vendor', 'awaiting_owner'].includes(w.status);
+  const photos = (w.photos || []).map(httpsUrl).filter(Boolean);
+  return h('article', { class: 'card wo' + (w.urgency === 'emergency' ? ' urgent' : '') },
+    h('div', { class: 'tags' }, w.urgency && w.urgency !== 'routine' ? tag(cap(w.urgency), w.urgency === 'emergency' ? 'bad' : 'warn') : null, tag(TRADE[w.trade] || humanize(w.trade)), tag(WO_STATUS[w.status] || humanize(w.status), w.status === 'awaiting_owner' || w.status === 'invoice_review' ? 'warn' : w.status === 'scheduled' ? 'ok' : '')),
+    h('h3', null, cap(w.summary)),
+    h('p', { class: 'meta' }, [w.propertyAddress, w.tenantName].filter(Boolean).join(' · ')),
+    kv([
+      ['Vendor', w.vendorName ? [w.vendorName, w.vendorPhone ? [' ', h('a', { href: telHref(w.vendorPhone) }, phoneText(w.vendorPhone))] : null] : 'Not booked yet'],
+      w.scheduledFor ? ['When', w.scheduledFor] : null,
+      typeof w.quote === 'number' ? ['Quote', money(w.quote)] : null,
+      typeof w.invoice === 'number' ? ['Invoice', money(w.invoice)] : null,
+      ['Reported', day(w.createdAt)],
+      startBy ? ['Start by', `${day(w.respondBy)}, ${time(w.respondBy)} (Colorado deadline)`] : null,
+    ]),
+    photos.length ? h('p', { class: 'meta' }, photos.map((u, i) => [h('a', { href: u, target: '_blank', rel: 'noopener noreferrer' }, `Photo ${i + 1}`), ' '])) : null);
+}
+function needHome(title) {
+  openSheet(title, h('p', null, 'Add a home first. Then you can do this for it.'), h('div', { class: 'actions' }, btn('Add a home', () => { closeSheet(); go('homes', null, () => homeForm()); }, 'primary big')));
+}
+function repairForm() {
+  const props = S.props;
+  if (!props.length) return needHome('Request a repair');
+  const tenantSel = field({ label: 'Tenant', name: 'tenantId', type: 'select', options: [['', 'No tenant (I am reporting it)']], optional: true });
+  const form = h('form', { class: 'form', novalidate: true },
+    field({ label: 'Which home', name: 'propertyId', type: 'select', options: props.map((p) => [p.id, p.address]), value: props[0].id }),
+    tenantSel,
+    field({ label: 'What needs fixing', name: 'summary', type: 'textarea', rows: 4, maxlength: 500, placeholder: 'The kitchen faucet drips and the cabinet under it is wet.' }),
+    field({ label: 'Kind of work', name: 'trade', type: 'select', options: [['', 'Not sure'], ...TRADES], optional: true }),
+    radios({ label: 'How urgent is it?', name: 'urgency', value: 'routine', options: [['routine', 'Routine', 'Within a few days'], ['urgent', 'Urgent', 'Within a day'], ['emergency', 'Emergency', 'Gas smell, flooding, no heat in winter, can\'t lock up. Goes to your emergency vendors right away.']] }),
+    actions('Request repair'));
+  const homeSel = form.elements.namedItem('propertyId');
+  const syncTenants = () => {
+    const sel = form.elements.namedItem('tenantId');
+    fill(sel, h('option', { value: '' }, 'No tenant (I am reporting it)'), S.tenants.filter((t) => t.propertyId === homeSel.value).map((t) => h('option', { value: t.id }, t.name)));
+  };
+  homeSel.addEventListener('change', syncTenants);
+  syncTenants();
+  onSubmit(form, async () => {
+    const summary = val(form, 'summary');
+    if (summary.length < 3) throw invalid('Say what needs fixing.', 'summary');
+    const r = await post('/api/work-orders', { propertyId: val(form, 'propertyId'), tenantId: val(form, 'tenantId') || undefined, summary, trade: val(form, 'trade') || undefined, urgency: val(form, 'urgency') || 'routine' });
+    closeSheet();
+    toast(r && r.workOrder ? 'Repair requested. KeyHelm is contacting your vendors.' : 'Added to the repair already open at that home.');
+    refresh();
+  }, 'Sending...');
+  openSheet('Request a repair', form);
+}
+
+/* =====================================================================
+   4) MESSAGES
+   ===================================================================== */
+async function viewMessages(el, stale, key) {
+  const threads = await get('/api/messages/threads');
+  let thread = null, problem = null;
+  if (key) { try { thread = await get('/api/messages/threads/' + encodeURIComponent(key)); } catch (e) { problem = e; } }
+  if (stale()) return;
+  S.threads = threads;
+  setBadge('messages', threads.filter((t) => t.needsReply).length, 'waiting for a reply');
+  const list = threads.length ? h('ul', { class: 'plain', 'aria-label': 'Conversations' }, threads.map((t) => threadRow(t, key)))
+    : empty('No messages yet. When tenants, vendors or prospects text or email your KeyHelm line, the conversations show up here.');
+  let pane;
+  if (thread) pane = threadView(thread);
+  else if (key) pane = h('div', { class: 'card error-card', role: 'alert' }, h('p', null, (problem && problem.message) || "We couldn't open that conversation."), h('a', { class: 'btn ghost', href: '/app/messages', 'data-nav': '' }, 'All messages'));
+  else pane = threads.length ? h('p', { class: 'pick muted' }, 'Pick a conversation to read it and reply.') : null;
+  fill(el, h('div', { class: 'msgs' + (key ? ' open' : '') }, h('div', { class: 'list-pane' }, list), h('div', { class: 'thread-pane' }, pane)));
+  const log = $('.log', el);
+  if (log) log.scrollTop = log.scrollHeight;
+}
+function threadRow(t, active) {
+  const who = t.last.sentBy === 'owner' ? 'You: ' : t.last.sentBy === 'keyhelm' ? 'KeyHelm: ' : '';
+  const name = t.contact.name && t.contact.name !== t.key ? t.contact.name : phoneText(t.key);
+  return h('li', null, h('a', { href: pathFor('messages', t.key), 'data-nav': '', class: 'thread' + (t.key === active ? ' active' : ''), 'aria-current': t.key === active ? 'true' : null },
+    h('span', { class: 'who' }, h('span', { class: 'name' }, name), tag(ROLE[t.contact.role] || 'Contact'), t.needsReply ? tag('Needs reply', 'warn') : null, t.textsOff ? tag('Texts off') : null),
+    h('span', { class: 'last' }, who + oneLine(t.last.body)),
+    h('span', { class: 'meta' }, [t.contact.propertyAddress, stamp(t.last.at)].filter(Boolean).join(' · '))));
+}
+function threadView(th) {
+  const c = th.contact || {};
+  const name = c.name && c.name !== th.key ? c.name : phoneText(th.key);
+  const email = th.key.includes('@') ? th.key : c.email;
+  const phone = th.key.includes('@') ? c.phone : th.key;
+  const canText = !!phone && !th.textsOff;
+  const hid = nid('th');
+  return h('section', { class: 'thread-view', 'aria-labelledby': hid },
+    h('div', { class: 'thread-head' },
+      h('a', { class: 'btn ghost back', href: '/app/messages', 'data-nav': '' }, icon('back'), 'All messages'),
+      h('h2', { id: hid, tabindex: '-1' }, name),
+      h('p', { class: 'meta' }, [ROLE[c.role], c.propertyAddress, phone ? phoneText(phone) : null, email].filter(Boolean).join(' · ')),
+      phone ? h('a', { class: 'btn ghost', href: telHref(phone) }, icon('phone'), `Call ${callName(name, c.role) || 'them'}`) : null),
+    th.textsOff ? h('p', { class: 'note' }, `This number replied STOP, so texts to it are off.${email ? ' Your reply goes by email.' : ' They can text START to turn texts back on.'}`) : null,
+    th.messages.length ? h('ol', { class: 'log', 'aria-label': `Messages with ${name}` }, th.messages.map((m) => bubble(m, name))) : h('p', { class: 'muted pick' }, 'No messages yet. Write the first one below.'),
+    replyForm(th, callName(name, c.role) || name, canText, !!email));
+}
+function bubble(m, name) {
+  const by = m.sentBy === 'owner' ? 'You' : m.sentBy === 'keyhelm' ? 'KeyHelm' : name;
+  const media = (m.media || []).map(httpsUrl).filter(Boolean);
+  return h('li', { class: 'msg ' + (m.direction === 'out' ? 'out' : 'in') + (m.sentBy === 'owner' ? ' owner' : '') },
+    h('p', { class: 'msg-meta' }, `${by}, ${stamp(m.at)}${m.channel && m.channel !== 'sms' ? ` (${CHANNEL[m.channel] || m.channel})` : ''}`),
+    h('p', { class: 'msg-body' }, m.body),
+    media.length ? h('p', null, media.map((u, i) => [h('a', { href: u, target: '_blank', rel: 'noopener noreferrer' }, `Attachment ${i + 1}`), ' '])) : null);
+}
+function replyForm(th, name, canText, canEmail) {
+  if (!canText && !canEmail) return h('p', { class: 'note' }, "You can't reply here: texts to this number are off and there's no email on file.");
+  const channels = [canText ? ['sms', 'Text'] : null, canEmail ? ['email', 'Email'] : null].filter(Boolean);
+  const me = firstName(S.me && S.me.owner && S.me.owner.name) || 'your first name';
+  const form = h('form', { class: 'reply', novalidate: true },
+    field({ label: `Reply to ${name}`, name: 'body', type: 'textarea', rows: 3, maxlength: 1000,
+      help: `Replies go out from your KeyHelm number or email, not your personal one. Texts start with "${me}:" so they know it's you.` }),
+    channels.length > 1 ? radios({ label: 'Send as', name: 'channel', inline: true, value: canText && !th.key.includes('@') ? 'sms' : 'email', options: channels }) : null,
+    h('div', { class: 'actions' }, h('button', { type: 'submit', class: 'btn primary big' }, 'Send')));
+  onSubmit(form, async () => {
+    const body = val(form, 'body');
+    if (!body) throw invalid('Write a message first.', 'body');
+    await post('/api/messages/send', { to: th.key, body, channel: channels.length > 1 ? val(form, 'channel') : channels[0][0] });
+    toast('Sent.');
+    refresh();
+  }, 'Sending...');
+  return form;
+}
+
+/* =====================================================================
+   5) HOMES: homes, tenants, vendors, lease
+   ===================================================================== */
+async function viewHomes(el, stale) {
+  const [props, tenants, vendors, leases] = await Promise.all([get('/api/properties'), get('/api/tenants'), get('/api/vendors'), get('/api/lease-templates')]);
+  if (stale()) return;
+  Object.assign(S, { props, tenants, vendors, leases });
+  const current = tenants.filter((t) => t.status !== 'former');
+  const former = tenants.filter((t) => t.status === 'former');
+  fill(el,
+    section('Your homes', btn([icon('plus'), 'Add a home'], () => homeForm(), 'primary'),
+      props.length ? h('div', { class: 'stack' }, props.map((p) => homeCard(p, current.filter((t) => t.propertyId === p.id)))) : empty('No homes yet. Add your first home to get started.')),
+    former.length ? h('details', { class: 'block' }, h('summary', null, `Former tenants (${former.length})`),
+      h('ul', { class: 'plain list' }, former.map((t) => h('li', null, h('strong', null, t.name), h('p', { class: 'meta' }, [t.propertyAddress, t.forwardingAddress ? `Forwarding address: ${t.forwardingAddress}` : null].filter(Boolean).join(' · ')))))) : null,
+    section('Vendors', btn([icon('plus'), 'Add a vendor'], () => vendorForm(), 'primary'),
+      vendors.length ? h('div', { class: 'grid2' }, vendors.map(vendorCard)) : empty('No vendors yet. Add the plumbers, handymen and cleaners you trust. KeyHelm books them for you.')),
+    section('Your lease', btn([icon('plus'), 'Upload or paste'], () => leaseForm(), 'primary'),
+      leases.length ? h('ul', { class: 'plain stack' }, leases.map(leaseItem)) : empty('No lease yet. Add the lease you already use. KeyHelm fills it in for each new tenant and renewal.')));
+}
+function homeCard(p, tenants) {
+  const [statusText, statusKind] = HOME_STATUS[p.status] || [humanize(p.status), ''];
+  const facts = Object.entries(p.facts || {});
+  return h('article', { class: 'card home' },
+    h('div', { class: 'home-head' }, h('div', null, h('h3', null, p.address), h('p', { class: 'meta' }, `${p.city}, ${p.state} ${p.zip}`)), tag(statusText, statusKind)),
+    h('p', null, `${p.beds} bed · ${p.baths} bath · ${money(p.rent)} a month · ${money(p.deposit)} deposit`),
+    h('p', { class: 'meta' }, LOCK[(p.lock && p.lock.kind) || 'none']),
+    p.lease ? h('p', null, `Lease: ${day(p.lease.startDate, { year: true })} to ${day(p.lease.endDate, { year: true })} at ${money(p.lease.rent)} a month`) : h('p', { class: 'meta' }, 'No active lease on file.'),
+    facts.length ? kv(facts.map(([k, v]) => [k, v])) : null,
+    h('h4', null, 'Tenants'),
+    tenants.length ? h('ul', { class: 'plain tenants' }, tenants.map(tenantRow)) : h('p', { class: 'meta' }, 'No tenants on file.'),
+    h('div', { class: 'row-actions' },
+      btn('Edit home', () => homeForm(p)),
+      btn([icon('plus'), 'Add a tenant'], () => tenantForm(null, p.id)),
+      p.canDelete ? btn('Remove home', () => removeHome(p), 'danger') : null));
+}
+function tenantRow(t) {
+  const key = t.phone || t.email;
+  return h('li', null,
+    h('div', { class: 'person' }, h('strong', null, t.name), t.status === 'future' ? tag('Moving in soon', 'warn') : null, t.textsOff ? tag('Texts off') : null, t.autopay ? tag('Autopay', 'ok') : null),
+    h('p', { class: 'meta' }, [t.phone ? phoneText(t.phone) : null, t.email, t.preferredChannel === 'email' ? 'Prefers email' : 'Prefers texts'].filter(Boolean).join(' · ')),
+    h('div', { class: 'row-actions' },
+      key ? h('a', { class: 'btn ghost', href: pathFor('messages', key), 'data-nav': '' }, icon('chat'), 'Message') : null,
+      btn('Edit', () => tenantForm(t)),
+      btn('Moved out', () => formerForm(t))));
+}
+function vendorCard(v) {
+  const key = v.phone || v.email;
+  return h('article', { class: 'card vendor' },
+    h('h3', null, v.name),
+    h('div', { class: 'tags' }, (v.trades || []).map((t) => tag(TRADE[t] || humanize(t))), v.emergency ? tag('Emergencies', 'warn') : null, v.preferred ? tag('Preferred', 'ok') : null),
+    v.phone ? h('p', null, h('a', { href: telHref(v.phone) }, phoneText(v.phone))) : null,
+    v.email ? h('p', null, h('a', { href: mailHref(v.email) }, v.email)) : null,
+    h('div', { class: 'row-actions' },
+      key ? h('a', { class: 'btn ghost', href: pathFor('messages', key), 'data-nav': '' }, icon('chat'), 'Message') : null,
+      btn('Edit', () => vendorForm(v)), btn('Remove', () => removeVendor(v), 'danger')));
+}
+function leaseItem(t) {
+  return h('li', { class: 'card' },
+    h('h3', null, t.name),
+    h('p', { class: 'meta' }, `Added ${day(t.uploadedAt)} · ${plural((t.fields || []).length, 'fill-in blank')}`),
+    (t.fields || []).length ? h('p', { class: 'help' }, (t.fields || []).map(humanize).join(', ')) : null);
+}
+
+function homeForm(p) {
+  const editing = !!p;
+  const lock = (p && p.lock) || { kind: 'none' };
+  const statusOpts = [['occupied', 'Occupied', 'Someone lives there'], ['vacant', 'Vacant', 'Empty and ready'], ['turnover', 'Between tenants', 'Getting it ready for the next tenant']];
+  if (p && p.status === 'listed') statusOpts.unshift(['listed', 'Listed for rent', 'Keep the listing up']);
+  const form = h('form', { class: 'form', novalidate: true },
+    field({ label: 'Street address', name: 'address', value: p && p.address, autocomplete: 'street-address', maxlength: 120, placeholder: '123 Main St' }),
+    h('div', { class: 'two' },
+      field({ label: 'City', name: 'city', value: p && p.city, autocomplete: 'address-level2', maxlength: 60 }),
+      field({ label: 'ZIP code', name: 'zip', value: p && p.zip, inputmode: 'numeric', autocomplete: 'postal-code', maxlength: 10, help: 'Colorado homes for now.' })),
+    h('div', { class: 'two' },
+      field({ label: 'Bedrooms', name: 'beds', value: p ? p.beds : '', inputmode: 'decimal' }),
+      field({ label: 'Bathrooms', name: 'baths', value: p ? p.baths : '', inputmode: 'decimal', help: 'Halves are fine, like 1.5.' })),
+    h('div', { class: 'two' },
+      field({ label: 'Monthly rent', name: 'rent', value: p ? dollarBox(p.rent) : '', prefix: '$', inputmode: 'decimal', help: 'All-in rent, including any required fees.' }),
+      field({ label: 'Deposit', name: 'deposit', value: p ? dollarBox(p.deposit) : '', prefix: '$', inputmode: 'decimal', optional: !editing, help: editing ? undefined : 'Leave blank to use one month of rent.' })),
+    radios({ label: 'Status', name: 'status', value: p ? p.status : 'occupied', options: statusOpts }),
+    field({ label: 'Lock', name: 'lockKind', field: 'lock', type: 'select', value: lock.kind || 'none', options: [['none', 'Regular keys'], ['smart', 'Smart lock'], ['lockbox', 'Lockbox']], help: 'With a smart lock or lockbox, prospects can tour on their own after an ID check.' }),
+    field({ label: 'Smart lock device ID', name: 'deviceId', value: lock.deviceId, maxlength: 80, help: 'From your lock app. KeyHelm uses it to make one-time tour codes.' }),
+    field({ label: 'Lockbox code', name: 'lockboxCode', value: lock.lockboxCode, maxlength: 20, autocomplete: 'off' }),
+    factsEditor('facts', p && p.facts, 'Home details tenants ask about', 'Parking, laundry, utilities, trash day. KeyHelm quotes these word for word, so keep them about the home.'),
+    actions(editing ? 'Save home' : 'Add home'));
+  const kind = form.elements.namedItem('lockKind');
+  const syncLock = () => { $('[data-field="deviceId"]', form).hidden = kind.value !== 'smart'; $('[data-field="lockboxCode"]', form).hidden = kind.value !== 'lockbox'; };
+  kind.addEventListener('change', syncLock);
+  syncLock();
+  onSubmit(form, async () => {
+    const k = val(form, 'lockKind');
+    const body = {
+      address: val(form, 'address'), city: val(form, 'city'), zip: val(form, 'zip'), beds: val(form, 'beds'), baths: val(form, 'baths'), rent: val(form, 'rent'),
+      lock: { kind: k, ...(k === 'smart' ? { deviceId: val(form, 'deviceId') } : {}), ...(k === 'lockbox' ? { lockboxCode: val(form, 'lockboxCode') } : {}) },
+      facts: readFacts(form, 'facts'),
+    };
+    const dep = val(form, 'deposit');
+    if (dep) body.deposit = dep;
+    const st = val(form, 'status');
+    if (st && st !== 'listed' && (!p || st !== p.status)) body.status = st;
+    if (editing) await api('PATCH', `/api/properties/${id(p.id)}`, body); else await post('/api/properties', body);
+    closeSheet();
+    toast(editing ? 'Home saved.' : 'Home added.');
+    refresh();
+  });
+  openSheet(editing ? 'Edit home' : 'Add a home', form);
+}
+function removeHome(p) {
+  const yes = btn('Remove home', null, 'danger big');
+  yes.addEventListener('click', () => busy(yes, 'Removing...', async () => {
+    try { await api('DELETE', `/api/properties/${id(p.id)}`); closeSheet(); toast('Home removed.'); refresh(); } catch (e) { if (e.status !== 401) toast(e.message, 'error'); }
+  }));
+  openSheet('Remove this home?', h('p', null, `${p.address} will be removed from KeyHelm. This can't be undone.`), h('div', { class: 'actions' }, yes, btn('Keep it', () => closeSheet())));
+}
+
+function tenantForm(t, propertyId) {
+  const editing = !!t;
+  if (!editing && !S.props.length) return needHome('Add a tenant');
+  const pid = editing ? t.propertyId : propertyId || S.props[0].id;
+  const leaseBox = h('fieldset', { class: 'field group', 'data-field': 'lease' },
+    h('legend', null, 'Their current lease'),
+    h('p', { class: 'help' }, 'Needed for rent reminders and renewals. You can add it later.'),
+    h('div', { class: 'two' }, field({ label: 'Starts', name: 'leaseStart', field: 'lease.startDate', type: 'date' }), field({ label: 'Ends', name: 'leaseEnd', field: 'lease.endDate', type: 'date' })),
+    h('div', { class: 'two' }, field({ label: 'Monthly rent', name: 'leaseRent', field: 'lease.rent', prefix: '$', inputmode: 'decimal' }), field({ label: 'Deposit they paid', name: 'leaseDeposit', field: 'lease.deposit', prefix: '$', inputmode: 'decimal', optional: true })),
+    h('p', { class: 'err', hidden: true }));
+  const joinNote = h('p', { class: 'note info' });
+  const form = h('form', { class: 'form', novalidate: true },
+    editing ? h('p', { class: 'meta' }, `Home: ${t.propertyAddress || ''}`) : field({ label: 'Home', name: 'propertyId', type: 'select', value: pid, options: S.props.map((p) => [p.id, p.address]) }),
+    field({ label: 'Full name', name: 'name', value: t && t.name, autocomplete: 'off', maxlength: 80 }),
+    field({ label: 'Mobile number', name: 'phone', type: 'tel', value: t && t.phone ? phoneText(t.phone) : '', inputmode: 'tel', autocomplete: 'off', placeholder: '720-555-0123' }),
+    field({ label: 'Email', name: 'email', type: 'email', value: t && t.email, autocomplete: 'off', optional: true }),
+    radios({ label: 'Best way to reach them', name: 'preferredChannel', inline: true, value: t && t.preferredChannel === 'email' ? 'email' : 'sms', options: [['sms', 'Text'], ['email', 'Email']] }),
+    check({ label: 'They pay you automatically each month (autopay)', name: 'autopay', checked: t && t.autopay, help: 'Tenants on autopay don\'t get rent reminders.' }),
+    editing ? null : radios({ label: 'Living there now?', name: 'status', value: 'active', options: [['active', 'Yes, living there now'], ['future', 'Moving in soon']] }),
+    editing ? null : joinNote,
+    editing ? null : leaseBox,
+    editing ? null : check({ label: 'Send them a welcome text now', name: 'invite', checked: true, help: 'It tells them they can text this number for repairs and questions. Quiet hours are respected.' }),
+    actions(editing ? 'Save tenant' : 'Add tenant'));
+  if (!editing) {
+    const homeSel = form.elements.namedItem('propertyId');
+    const sync = () => {
+      const p = S.props.find((x) => x.id === homeSel.value);
+      const has = !!(p && p.lease);
+      leaseBox.hidden = has;
+      joinNote.hidden = !has;
+      if (has) joinNote.textContent = `They join the current lease (${day(p.lease.startDate, { year: true })} to ${day(p.lease.endDate, { year: true })}).`;
+      else if (p) {
+        const rent = form.elements.namedItem('leaseRent'), dep = form.elements.namedItem('leaseDeposit');
+        if (!rent.value) rent.value = dollarBox(p.rent);
+        if (!dep.value) dep.value = dollarBox(p.deposit);
+      }
+    };
+    homeSel.addEventListener('change', sync);
+    sync();
+  }
+  onSubmit(form, async () => {
+    const body = { name: val(form, 'name'), phone: val(form, 'phone'), email: val(form, 'email'), preferredChannel: val(form, 'preferredChannel'), autopay: checked(form, 'autopay') };
+    if (editing) {
+      await api('PATCH', `/api/tenants/${id(t.id)}`, body);
+    } else {
+      Object.assign(body, { propertyId: val(form, 'propertyId'), status: val(form, 'status') || 'active', invite: checked(form, 'invite') });
+      if (!leaseBox.hidden) {
+        const l = { startDate: val(form, 'leaseStart'), endDate: val(form, 'leaseEnd'), rent: val(form, 'leaseRent'), deposit: val(form, 'leaseDeposit') };
+        if (l.startDate || l.endDate) body.lease = l;
+      }
+      await post('/api/tenants', body);
+    }
+    closeSheet();
+    toast(editing ? 'Tenant saved.' : body.invite ? 'Tenant added. Their welcome text is on its way.' : 'Tenant added.');
+    refresh();
+  });
+  openSheet(editing ? `Edit ${t.name}` : 'Add a tenant', form);
+}
+function formerForm(t) {
+  const form = h('form', { class: 'form', novalidate: true },
+    h('p', null, `${t.name} stops getting rent reminders. If everyone on the lease has moved out, the lease is marked ended and the home is marked between tenants.`),
+    field({ label: 'Forwarding address', name: 'forwardingAddress', value: t.forwardingAddress, optional: true, maxlength: 200, help: 'For their deposit statement and refund.' }),
+    actions('Mark as moved out'));
+  onSubmit(form, async () => {
+    await post(`/api/tenants/${id(t.id)}/former`, { forwardingAddress: val(form, 'forwardingAddress') || undefined });
+    closeSheet();
+    toast(`${t.name} is marked as moved out.`);
+    refresh();
+  });
+  openSheet(`Did ${firstName(t.name) || 'they'} move out?`, form);
+}
+
+function vendorForm(v) {
+  const editing = !!v;
+  const have = new Set((v && v.trades) || []);
+  const form = h('form', { class: 'form', novalidate: true },
+    field({ label: 'Name', name: 'name', value: v && v.name, maxlength: 80, placeholder: 'Front Range Plumbing' }),
+    h('fieldset', { class: 'field', 'data-field': 'trades' }, h('legend', null, 'What they do'),
+      h('div', { class: 'checks' }, TRADES.map(([k, label]) => check({ label, name: 'trades', value: k, checked: have.has(k) }))),
+      h('p', { class: 'err', hidden: true })),
+    field({ label: 'Phone', name: 'phone', type: 'tel', value: v && v.phone ? phoneText(v.phone) : '', inputmode: 'tel', autocomplete: 'off' }),
+    field({ label: 'Email', name: 'email', type: 'email', value: v && v.email, autocomplete: 'off', optional: true }),
+    check({ label: 'Takes after-hours emergencies', name: 'emergency', checked: v && v.emergency }),
+    check({ label: 'Preferred: offer them jobs first', name: 'preferred', checked: v ? v.preferred : true }),
+    actions(editing ? 'Save vendor' : 'Add vendor'));
+  onSubmit(form, async () => {
+    const trades = $$('input[name="trades"]:checked', form).map((i) => i.value);
+    const body = { name: val(form, 'name'), trades: trades.length ? trades : ['general'], phone: val(form, 'phone'), email: val(form, 'email'), emergency: checked(form, 'emergency'), preferred: checked(form, 'preferred') };
+    if (editing) await api('PATCH', `/api/vendors/${id(v.id)}`, body); else await post('/api/vendors', body);
+    closeSheet();
+    toast(editing ? 'Vendor saved.' : 'Vendor added.');
+    refresh();
+  });
+  openSheet(editing ? `Edit ${v.name}` : 'Add a vendor', form);
+}
+function removeVendor(v) {
+  const yes = btn('Remove vendor', null, 'danger big');
+  yes.addEventListener('click', () => busy(yes, 'Removing...', async () => {
+    try { await api('DELETE', `/api/vendors/${id(v.id)}`); closeSheet(); toast('Vendor removed.'); refresh(); } catch (e) { if (e.status !== 401) toast(e.message, 'error'); }
+  }));
+  openSheet(`Remove ${v.name}?`, h('p', null, 'KeyHelm stops offering them jobs. Repairs they already finished stay in your records.'), h('div', { class: 'actions' }, yes, btn('Keep them', () => closeSheet())));
+}
+
+const AUTO_FIELDS = new Set(['tenant_names', 'owner_name', 'property_address', 'start_date', 'end_date', 'term_months', 'monthly_rent', 'security_deposit', 'rent_due_day', 'late_fee', 'pet_terms', 'utilities', 'today']);
+function leaseForm() {
+  const file = h('input', { type: 'file', id: nid(), accept: '.txt,.text,.md,text/plain', 'aria-describedby': 'lease-file-help' });
+  const form = h('form', { class: 'form', novalidate: true },
+    h('p', null, 'Add the lease you already use. KeyHelm finds the blanks (like ______) and fills them in for each new tenant and renewal. Your wording never changes.'),
+    field({ label: 'Name', name: 'name', value: 'My lease', maxlength: 80 }),
+    h('div', { class: 'field' }, h('label', { for: file.id }, 'Pick a text file', h('span', { class: 'opt' }, ' (optional)')), file,
+      h('p', { class: 'help', id: 'lease-file-help' }, 'For a PDF or Word file: open it, select all, copy, and paste it below.')),
+    field({ label: 'Lease text', name: 'text', type: 'textarea', rows: 10, placeholder: 'Paste the whole lease here.' }),
+    actions('Save lease'));
+  file.addEventListener('change', () => {
+    const f = file.files && file.files[0];
+    clearErrors(form);
+    if (!f) return;
+    if (!(/^text\//.test(f.type) || /\.(txt|text|md)$/i.test(f.name))) return showError(form, invalid('Pick a plain text (.txt) file, or copy and paste the lease below.', 'text'));
+    if (f.size > 1_500_000) return showError(form, invalid('That file is too big. Paste the lease text instead.', 'text'));
+    const reader = new FileReader();
+    reader.onload = () => { form.elements.namedItem('text').value = String(reader.result || ''); const n = form.elements.namedItem('name'); if (n.value === 'My lease') n.value = f.name.replace(/\.[^.]+$/, '').slice(0, 80); };
+    reader.onerror = () => showError(form, invalid("We couldn't read that file. Paste the lease text instead.", 'text'));
+    reader.readAsText(f);
+  });
+  onSubmit(form, async () => {
+    const text = form.elements.namedItem('text').value;
+    if (text.trim().length < 100) throw invalid('That looks too short for a lease. Paste the whole lease text.', 'text');
+    const t = await post('/api/lease-templates', { name: val(form, 'name') || 'My lease', text });
+    const fields = t.fields || [];
+    const auto = fields.filter((f) => AUTO_FIELDS.has(f)), ask = fields.filter((f) => !AUTO_FIELDS.has(f));
+    openSheet('Lease saved',
+      h('p', { class: 'lead' }, `We found ${plural(fields.length, 'fill-in blank')} in "${t.name}".`),
+      auto.length ? [h('h3', null, 'Filled in for you'), h('ul', { class: 'fields-found' }, auto.map((f) => h('li', null, humanize(f))))] : null,
+      ask.length ? [h('h3', null, 'Asked when a lease goes out'), h('p', { class: 'help' }, "KeyHelm couldn't tell what these are for, so it asks you for them each time."), h('ul', { class: 'fields-found' }, ask.map((f) => h('li', null, humanize(f))))] : null,
+      h('div', { class: 'actions' }, btn('Done', () => closeSheet(), 'primary big')));
+    toast('Lease saved.');
+    refresh();
+  });
+  openSheet('Upload or paste your lease', form);
+}
+
+/* =====================================================================
+   6) SETTINGS: rules, profile, password, billing, sign out
+   ===================================================================== */
+async function viewSettings(el, stale) {
+  const [me, rules] = await Promise.all([get('/api/me'), get('/api/rules')]);
+  if (stale()) return;
+  S.me = me;
+  S.rules = rules;
+  fill(el,
+    h('nav', { class: 'toolbar', 'aria-label': 'Settings sections' },
+      h('a', { class: 'btn ghost', href: '#set-rules' }, 'Rules'), h('a', { class: 'btn ghost', href: '#set-profile' }, 'Profile'),
+      h('a', { class: 'btn ghost', href: '#set-billing' }, 'Billing'), h('a', { class: 'btn ghost', href: '#set-account' }, 'Sign out')),
+    rulesSection(rules), profileSection(me), billingSection(me), accountSection());
+}
+const CRIT = [['income_multiple', 'Income (times the rent)'], ['evictions_years', 'No evictions (years)'], ['collections_years', 'No rental collections (years)'], ['references', 'Landlord references'], ['pets', 'Pets'], ['custom', 'Something else']];
+const CRIT_DEFAULT = { income_multiple: ['Monthly income at least 3x rent', '3'], evictions_years: ['No evictions in the last 5 years', '5'], collections_years: ['No rental collections in the last 2 years', '2'], references: ['At least 1 positive landlord reference', '1'] };
+function criteriaEditor(list) {
+  const rows = h('div', { class: 'rows-ed' });
+  const addRow = (c = { key: 'income_multiple', label: '', value: '' }) => {
+    const row = h('div', { class: 'row-ed crit', role: 'group', 'aria-label': 'Criterion' },
+      field({ label: 'Type', name: 'crit-key', type: 'select', value: c.key, options: CRIT }),
+      field({ label: 'In plain words', name: 'crit-label', value: c.label, maxlength: 120 }),
+      field({ label: 'Number or value', name: 'crit-value', value: c.value, maxlength: 120 }),
+      btn('Remove', () => row.remove()));
+    const sel = row.querySelector('[name="crit-key"]');
+    sel.addEventListener('change', () => {
+      const d = CRIT_DEFAULT[sel.value];
+      if (!d) return;
+      const l = row.querySelector('[name="crit-label"]'), v = row.querySelector('[name="crit-value"]');
+      if (!l.value) l.value = d[0];
+      if (!v.value) v.value = d[1];
+    });
+    rows.append(row);
+    return row;
+  };
+  (list || []).forEach((c) => addRow({ key: c.key, label: c.label, value: String(c.value) }));
+  return h('div', { class: 'field', 'data-field': 'screeningCriteria' },
+    h('p', { class: 'label' }, 'Screening criteria'),
+    h('p', { class: 'help' }, 'Written criteria you apply to every applicant. KeyHelm shows each screening report next to these. It never scores or recommends applicants.'),
+    rows,
+    h('div', { class: 'row-actions' }, btn([icon('plus'), 'Add a criterion'], () => { const r = addRow(); r.querySelector('select').dispatchEvent(new Event('change')); r.querySelector('select').focus(); })),
+    h('p', { class: 'err', hidden: true }));
+}
+const readCriteria = (form) => $$('.row-ed.crit', form).map((r) => ({ key: r.querySelector('[name="crit-key"]').value, label: r.querySelector('[name="crit-label"]').value.trim(), value: r.querySelector('[name="crit-value"]').value.trim() })).filter((c) => c.label || c.value);
+
+function rulesSection(r) {
+  const co = r.coloradoLateFee || { minDaysLate: 7, flatCapCents: 5000, percentCap: 0.05 };
+  const form = h('form', { class: 'form card', novalidate: true },
+    h('h3', null, 'Repairs'),
+    h('div', { class: 'two' },
+      field({ label: 'Book repairs up to', name: 'repairSpendLimit', value: dollarBox(r.repairSpendLimit), prefix: '$', inputmode: 'decimal', help: 'Jobs at or under this go ahead. Anything more asks you first.' }),
+      field({ label: 'Emergency limit', name: 'emergencySpendLimit', value: dollarBox(r.emergencySpendLimit), prefix: '$', inputmode: 'decimal', help: 'Emergencies at or under this go ahead right away, even at night.' })),
+    h('h3', null, 'Rent'),
+    h('div', { class: 'two' },
+      field({ label: 'Rent is due on day', name: 'rentDueDay', type: 'select', value: r.rentDueDay, options: Array.from({ length: 28 }, (_, i) => [String(i + 1), String(i + 1)]) }),
+      field({ label: 'Grace days', name: 'graceDays', value: r.graceDays, inputmode: 'numeric', help: 'Days after the due date before rent counts as late.' })),
+    field({ label: 'Late fee in your lease', name: 'lateFee', value: dollarBox(r.lateFee), prefix: '$', inputmode: 'decimal',
+      help: `Colorado: no late fee until rent is ${co.minDaysLate} days late, and no more than ${money(co.flatCapCents)} or ${Math.round(co.percentCap * 100)}% of the past-due rent, whichever is greater. KeyHelm asks you each time; tenants pay any fee to you.` }),
+    field({ label: 'How tenants pay you', name: 'howToPay', type: 'textarea', rows: 2, value: r.howToPay, maxlength: 300, placeholder: 'Zelle to you@example.com, or mail a check to ...', help: 'Quoted in rent reminders. Tenants always pay you directly.' }),
+    h('h3', null, 'Tenants and prospects'),
+    field({ label: 'Pet policy', name: 'petPolicy', type: 'textarea', rows: 3, value: r.petPolicy, maxlength: 500, help: 'Quoted to prospects word for word. Assistance animals are not pets.' }),
+    timeRange({ label: 'Quiet hours', name: 'quietHours', value: r.quietHours, help: 'No routine texts to tenants during these hours. Emergencies still go through.' }),
+    radios({ label: 'Showings', name: 'showingMode', value: r.showingMode, options: [['self', 'Self-tours', 'Prospects tour on their own with a one-time code after an ID check'], ['owner', 'I show it myself', 'KeyHelm asks you to confirm each time'], ['both', 'Both', 'Self-tours, and you can show it too']] }),
+    timeRange({ label: 'Showing hours', name: 'showingHours', value: r.showingHours }),
+    field({ label: 'Start renewals this many days before a lease ends', name: 'renewalLeadDays', value: r.renewalLeadDays, inputmode: 'numeric', help: 'At least 90, because of Colorado notice rules.' }),
+    field({ label: 'Topics you always handle yourself', name: 'alwaysRouteToOwner', value: (r.alwaysRouteToOwner || []).join(', '), maxlength: 600, help: 'Separate with commas, like: parking, guests, subletting. Messages about these come straight to you.' }),
+    factsEditor('facts', r.facts, 'Facts KeyHelm can share', 'Trash day, move-in steps, office hours. Quoted word for word.'),
+    criteriaEditor(r.screeningCriteria),
+    r.savedAt ? h('p', { class: 'help' }, `Last saved ${day(r.savedAt)} at ${time(r.savedAt)}.`) : h('p', { class: 'help' }, "These are safe starting rules. Check them and save so they're yours."),
+    actions('Save rules', false));
+  onSubmit(form, async () => {
+    const body = {
+      repairSpendLimit: val(form, 'repairSpendLimit'), emergencySpendLimit: val(form, 'emergencySpendLimit'), rentDueDay: val(form, 'rentDueDay'), graceDays: val(form, 'graceDays'),
+      lateFee: val(form, 'lateFee') || '0', howToPay: val(form, 'howToPay'), petPolicy: val(form, 'petPolicy'),
+      quietHours: { start: val(form, 'quietHoursStart'), end: val(form, 'quietHoursEnd') }, showingMode: val(form, 'showingMode'),
+      showingHours: { start: val(form, 'showingHoursStart'), end: val(form, 'showingHoursEnd') }, renewalLeadDays: val(form, 'renewalLeadDays'),
+      alwaysRouteToOwner: val(form, 'alwaysRouteToOwner').split(',').map((s) => s.trim()).filter(Boolean), facts: readFacts(form, 'facts'), screeningCriteria: readCriteria(form),
+    };
+    S.rules = await api('PUT', '/api/rules', body);
+    toast('Rules saved.');
+    refresh();
+  });
+  return sectionWithId('set-rules', 'Rules', h('p', { class: 'muted' }, 'How KeyHelm runs your homes. Change them anytime.'), form);
+}
+function sectionWithId(sid, title, ...kids) {
+  return h('section', { class: 'block', 'aria-labelledby': sid }, h('h2', { id: sid, tabindex: '-1' }, title), kids);
+}
+function profileSection(me) {
+  const o = me.owner || {};
+  const pw = field({ label: 'Your current password', name: 'password', type: 'password', autocomplete: 'current-password', help: 'Needed to change your email.' });
+  pw.hidden = true;
+  const form = h('form', { class: 'form card', novalidate: true },
+    field({ label: 'Your name', name: 'name', value: o.name, autocomplete: 'name', maxlength: 80 }),
+    field({ label: 'Mobile number', name: 'phone', type: 'tel', value: phoneText(o.phone), autocomplete: 'tel', inputmode: 'tel' }),
+    field({ label: 'Email', name: 'email', type: 'email', value: o.email, autocomplete: 'email' }),
+    pw,
+    check({ label: 'Text me decisions and alerts', name: 'smsConsent', checked: o.smsConsent !== false, help: 'Msg and data rates may apply. Reply STOP to stop. When this is off, alerts come by email.' }),
+    actions('Save profile', false));
+  const emailIn = form.elements.namedItem('email');
+  emailIn.addEventListener('input', () => { pw.hidden = !(o.hasPassword && emailIn.value.trim().toLowerCase() !== String(o.email || '').toLowerCase()); });
+  onSubmit(form, async () => {
+    const body = {};
+    if (val(form, 'name') !== (o.name || '')) body.name = val(form, 'name');
+    if (val(form, 'phone') !== phoneText(o.phone)) body.phone = val(form, 'phone');
+    if (val(form, 'email').toLowerCase() !== String(o.email || '').toLowerCase()) { body.email = val(form, 'email'); if (!pw.hidden) body.password = form.elements.namedItem('password').value; }
+    if (checked(form, 'smsConsent') !== (o.smsConsent !== false)) body.smsConsent = checked(form, 'smsConsent');
+    if (!Object.keys(body).length) { toast('Nothing to save. Your profile is up to date.'); return; }
+    S.me = await api('PATCH', '/api/me', body);
+    toast('Profile saved.');
+    refresh();
+  });
+  const pwForm = h('form', { class: 'form', novalidate: true },
+    h('input', { type: 'email', name: 'username', autocomplete: 'username', value: o.email || '', hidden: true }),
+    o.hasPassword ? field({ label: 'Current password', name: 'currentPassword', type: 'password', autocomplete: 'current-password' }) : null,
+    field({ label: 'New password', name: 'newPassword', type: 'password', autocomplete: 'new-password', help: 'At least 10 characters. A short sentence is easy to remember.' }),
+    field({ label: 'Type it again', name: 'confirm', type: 'password', autocomplete: 'new-password' }),
+    actions('Change password', false));
+  onSubmit(pwForm, async () => {
+    const next = pwForm.elements.namedItem('newPassword').value;
+    if (next !== pwForm.elements.namedItem('confirm').value) throw invalid("The two passwords don't match. Please type them again.", 'confirm');
+    const cur = pwForm.elements.namedItem('currentPassword');
+    await post('/api/me/password', { currentPassword: cur ? cur.value : undefined, newPassword: next });
+    pwForm.reset();
+    toast('Password changed. Your other devices were signed out.');
+  });
+  return sectionWithId('set-profile', 'Profile', form, h('details', { class: 'block' }, h('summary', null, 'Change your password'), h('div', { class: 'card' }, pwForm)));
+}
+function billingSection(me) {
+  const b = me.billing;
+  const rows = b ? [
+    ['Plan', b.planName || (me.plan && me.plan.name) || 'Not set'], ['Status', BILL_STATUS[b.status] || humanize(b.status)],
+    b.termLabel ? ['Billing', b.termLabel] : null, b.doors ? ['Doors', String(b.doors)] : null,
+    b.startedAt ? ['Since', day(b.startedAt, { year: true })] : null, b.contractEndsAt ? ['Agreement ends', day(b.contractEndsAt, { year: true })] : null,
+  ] : [['Plan', (me.plan && me.plan.name) || 'Not set'], ['Status', 'No subscription on file']];
+  const out = h('div', { 'aria-live': 'polite' });
+  const manage = btn('Manage billing', null, 'primary big');
+  manage.addEventListener('click', () => busy(manage, 'Opening...', async () => {
+    try {
+      const r = await post('/api/billing/portal');
+      const u = httpsUrl(r && r.url);
+      if (!u) throw new ApiError('', 404);
+      location.assign(u);
+    } catch (e) {
+      if (e.status === 401) return;
+      // 409: no subscription yet (the server says so in plain words). Anything else (billing not set up,
+      // Stripe unreachable, no billing page on this server): support handles changes by email.
+      const help = ['To change your plan, card or billing details, email ', supportLink(), " and we'll take care of it."];
+      fill(out, h('p', { class: 'note' }, e.status === 0 ? e.message : e.status === 409 ? [e.message, ' ', ...help] : help));
+    }
+  }));
+  return sectionWithId('set-billing', 'Billing', h('div', { class: 'card' }, kv(rows),
+    h('p', { class: 'help' }, 'KeyHelm only bills for your KeyHelm subscription. It never touches rent, deposits or vendor payments.'),
+    h('div', { class: 'row-actions' }, manage), out));
+}
+function accountSection() {
+  const out = (all) => async () => {
+    try { await post('/logout' + (all ? '?all=1' : ''), {}); } catch { /* signed out either way */ }
+    location.assign('/login?signed_out=1');
+  };
+  return sectionWithId('set-account', 'Sign out', h('div', { class: 'card' },
+    h('p', { class: 'muted' }, 'Signing out on a shared computer keeps your account safe.'),
+    h('div', { class: 'row-actions' }, btn('Sign out', out(false), 'primary big'), btn('Sign out on all devices', out(true)))));
+}
+const VIEWS = { today: viewToday, rent: viewRent, repairs: viewRepairs, messages: viewMessages, homes: viewHomes, settings: viewSettings };
+
+/* =====================================================================
+   Start: offline banner, fresh data when you come back, first screen
+   ===================================================================== */
+const setOnline = () => { $('#offline').hidden = navigator.onLine !== false; };
+window.addEventListener('offline', setOnline);
+window.addEventListener('online', () => { setOnline(); toast("You're back online."); refresh(); });
+setOnline();
+const editing = () => sheet.open || !!$('main .panel:not([hidden])') || !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('main form'));
+const stale60 = () => document.visibilityState === 'visible' && Date.now() - lastDraw > 60_000 && !editing() && navigator.onLine !== false;
+document.addEventListener('visibilitychange', () => { if (stale60()) refresh(); });
+setInterval(() => { if (stale60()) refresh(); }, 120_000);
+
+show(false);
+badges();
+})();
+</script>
+</body>
+</html>

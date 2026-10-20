@@ -142,7 +142,7 @@ test('checkout → one-time setup link → password → session → /api/me (wit
 
     const page = await fetch(t.base + linkPath);
     assert.equal(page.status, 200);
-    assert.equal(page.headers.get('referrer-policy'), 'no-referrer');
+    assert.equal(page.headers.get('referrer-policy'), 'same-origin', 'the link never leaks to another site, and the form keeps its Origin');
     const pageHtml = await page.text();
     assert.match(pageHtml, /Create your password/);
     assert.match(pageHtml, /pat@example\.com/);
@@ -179,7 +179,10 @@ test('checkout → one-time setup link → password → session → /api/me (wit
     // The app: signed in → served; signed out → sign in first. Dashboard never shows the hash either.
     const app = await t.call(cookie, 'GET', '/app', undefined, {});
     assert.equal(app.status, 200);
-    assert.match(await app.text(), /href="https:\/\/calendly\.com\/keyhelm\/onboarding\?[^"]*utm_content=[^"]*">Book your onboarding call</);
+    // The owner app (apps/owner) draws the "Book your onboarding call" button from /api/me's calendlyUrl (checked above).
+    const appHtml = await app.text();
+    assert.match(appHtml, /Book your onboarding call/);
+    assert.match(appHtml, /get\('\/api\/me'\)/);
     assert.match((await fetch(t.base + '/login')).headers.get('content-security-policy') ?? '', /script-src 'none'/);
     const out = await fetch(t.base + '/app', { redirect: 'manual' });
     assert.equal(out.status, 302);
