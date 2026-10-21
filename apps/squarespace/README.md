@@ -30,12 +30,14 @@ calculator and signup window use a small script).
 1. **Pages** → **+** → **Blank page**. Name it **Home**. Click the gear → **Set as homepage**.
 2. Click **Edit** → **Add block** → **Code**. Delete the sample text and paste the whole of `home.html`.
    Turn **Display source** off. Drag the block's edges so it spans the full width of the section. **Save**.
+   Scripts often don't run inside the editor: check the calculator and **Get started** in a private window.
 3. For each legal page: **Pages** → **+** (under **Not linked**) → **Blank page** → name it from the table →
    gear → **URL slug** from the table → **Edit** → **Add block** → **Code** → paste the file → **Save**.
 4. Each page's gear → **SEO** → paste the page title from the table.
 5. Search the dashboard for **Browser icon** and upload `keyhelm-logo-512.png`.
-6. **Settings** → **Cookies & visitor data** → turn the **Cookie banner** on with Accept and Decline.
-   The cookie policy on this site says there is a banner, so this step is required.
+6. **Settings** → **Cookies & visitor data** → turn the **Cookie banner** on and pick the option where
+   visitors must accept before non-essential cookies are used (opt-in, with Accept and Decline buttons).
+   The cookie policy says analytics cookies are set only after Accept, so this step is required.
 7. **Settings** → **Domains**: connect or buy the KeyHelm domain.
 8. Delete Squarespace's sample pages so they don't show up in search.
 

@@ -38,11 +38,14 @@ function scope(css: string, root: string): string {
   while (i < css.length) {
     const open = css.indexOf('{', i);
     if (open < 0) break;
-    const head = css.slice(i, open).trim(), end = block(open), inner = css.slice(open + 1, end);
+    const head = css.slice(i, open).trim(), end = block(open);
+    let inner = css.slice(open + 1, end);
     if (head.startsWith('@font-face')) { /* dropped */ }
     else if (head.startsWith('@media') || head.startsWith('@supports')) out += `${head}{${scope(inner, root)}}`;
     else if (head.startsWith('@')) out += `${head}{${inner}}`;
     else out += head.split(',').map((sel) => {
+      // body's overflow-x would stop the sticky nav; the frame clips sideways overflow on the real body instead.
+      if (sel.trim() === 'body') inner = inner.replace(/overflow-x:hidden;?/, '');
       const s = sel.trim();
       if (s.startsWith(':root')) return root + s.slice(5);
       if (s === 'html' || s === 'body') return root;
@@ -90,12 +93,15 @@ function home(): string {
 
   let js = swap(script, /fetch\('\/api\/public\/signup'[\s\S]*?btn\.textContent='Continue to checkout'\}\);/, "$('#m-ref').value=ref;$('#m-form').submit();", 'signup fetch');
   // Squarespace may wrap the page in transformed containers, so the dialog moves to <body> to cover the screen.
+  js = swap(js, "querySelectorAll('a[href],button:not([disabled]),input,select')", "querySelectorAll('a[href],button:not([disabled]),input:not([type=hidden]),select')", 'focus trap selector');
+  // Coming back from the app's error page with Back: the button must work again.
+  js = swap(js, '})();\n</script>', "window.addEventListener('pageshow',function(){var b=$('#m-submit');b.disabled=false;b.textContent='Continue to checkout'});\n})();\n</script>", 'script end');
   js = swap(js, "var modal=$('#modal'),", "document.body.appendChild($('#kh-modal-root'));var modal=$('#modal'),", 'modal lookup');
 
   return `<!-- KeyHelm home page for Squarespace. Built by scripts/build-squarespace.ts from apps/site/site.body.html. Do not edit by hand. -->
 ${FONTS}
-<style>${SQUARESPACE_FRAME}
-${scope(css, '.kh-home')}</style>
+<style>${scope(css, '.kh-home')}
+${SQUARESPACE_FRAME}</style>
 <div class="kh-page kh-home">${body.trim()}</div>
 <div class="kh-home" id="kh-modal-root">${modal}</div>
 ${js}
@@ -108,6 +114,7 @@ const LOGO = '<svg width="28" height="28" viewBox="0 0 150 150" aria-hidden="tru
 /** Squarespace sets its own cookies and the fonts come from Google, so these sentences change on that host. */
 function squarespaceCookieWording(path: string, html: string): string {
   if (path === 'privacy') {
+    html = swap(html, 'Technical information our servers receive', 'Technical information our servers and our website host (Squarespace) receive', 'privacy technical information');
     html = swap(html, 'Railway (hosting), ', 'Railway (app hosting), Squarespace (website hosting), Google Fonts (website fonts), ', 'privacy service providers');
     return swap(html, '<p>Our website does not use advertising or analytics cookies and does not load third-party trackers. See our <a href="/cookies">Cookie policy</a>.</p>',
       '<p>Our website is hosted by Squarespace. It does not use advertising cookies or advertising trackers. Squarespace sets cookies needed to run and secure the site and, only if you accept them in the cookie banner, analytics cookies that count visits for us. See our <a href="/cookies">Cookie policy</a>.</p>', 'privacy cookie paragraph');
@@ -129,8 +136,8 @@ function legal(path: string, page: string): string {
   body = squarespaceCookieWording(path, body);
   return `<!-- KeyHelm /${path} page for Squarespace. Built by scripts/build-squarespace.ts from src/api/legal.ts. Do not edit by hand. -->
 ${FONTS}
-<style>${SQUARESPACE_FRAME}
-${scope(css, '.kh-legal')}</style>
+<style>${scope(css, '.kh-legal')}
+${SQUARESPACE_FRAME}</style>
 <div class="kh-page kh-legal">${body.trim()}</div>
 `;
 }

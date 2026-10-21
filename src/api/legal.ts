@@ -34,10 +34,10 @@ export function legalPage(title: string, body: string): string {
 <style>
 @font-face{font-family:'Bricolage Grotesque';font-weight:200 800;font-display:swap;src:url(/fonts/bricolage-grotesque-latin.woff2) format('woff2')}
 @font-face{font-family:'Figtree';font-weight:300 900;font-display:swap;src:url(/fonts/figtree-latin.woff2) format('woff2')}
-:root{--bg:#FFF6EC;--surface:#FFFFFF;--ink:#1E2B2F;--muted:#56636A;--line:#EADFD2;--brand:#A9401F;--sun-soft:#FCEBCB}
-@media (prefers-color-scheme:dark){:root{--bg:#12191B;--surface:#1A2427;--ink:#F3EEE7;--muted:#A5B0B3;--line:#2B393D;--brand:#F08F6C;--sun-soft:#3A2E17;color-scheme:dark}}
+:root{--bg:#FFF6EC;--surface:#FFFFFF;--ink:#1E2B2F;--muted:#56636A;--line:#EADFD2;--brand:#A9401F;--sun-soft:#FCEBCB;--focus:#A9401F}
+@media (prefers-color-scheme:dark){:root{--bg:#12191B;--surface:#1A2427;--ink:#F3EEE7;--muted:#A5B0B3;--line:#2B393D;--brand:#F08F6C;--sun-soft:#3A2E17;--focus:#E8A33D;color-scheme:dark}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.65 'Figtree',system-ui,sans-serif}
-a{color:var(--brand)}:focus-visible{outline:3px solid #E8A33D;outline-offset:2px}
+a{color:var(--brand)}:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 header,main,footer{max-width:760px;margin:0 auto;padding-inline:20px}
 header{padding-block:20px;border-bottom:1px solid var(--line)}header a{font:800 22px 'Bricolage Grotesque',system-ui,sans-serif;color:var(--ink);text-decoration:none}
 main{padding-block:32px 48px}h1,h2,h3{font-family:'Bricolage Grotesque',system-ui,sans-serif;line-height:1.15}h1{font-size:40px;margin:0 0 6px}h2{font-size:24px;margin:36px 0 8px}h3{font-size:19px;margin:22px 0 4px}
