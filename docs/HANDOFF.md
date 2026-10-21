@@ -175,14 +175,16 @@ Owner **Nate** (`DEMO_OWNER_PHONE`, Autopilot). Home **7610 S Rosemary Cir, Cent
 1. **The Oct 20 deploy (`270af79`, the whole launch build) never went live.** Railway still runs `9292002`
    from Oct 19, so the live site has none of the KeyHelm launch work yet. First job for the next chat:
    `docs/areas/infrastructure.md`, "The stuck deploy".
-2. **The pre-launch code review never finished** (session usage limit). Rerun it: `docs/areas/live-testing.md`.
-3. **Twilio and Postmark aren't connected,** so tenants can't text or email yet (replies only appear in `/play`). Go-live steps 5–6. Twilio 10DLC review takes weeks; toll-free verification is the faster start.
-4. **Stripe is in test mode.** Go-live step 7 once the account is activated.
-5. **Storage is still the JSON file** until the Postgres database is added (go-live step 2).
-6. **New AI request settings are untested against the live API until this deploy.** If Anthropic rejects one (structured output, effort, fallbacks), the code drops it and retries; watch the **ai** logs and run the Live check with conversations after deploying.
-7. **The repo is public.** Fine while there are no secrets in git; move to a private repo when convenient.
-8. **Demo owner shares Nate's phone** (see go-live step 8).
-9. **Early-cancellation charge for 12-month agreements** is invoiced by hand in Stripe (not automated).
+2. **Fix before launch: removing a vendor mid-repair can book the wrong vendor,** who then gets the tenant's
+   name and phone (`src/workflows/maintenance.ts`; details in `docs/areas/automation.md`).
+3. **The pre-launch code review never finished** (session usage limit). Rerun it: `docs/areas/live-testing.md`.
+4. **Twilio and Postmark aren't connected,** so tenants can't text or email yet (replies only appear in `/play`). Go-live steps 5–6. Twilio 10DLC review takes weeks; toll-free verification is the faster start.
+5. **Stripe is in test mode.** Go-live step 7 once the account is activated.
+6. **Storage is still the JSON file** until the Postgres database is added (go-live step 2).
+7. **New AI request settings are untested against the live API until this deploy.** If Anthropic rejects one (structured output, effort, fallbacks), the code drops it and retries; watch the **ai** logs and run the Live check with conversations after deploying.
+8. **The repo is public.** Fine while there are no secrets in git; move to a private repo when convenient.
+9. **Demo owner shares Nate's phone** (see go-live step 8).
+10. **Early-cancellation charge for 12-month agreements** is invoiced by hand in Stripe (not automated).
 
 ---
 

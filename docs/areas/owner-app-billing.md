@@ -24,15 +24,24 @@ The customer walks one path, so test it as one path: website **Get started** →
 - [x] Admin page `/admin`: customers, sign-in links, private offers, Calendly connect.
 - [ ] **Not live yet** (deploy of `270af79`, infrastructure.md).
 - [ ] **One full test-mode purchase on the live site** after the deploy: card `4242 4242 4242 4242`,
-      then set a password, sign in, add a home, sign out, sign back in (live-testing.md).
+      then set a password, sign in, add a home, sign out, sign back in (live-testing.md). Use an email with no
+      KeyHelm account yet (not the demo owner's): an account that already has homes gets its set-password link
+      by email instead, and email isn't set up yet.
 - [ ] Nate signs in for the first time through `/admin` → **Sign-in link** (HANDOFF go-live step 1).
 - [ ] Stripe live mode (Nate's clicks in HANDOFF go-live step 7). The server creates the live prices,
-      webhook and portal itself.
-- [ ] **12-month early-cancellation charge** is invoiced by hand in Stripe today. Optional: automate it
+      webhook and portal itself. First remove the test-mode customers: their sandbox Stripe ids don't exist in
+      live mode (**Manage billing** fails for them), and an email whose test subscription is still active is
+      refused at checkout ("already has an active KeyHelm account"). No admin button removes an owner yet, so
+      this needs a small admin tool or a fresh data store.
+- [ ] **12-month early-cancellation charge** is invoiced by hand in Stripe today. Owners can also cancel a
+      12-month agreement themselves in **Manage billing** (Stripe's portal) and KeyHelm sends Nate no alert, so
+      watch Stripe for cancellations. Optional: automate it
       (charge = (month-to-month price − agreement price) × months used).
 - [ ] **Referral credit is $50** (`REFERRAL_CREDIT_CENTS` in `src/billing/offers.ts`), large next to
       $8 to $20 per door. Nate's call whether to lower it.
-- [ ] Archive the old "Landwell" products and prices in the Stripe sandbox (unused; only confusing).
+- [ ] Archive the old "Landwell" products and prices in the Stripe sandbox, but only after the new build is live.
+      The code Railway runs today (`9292002`) still finds its 12-month and Autopilot Plus prices by their
+      `landwell_*` lookup keys, so archiving them now breaks those checkouts on the live site.
 - [ ] Small bugs seen in screenshots (Oct 21, `scripts/check-owner-app.mjs`): a to-do shows an internal
       charge id (`chg_8c2b28fb...`) to the owner; to-do titles show the phone in double parentheses
       ("Reply to Lisa Chen ((720) 555-0111)"); on a computer the left menu's white background stops partway
@@ -63,8 +72,9 @@ is set in Railway and that endpoint exists, the server's self-setup leaves the w
 ## Rules for this area
 
 - KeyHelm bills only its own subscription. Never rent, deposits or vendor payments.
-- `LIST_PRICE` and `BASE_PRICE` in `src/billing/offers.ts` must match Stripe and the website.
-- Money in the API is cents; the app shows dollars. Dates in the owner's time zone.
+- `LIST_PRICE` in `src/billing/offers.ts` must match the Stripe prices and the website. `BASE_PRICE` is the
+  private-offer price: it is not a Stripe price and is not on the website.
+- The API takes dollars in requests and answers in cents; the app shows dollars. Dates in the owner's time zone.
 - Every change request from the app sends `X-KeyHelm: 1`; the server refuses changes without it.
 - A person must never get a sign-in link to someone else's account (`/billing/done` only hands a link to a
   brand-new paying account; everything else goes by email).
@@ -73,9 +83,10 @@ is set in Railway and that endpoint exists, the server's self-setup leaves the w
 ## How to check your work
 
 ```
-npm test && npm run typecheck
-npm start                                  # http://localhost:8787/app (sign in via /admin link locally)
-node scripts/check-owner-app.mjs           # clicks through every screen in Chromium
+npm test && npm run typecheck && npm run demo   # demo must show 0 failed runs
+ADMIN_API_TOKEN=local-admin npm start           # open http://localhost:8787/admin, paste local-admin, Connect,
+                                                # Sign-in link, open it, set a password, land in /app
+node scripts/check-owner-app.mjs                # needs Playwright (PLAYWRIGHT_MODULE); "Skipped" means it did not run
 ```
 Stripe sandbox reads (prices, webhooks, subscriptions) can be done with the Stripe connector in the chat
 (account `acct_1Sf7x1EtnoC4AY9t`, livemode false).

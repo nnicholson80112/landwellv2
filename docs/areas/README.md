@@ -31,20 +31,25 @@ Why it's split this way:
 1. **The last deploy didn't go live (area 4).** `main` is at `270af79` (the whole KeyHelm launch
    build), but the live app still runs `9292002` from Oct 19. The post-deploy Live check
    (GitHub Actions run 39491336427) waited 15 minutes and failed: "live is 9292002", and `/sms`
-   returned 404 because the old code has no `/sms` page. Railway either failed to build, or the new
-   code didn't answer `/health` in time on boot, so Railway kept the old version. **Nate:** Railway →
+   returned 404 because the old code has no `/sms` page. Railway either failed to build, the new
+   code didn't answer `/health` in time on boot, or Railway never started (or skipped) the deploy; either way it
+   kept the old version. If the newest deploy says **Skipped** or isn't there, say so. **Nate:** Railway →
    project → **api** → **Deployments** → the newest (failed) one → **View logs** (Build and Deploy).
    Paste what the log says (not any secrets) into the chat. Check the **ai** service's deployments too.
-   An agent can also try to reproduce it: boot `270af79` against a data file written by `9292002`
-   with the production variable names (see infrastructure.md).
-2. **Code review before selling (area 5).** The six-angle review never finished (the agents hit the
+   A local try on Oct 21 found the new code boots fine against old data, so Railway's own deploy list and
+   logs are the place to look (infrastructure.md, "The stuck deploy").
+2. **Fix before launch: removing a vendor mid-repair can book the wrong vendor (area 2).** Found by the
+   Oct 21 doc check and confirmed in code (`src/workflows/maintenance.ts`, the `candidates` list is rebuilt
+   outside a step). The wrong vendor then gets the tenant's name and phone. Details in automation.md.
+3. **Code review before selling (area 5).** The six-angle review never finished (the agents hit the
    session usage limit). Rerun it in small batches: see live-testing.md.
-3. **Live test with conversations (area 5)** once `270af79` (or later) is live.
-4. Then the go-live clicks for Nate in `docs/HANDOFF.md` section 5 (Postgres, business email, domain,
+4. **Live test with conversations (area 5)** once `270af79` (or later) is live.
+5. Then the go-live clicks for Nate in `docs/HANDOFF.md` section 5 (Postgres, business email, domain,
    Postmark, Twilio, Stripe live, demo data off).
 
-Uncommitted work from the last chat: none (a small fix so uptime monitors' `HEAD` requests get 200
-was committed with these docs).
+Uncommitted work from the last chat: none. These docs, the subagents and a small fix so uptime monitors'
+`HEAD` requests get 200 are all on `main` (pushed Oct 21; like every push, that started a deploy and a Live
+check, which will hit the same stuck-deploy problem until it's fixed).
 
 ---
 
@@ -77,9 +82,11 @@ was committed with these docs).
 
 ## Paste this into a new chat
 
-> Read `docs/HANDOFF.md`, then `docs/areas/README.md`. Start with the "Right now" list: first find out
-> why commit 270af79 didn't go live on Railway (I'll paste the Railway deploy log if you need it),
-> fix it, push, and confirm the Live check passes. Then rerun the code review in small batches and
-> fix what it confirms. Use the subagents in `.claude/agents/` for each area, at most 2 to 3 at a
-> time. Don't ask me for help unless you need something only I can click; tell me exactly what to
+> Read `docs/HANDOFF.md`, then `docs/areas/README.md`, and work through its "Right now" list in order:
+> find out why commit 270af79 didn't go live on Railway (my Railway deploy log is below), fix it, push,
+> and confirm the Live check passes; fix the wrong-vendor repair bug; then rerun the code review in small
+> batches and fix what it confirms. Use the subagents in `.claude/agents/` for each area, at most 2 to 3
+> at a time. Don't ask me for help unless you need something only I can click; tell me exactly what to
 > click. Notify me when it's done.
+>
+> Railway deploy log:

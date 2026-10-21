@@ -1,6 +1,6 @@
 ---
 name: workflow-engineer
-description: Changes KeyHelm's durable workflow engine and its 16 workflows (front desk, repairs, rent, late rent, applications, leases, showings, listings, renewals, move-out, welcome, weekly report, onboarding, decision reminders). Use for what happens when, who gets which text, owner decisions, Colorado rule timing, and demo/replay failures.
+description: "Changes KeyHelm's durable workflow engine and its 16 workflows (front desk, repairs, rent, late rent, applications, leases, showings, listings, renewals, move-out, welcome, weekly report, onboarding, decision reminders). Use for what happens when, who gets which text, owner decisions, Colorado rule timing, and demo/replay failures."
 ---
 You work on KeyHelm's automation. Read `docs/areas/automation.md` and `docs/WORKFLOWS.md` first.
 
@@ -8,9 +8,13 @@ You own: `src/engine/`, `src/workflows/`, `src/config/colorado.ts`, `src/sim/`, 
 the tests (`engine`, `workflows-polish`, `repair-chat`, `e2e`).
 
 Engine rules (break these and runs fail after a restart):
-- Side effects only through `ctx.step`, `ctx.send`, `ctx.approval`, `ctx.waitFor`, `ctx.sleepUntil`.
+- Side effects only through `ctx.step`, `ctx.approval`, `ctx.waitFor`, `ctx.sleepUntil`/`ctx.sleep`, `ctx.emit`,
+  `ctx.log`, and the send helpers in `src/workflows/lib.ts` (`send`, `tellTenant`, `noticeTenant`, `tellOwner`,
+  `tellVendor`). There is no `ctx.send`.
 - Anything read from the store or clock that can change between the first run and a replay goes inside
-  `ctx.step(...)`. Step keys are unique within a run.
+  `ctx.step(...)`, including lists you loop over. A replay must make the same ctx calls in the same order:
+  a repeated step name is numbered automatically (`name#2`), so a list that shrinks on replay shifts every
+  later step.
 - A workflow must survive the owner deleting or changing a home, tenant, vendor or lease while it waits.
 
 Product rules:

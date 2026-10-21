@@ -23,13 +23,29 @@ They often need each other: a new kind of tenant message usually needs a guardra
 - [x] Guardrails before and after the model (emergencies → 911 for gas/fire/CO, fair housing,
       accommodations, legal topics → owner, amounts only from facts).
 - [ ] **Confirm the new AI request settings work against the real Claude API** once `270af79` is live
-      (structured output, effort, fallbacks). The code drops a rejected setting and retries, so watch
-      the **ai** service logs for "dropping" lines and run the Live check with conversations
-      (live-testing.md). Replies should now say "KeyHelm", not "Landwell".
+      (structured output, effort, fallbacks). The code drops a rejected setting and retries. In the **ai**
+      service logs, search `rejected` (the line reads "rejected effort; sending without it from now on";
+      a dropped setting stays off until the ai service restarts) and `failed, trying the next one` (Claude
+      failed and the rules answered). Each message should log a line like
+      `[ai] tenant → rent_question (0.90) by claude-haiku-5-5`. Then run the Live check with conversations
+      (live-testing.md). It passes even when the rules answer, so the log lines are the real proof.
+      Replies should now say "KeyHelm", not "Landwell".
 - [ ] Read the first real `/stats` cost numbers (hourly `[ai] cost so far` log line on the **ai**
-      service) and compare with the estimate (about 0.4 to 0.6 cents per message blended).
-- [ ] Workflow edits through the owner app: check that deleting a home, tenant, vendor or lease
-      while a workflow is waiting on it can't crash the run (part of the code review, live-testing.md).
+      service) and compare with the estimate (about 0.4 to 0.6 cents per message blended). The estimate
+      counts only messages a model answered, so divide the total by the "used a model" count. The line's
+      "per message" also counts free guardrail and rules replies. The totals reset on every deploy; the
+      JSONL logs in `/data/ai-logs` keep each message's cost. Also check caching: send two rent questions
+      within 5 minutes, and the second `[ai] tenant` line should show `cache read` above 0.
+- [ ] Workflow edits through the owner app: check that editing a home, tenant, vendor or lease,
+      marking a tenant former, or removing a home or vendor while a workflow is waiting on it can't crash
+      the run or text the wrong person (part of the code review, live-testing.md). The app can't delete
+      tenants or leases. It blocks removing a home or vendor with open work, but a listed home or a vendor
+      who already said no can still be removed.
+- [ ] **Fix before launch: removing a vendor mid-repair books the wrong vendor.** `src/workflows/maintenance.ts`
+      rebuilds `candidates` from the store outside a step. If the owner removes vendor 1 (who said no or
+      didn't answer) while vendor 2 is being asked, vendor 2's YES books vendor 3. Vendor 3 then gets the
+      tenant's name and phone, and the tenant is told vendor 3 is coming (checked locally on 5449d87). Keep
+      each vendor at its recorded place in the list (skip a removed one, don't filter it out) and add a test.
 - [ ] "When is the plumber coming?" after a job is booked escalates to Sonnet (costs ~0.85¢ instead
       of 0.02¢). Optional: keep status questions on Haiku.
 - [ ] After Twilio is live: one full real month with the founding client (the MVP test in HANDOFF
@@ -64,8 +80,11 @@ serves every owner; `src/ops/lines.ts` routes each sender to the right owner.
 ## Rules for this area
 
 - Anything that reads the store or the clock and can change between the first run and a replay goes
-  inside `ctx.step(...)`. Side effects only through `ctx.step`, `ctx.send`, `ctx.approval`,
-  `ctx.waitFor`, `ctx.sleepUntil`. Step keys must be unique per run.
+  inside `ctx.step(...)`. Side effects only through `ctx.step`, `ctx.approval`,
+  `ctx.waitFor`, `ctx.sleepUntil`/`ctx.sleep`, `ctx.emit`, `ctx.log` and the send helpers in `lib.ts`
+  (`send`, `tellTenant`, `noticeTenant`, `tellOwner`, `tellVendor`); there is no `ctx.send`. A replay must
+  make the same ctx calls in the same order. Repeated step names are numbered automatically (`name#2`),
+  so a list that changes between runs shifts every later step.
 - Fair housing: the AI never discusses neighborhoods, safety, schools, religion or protected traits,
   never says who a home is "good for", and never scores or recommends applicants.
 - KeyHelm never sends rent pay links or handles money. The owner marks rent received.
@@ -83,4 +102,7 @@ npm start   # then /play with the owner token (dev-token locally): text as Lisa,
 ```
 Good test messages: "The toilet won't stop running" · "Is the Aspen Court place available? Do you allow
 dogs?" · "Are there good schools nearby?" (neutral, no opinion) · "I smell gas" (911) · "Water is pouring
-out from under the dishwasher" (urgent, no 911) · "We'd like to renew" · "HELP" · "STOP".
+out from under the dishwasher" (emergency repair, shut-off help, no 911) · "We'd like to renew" · "STOP" then
+"START" (texts off, then back on; the owner is told). "HELP" gets no reply from KeyHelm on purpose (Twilio
+answers it), so in /play it only shows in the activity log. Locally the built-in rules answer, not Claude
+(the key lives only in Railway), so these test the rules and guardrails; Claude is checked on the live site.

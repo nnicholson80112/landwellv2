@@ -62,16 +62,20 @@ for (let i = 0; i < LENSES.length; i += 2) {
     batch,
     (l) => agent(`${COMMON}\n\nYour angle: ${l.prompt}\nRead the actual code paths end to end. Return at most 8 findings, most severe first.`, { label: `find:${l.key}`, phase: 'Find', schema: FINDINGS }),
     (r, l) => {
-      const found = r?.findings ?? []
+      if (!r) return null // the reviewer never finished: reported below as "No result from"
+      const found = r.findings ?? []
       for (const f of found) if (f.severity === 'medium') mediums.push({ lens: l.key, ...f })
-      return parallel(found.filter((f) => f.severity !== 'medium').map((f, j) => () =>
+      // Skeptics run one at a time per angle (at most 2 agents at once), not all at once.
+      const oneAtATime = async (jobs) => { const out = []; for (const job of jobs) out.push(await job().catch(() => null)); return out }
+      return oneAtATime(found.filter((f) => f.severity !== 'medium').map((f, j) => () =>
         agent(`${COMMON}\n\nAn earlier reviewer (${l.key} angle) reported this defect. Try hard to REFUTE it by reading the actual code (and running a quick local test or script if useful). Answer real=false if the scenario cannot happen as described (another check prevents it, the input can't reach that code, or it's intended behavior documented in docs/areas or docs/notes). If it IS real, say so and give the smallest correct fix.\n\nFinding: ${JSON.stringify(f)}`, { label: `verify:${l.key}:${j + 1}`, phase: 'Verify', schema: VERDICT })
           .then((v) => ({ lens: l.key, ...f, verdict: v }))))
     },
   )
   for (const f of results.flat().filter(Boolean)) {
     if (f.verdict?.real) confirmed.push(f)
-    else rejected.push({ lens: f.lens, title: f.title, why: f.verdict?.reasoning ?? 'reviewer did not finish' })
+    else if (!f.verdict) confirmed.push({ ...f, verdict: { real: null, reasoning: 'NOT VERIFIED: the skeptic did not finish. Check this one by hand before fixing or dropping it.' } })
+    else rejected.push({ lens: f.lens, title: f.title, why: f.verdict.reasoning })
   }
   const missing = batch.filter((l, k) => results[k] == null).map((l) => l.key)
   if (missing.length) log(`No result from: ${missing.join(', ')} (rerun with {"lenses": ${JSON.stringify(missing)}})`)
