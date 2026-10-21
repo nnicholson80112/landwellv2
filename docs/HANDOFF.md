@@ -1,7 +1,10 @@
-# KeyHelm: project handoff (as of Oct 20, 2026)
+# KeyHelm: project handoff (as of Oct 21, 2026)
 
 This file is the single source of truth for picking the project up in Claude Code.
 Read it top to bottom before changing anything. `CLAUDE.md` at the repo root points here.
+**Work is split into five areas** (website; workflows + AI; signup, billing and owner app; GitHub, Railway
+and data; live testing and review). Each has a doc with goals in `docs/areas/` and subagents in
+`.claude/agents/`; start at `docs/areas/README.md`, which also lists what to do first right now.
 Each feature has deeper notes in `docs/notes/` (owner-api, owner-ui, billing, postgres, ai-cost, ops,
 site-and-sms, twilio-a2p).
 
@@ -162,18 +165,24 @@ Owner **Nate** (`DEMO_OWNER_PHONE`, Autopilot). Home **7610 S Rosemary Cir, Cent
   - **AI cost:** Haiku 5.5 for routine, Sonnet 5.5 for repairs, cached prompt, structured output, cost per message in `/stats` and logs (estimate ~0.4–0.6¢ blended vs ~2¢ before; real numbers after deploy).
   - **Website** rebuilt for KeyHelm with the Stripe prices, calculator and FAQ; `/sms` program page and texting clauses for Twilio A2P; Twilio registration guide (`docs/notes/twilio-a2p.md`); terms and refund pages finished (12-month agreement terms, liability, disputes).
   - **Ops:** alerts to Nate (new customer, failures, emergencies with no vendor, AI fallback, past due, unrouted messages), shared-number routing, daily backups, `/api/admin/status`.
+- **Oct 20 evening:** pushed the launch build (`270af79`) to `main`; CI passed but Railway kept running
+  `9292002` (see current issue 1). Docs split into five work areas with subagents (`docs/areas/`, `.claude/agents/`).
 
 ---
 
 ## 8. Current issues (in priority order)
 
-1. **Twilio and Postmark aren't connected,** so tenants can't text or email yet (replies only appear in `/play`). Go-live steps 5–6. Twilio 10DLC review takes weeks; toll-free verification is the faster start.
-2. **Stripe is in test mode.** Go-live step 7 once the account is activated.
-3. **Storage is still the JSON file** until the Postgres database is added (go-live step 2).
-4. **New AI request settings are untested against the live API until this deploy.** If Anthropic rejects one (structured output, effort, fallbacks), the code drops it and retries; watch the **ai** logs and run the Live check with conversations after deploying.
-5. **The repo is public.** Fine while there are no secrets in git; move to a private repo when convenient.
-6. **Demo owner shares Nate's phone** (see go-live step 8).
-7. **Early-cancellation charge for 12-month agreements** is invoiced by hand in Stripe (not automated).
+1. **The Oct 20 deploy (`270af79`, the whole launch build) never went live.** Railway still runs `9292002`
+   from Oct 19, so the live site has none of the KeyHelm launch work yet. First job for the next chat:
+   `docs/areas/infrastructure.md`, "The stuck deploy".
+2. **The pre-launch code review never finished** (session usage limit). Rerun it: `docs/areas/live-testing.md`.
+3. **Twilio and Postmark aren't connected,** so tenants can't text or email yet (replies only appear in `/play`). Go-live steps 5–6. Twilio 10DLC review takes weeks; toll-free verification is the faster start.
+4. **Stripe is in test mode.** Go-live step 7 once the account is activated.
+5. **Storage is still the JSON file** until the Postgres database is added (go-live step 2).
+6. **New AI request settings are untested against the live API until this deploy.** If Anthropic rejects one (structured output, effort, fallbacks), the code drops it and retries; watch the **ai** logs and run the Live check with conversations after deploying.
+7. **The repo is public.** Fine while there are no secrets in git; move to a private repo when convenient.
+8. **Demo owner shares Nate's phone** (see go-live step 8).
+9. **Early-cancellation charge for 12-month agreements** is invoiced by hand in Stripe (not automated).
 
 ---
 

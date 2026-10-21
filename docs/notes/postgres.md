@@ -25,7 +25,7 @@ No npm packages were added. The Postgres client is written on Node built-ins.
 **PgStore** loads everything into memory at boot (like `MemoryStore`), so reads stay instant and
 the store stays synchronous. Every change marks that record as unsaved. `flush()` (the engine
 calls it after each piece of work, and a timer every 2 s) starts **one transaction** that
-deletes and upserts all unsaved items in batches (500 items / 4 MB per statement, jsonb
+deletes and upserts all unsaved items in batches (500 items / 4 MB per statement, json
 parameters, `ON CONFLICT DO UPDATE`).
 
 - Changes made while a save is in flight wait for the next save. Nothing is lost.
@@ -35,8 +35,8 @@ parameters, `ON CONFLICT DO UPDATE`).
 - `flushNow()` saves immediately and waits. SIGTERM (every Railway redeploy) finishes queued
   work, calls `flushNow()`, then exits.
 - If Postgres refuses one item (for example a key too long for its index), that item is
-  reported loudly (`SAVE REFUSED`) and the rest of the batch still saves. Text Postgres can't
-  hold in jsonb (NUL characters, half an emoji) is cleaned instead of failing.
+  reported loudly (`SAVE REFUSED`) and the rest of the batch still saves. Text Postgres json can't
+  hold (NUL characters, half an emoji) is cleaned instead of failing.
 - **One writer at a time.** Each boot takes a "writer" number in `kh_meta` in the same
   transaction that loads the data. If an older copy of the app is still running (for example
   during a deploy), its next save sees it was replaced, stops saving and stops its scheduled
@@ -105,7 +105,7 @@ would write over the edit.
 `tests/postgres.test.ts` (21 tests here; 33 when `PG_TEST_URL` is also set):
 
 - Pure: URL parsing (decoding, defaults, SSL settings, errors, redaction), SCRAM against the
-  RFC 7677 example, MD5 format, jsonb text cleaning.
+  RFC 7677 example, MD5 format, json text cleaning.
 - On every available database: SCRAM login, parameters and types, multi-statement DDL, large
   results, errors with SQLSTATE and the connection staying usable, transactions rolling back,
   reconnect after the server session is killed (in flight and idle), messages split into
@@ -145,10 +145,8 @@ Throwaway Postgres 16 on localhost, the real `src/api/server.ts`, `SEED_DEMO=tru
   of records); a later step can move reads into SQL if data grows a lot.
 - **Saves trail by up to ~2 s.** A hard crash (not a normal redeploy) can lose changes from the
   last moment. A normal redeploy (SIGTERM) saves everything first.
-- **jsonb orders object keys** (shorter keys first). Values and array order are kept, but after
-  a restart an object such as a home's `facts` lists its keys in jsonb order, so listing bullet
-  order can differ from the order typed. If that matters, change the two columns to `json`
-  (one-line change in `pg-store.ts`; existing rows convert with `alter table ... type json`).
+- **Columns are `json`, not `jsonb`,** so every object keeps its keys in the order the app wrote
+  them (a home's `facts` list stays in the order typed). A test checks this.
 - **One running copy.** A second copy takes over and the first stops saving. Not for running
   several api copies at once.
 - **Fresh starts (`DATA_VERSION`) apply only to the JSON file**, never to Postgres, so a version
