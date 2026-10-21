@@ -68,9 +68,9 @@ button,input,select{font:inherit;color:inherit}
 .nav .demo-link{display:none}
 @media (min-width:980px){.links{display:flex}.nav .acts{margin-left:8px}.nav .demo-link{display:inline-flex}}
 .cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:10px;padding:14px 22px;font-weight:700;font-size:16px;min-height:52px;cursor:pointer;text-decoration:none;transition:transform .15s, box-shadow .15s, background .15s, border-color .15s}
-.cta.primary{background:var(--brand);color:var(--brand-ink);box-shadow:0 10px 24px -12px var(--brand)}
+.cta.primary{background:var(--brand);color:var(--brand-ink);box-shadow:0 12px 28px -10px var(--brand),0 0 0 1px var(--brand-deep)}
 .cta.primary:hover{background:var(--brand-deep);transform:translateY(-1px)}
-.cta.ghost{background:var(--surface);color:var(--ink);border:1.5px solid var(--line)}
+.cta.ghost{background:var(--surface);color:var(--ink);border:2px solid var(--ink)}
 .cta.ghost:hover{border-color:var(--brand)}
 .cta.sm{min-height:44px;padding:9px 16px;font-size:15px}
 .cta svg{width:18px;height:18px;flex:none}
@@ -86,7 +86,7 @@ button,input,select{font:inherit;color:inherit}
 .hero .lead{font-size:clamp(17px,2.2vw,20px);color:var(--muted);max-width:52ch}
 .hero .lead b{color:var(--ink)}
 .hero .ctas{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
-.hero .ctas .cta{flex:1 1 200px}
+.hero .ctas .cta{flex:1 1 200px;min-height:58px;font-size:18px;padding-inline:28px}
 @media (min-width:600px){.hero .ctas .cta{flex:0 0 auto}}
 .ticks{list-style:none;padding:0;margin:20px 0 0;font-size:15px;color:var(--muted);display:flex;gap:8px 18px;flex-wrap:wrap}
 .ticks li{display:inline-flex;align-items:center;gap:7px}
@@ -253,6 +253,14 @@ footer .addr{display:block}
 footer .addr:empty{display:none}
 footer p+p,footer address+p{margin-top:8px}
 footer .brandline{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:800;font-size:18px;color:var(--ink)}
+
+/* sticky call to action on phones */
+.mbar{display:none}
+@media (max-width:759px){
+  .mbar{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;gap:10px;padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -10px 24px -14px rgba(30,43,47,.35)}
+  .mbar .cta{flex:1 1 0;min-height:50px;padding-inline:12px}
+  footer{padding-bottom:110px}
+}
 
 /* signup dialog */
 .check{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start;font-size:14px;color:var(--muted)}
@@ -504,6 +512,8 @@ footer .brandline{display:flex;align-items:center;gap:8px;font-family:var(--disp
   </div>
   <nav aria-label="Policies"><a href="/privacy">Privacy policy</a><a href="/terms">Terms of service</a><a href="/sms">Text messages</a><a href="/cookies">Cookie policy</a><a href="/refunds">Refund and cancellation policy</a><a href="/accessibility">Accessibility</a></nav>
 </div></footer>
+
+<div class="mbar" role="region" aria-label="Get started"><button type="button" class="cta primary" data-open="start">Get started</button><a class="cta ghost" href="/demo">Book a demo</a></div>
 
 <div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="m-title">
   <form class="sheet" id="m-form" autocomplete="on" novalidate>

@@ -3,7 +3,7 @@
 // nothing leaks into Squarespace's own pages, and hides Squarespace's header and footer on
 // that page (the snippet brings KeyHelm's own nav and footer).
 //
-//   BUSINESS_EMAIL=help@yourdomain.com npm run build:squarespace
+//   npm run build:squarespace   (email defaults to admin@keyhelm.app; set BUSINESS_EMAIL to change it)
 //
 // Differences from the Railway-hosted site, because Squarespace is a different host:
 //  - "Book a demo call" links straight to Calendly (there is no /demo redirect on Squarespace).
@@ -17,7 +17,7 @@ import { BUSINESS } from '../src/config/business.ts';
 import { accessibilityStatement, cookiePolicy, privacyPolicy, refundPolicy, smsProgram, termsOfService } from '../src/api/legal.ts';
 
 const APP_URL = (process.env.APP_URL || 'https://api-production-66895.up.railway.app').replace(/\/+$/, '');
-const DEMO_URL = process.env.CALENDLY_URL || 'https://calendly.com/nnicholson80112';
+const DEMO_URL = process.env.CALENDLY_URL || 'https://calendly.com/nnicholson80112/30min';
 const OUT = new URL('../apps/squarespace/', import.meta.url);
 const FONTS = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Figtree:wght@400..900&display=swap">';
 
@@ -57,6 +57,14 @@ function scope(css: string, root: string): string {
   return out;
 }
 
+/**
+ * Squarespace styles h1, p, a and friends directly (site colors, fonts, sizes), which beats anything a
+ * snippet only inherits and gave black text on the dark theme. This puts them back to inherit at low
+ * specificity, so the snippet's own rules still win. Goes before the scoped CSS.
+ */
+const SQUARESPACE_RESET = `.kh-page :where(h1,h2,h3,h4,p,li,ul,ol,a,span,b,strong,small,em,label,summary,td,th,button,input,select,textarea,address,blockquote,figcaption,code,nav,div),.kh-modal :where(h2,p,a,span,label,button,input,select,small,b,div){color:inherit;font-family:inherit;font-size:inherit;line-height:inherit;letter-spacing:inherit;text-transform:none;white-space:normal}
+.kh-page :where(b,strong){font-weight:700}`;
+
 /** Hides Squarespace's own header and footer on this page and lets the snippet run edge to edge. */
 const SQUARESPACE_FRAME = `
 body:has(.kh-page) #header,body:has(.kh-page) .header-announcement-bar-wrapper,body:has(.kh-page) #footer-sections{display:none!important}
@@ -89,10 +97,11 @@ function home(): string {
     body = swap(body, ` id="${id}"`, ` id="${id}" name="${name}"`, `signup field ${id}`);
   }
   const modal = body.match(/<div class="modal"[\s\S]*?<\/form>\s*<\/div>/)![0];
-  body = body.replace(modal, '');
+  const mbar = body.match(/<div class="mbar"[\s\S]*?<\/div>/)![0];
+  body = body.replace(modal, '').replace(mbar, '');
 
   let js = swap(script, /fetch\('\/api\/public\/signup'[\s\S]*?btn\.textContent='Continue to checkout'\}\);/, "$('#m-ref').value=ref;$('#m-form').submit();", 'signup fetch');
-  // Squarespace may wrap the page in transformed containers, so the dialog moves to <body> to cover the screen.
+  // Squarespace may wrap the page in transformed containers, so the dialog and the phone call-to-action bar move to <body>.
   js = swap(js, "querySelectorAll('a[href],button:not([disabled]),input,select')", "querySelectorAll('a[href],button:not([disabled]),input:not([type=hidden]),select')", 'focus trap selector');
   // Coming back from the app's error page with Back: the button must work again.
   js = swap(js, '})();\n</script>', "window.addEventListener('pageshow',function(){var b=$('#m-submit');b.disabled=false;b.textContent='Continue to checkout'});\n})();\n</script>", 'script end');
@@ -100,10 +109,11 @@ function home(): string {
 
   return `<!-- KeyHelm home page for Squarespace. Built by scripts/build-squarespace.ts from apps/site/site.body.html. Do not edit by hand. -->
 ${FONTS}
-<style>${scope(css, '.kh-home')}
+<style>${SQUARESPACE_RESET}
+${scope(css, '.kh-home')}
 ${SQUARESPACE_FRAME}</style>
 <div class="kh-page kh-home">${body.trim()}</div>
-<div class="kh-home" id="kh-modal-root">${modal}</div>
+<div class="kh-home kh-modal" id="kh-modal-root">${mbar}${modal}</div>
 ${js}
 `;
 }
@@ -136,7 +146,8 @@ function legal(path: string, page: string): string {
   body = squarespaceCookieWording(path, body);
   return `<!-- KeyHelm /${path} page for Squarespace. Built by scripts/build-squarespace.ts from src/api/legal.ts. Do not edit by hand. -->
 ${FONTS}
-<style>${scope(css, '.kh-legal')}
+<style>${SQUARESPACE_RESET}
+${scope(css, '.kh-legal')}
 ${SQUARESPACE_FRAME}</style>
 <div class="kh-page kh-legal">${body.trim()}</div>
 `;

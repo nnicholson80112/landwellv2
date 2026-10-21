@@ -5,7 +5,7 @@ own styles, KeyHelm's nav and footer, and hides Squarespace's header and footer 
 Don't edit these files by hand. Edit `apps/site/site.body.html` or `src/api/legal.ts`, then rebuild:
 
 ```
-BUSINESS_EMAIL=help@yourdomain.com npm run build:squarespace
+npm run build:squarespace          # email defaults to admin@keyhelm.app
 ```
 
 | File | Squarespace page | URL slug | Page title (SEO) |
