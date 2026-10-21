@@ -33,6 +33,10 @@ The customer walks one path, so test it as one path: website **Get started** →
 - [ ] **Referral credit is $50** (`REFERRAL_CREDIT_CENTS` in `src/billing/offers.ts`), large next to
       $8 to $20 per door. Nate's call whether to lower it.
 - [ ] Archive the old "Landwell" products and prices in the Stripe sandbox (unused; only confusing).
+- [ ] Small bugs seen in screenshots (Oct 21, `scripts/check-owner-app.mjs`): a to-do shows an internal
+      charge id (`chg_8c2b28fb...`) to the owner; to-do titles show the phone in double parentheses
+      ("Reply to Lisa Chen ((720) 555-0111)"); on a computer the left menu's white background stops partway
+      down the page; the vendor phone inside tenant texts is unformatted (`+17209305782`).
 - [ ] Owner app gaps: PDF/Word lease upload (plain text only today), delete a lease, a "Publish listing"
       button, an `apple-touch-icon` PNG, two-step sign-in, email verification at signup.
 
