@@ -396,9 +396,11 @@ export function createApp(svc: Services) {
       // Webhooks come from a few provider IPs (Twilio, Stripe...), so they are limited per sender instead.
       if (!isWebhook) { const wait = LIMIT.ip.take(ip); if (wait) return tooMany(res, wait); }
       if ((req.method === 'GET' || req.method === 'HEAD') && STATIC.serve(req, res, url.pathname)) return;
-      const r = routes.find((x) => x.method === req.method && x.pattern.test(url.pathname));
+      // HEAD runs the GET route (uptime monitors use it); Node drops the body for HEAD.
+      const method = req.method === 'HEAD' ? 'GET' : req.method;
+      const r = routes.find((x) => x.method === method && x.pattern.test(url.pathname));
       if (!r) return json(res, 404, { error: 'not found' });
-      const strict = routeLimiter(req.method!, url.pathname);
+      const strict = routeLimiter(method!, url.pathname);
       if (strict) { const wait = strict.take(ip); if (wait) return tooMany(res, wait); }
       const m = url.pathname.match(r.pattern)!;
       req.params = Object.fromEntries(r.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])]));
@@ -414,7 +416,7 @@ export function createApp(svc: Services) {
         req.auth = { via: who.via, sessionId: who.sessionId };
       }
       // Signed-in owners may upload lease templates; everything else is small.
-      req.raw = req.method === 'GET' ? '' : await readBody(req, r.auth ? 2_000_000 : 256_000);
+      req.raw = method === 'GET' ? '' : await readBody(req, r.auth ? 2_000_000 : 256_000);
       const ct = String(req.headers['content-type'] ?? '');
       try {
         req.body = !req.raw ? {} : ct.includes('json') ? JSON.parse(req.raw) : ct.includes('urlencoded') ? Object.fromEntries(new URLSearchParams(req.raw)) : { text: req.raw };

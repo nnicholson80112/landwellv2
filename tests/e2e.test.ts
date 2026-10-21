@@ -61,6 +61,11 @@ test('API: inbound text, owner dashboard, signing page', async () => {
     const signed = await fetch(`${base}/sign/${token}`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'name=Lisa+Chen&consent=yes' });
     assert.equal(signed.status, 200);
     assert.ok(store.list('audit', (a) => a.action === 'document.signed').length === 1);
+
+    // HEAD (uptime monitors) gets the GET route's status with no body
+    const head = await fetch(`${base}/health`, { method: 'HEAD' });
+    assert.equal(head.status, 200);
+    assert.equal(await head.text(), '');
   } finally {
     server.close();
   }
