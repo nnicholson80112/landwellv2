@@ -53,6 +53,12 @@ attorney step (ignore the "Attorney" items in `docs/LAUNCH-CHECKLIST.md`). Don't
       Note: **Book a demo call** and the owners' **Book your onboarding call** use the same `CALENDLY_URL`
       (today Nate's general Calendly page). A separate demo link needs its own variable.
 
+## Squarespace copy (Oct 21)
+
+While Railway is down, the site is also packaged for Squarespace: `npm run build:squarespace` writes one
+paste-in Code Block per page to `apps/squarespace/` (steps in `apps/squarespace/README.md`). Rebuild it after
+any change to `site.body.html` or `legal.ts`.
+
 ## Where things stand (Oct 21)
 
 Built and tested on `main` (`270af79`), not yet live. `npm run build:site` turns
@@ -75,9 +81,9 @@ in `apps/site/fonts/`.
 
 ## Rules for this area
 
-- Brand: sky-white `#F6F9FF`, navy `#0E1B33`, KeyHelm blue `#1B4DFF` (main buttons), sunny yellow
-  `#FFC83D`, mint `#0E9F6E`. Headlines Bricolage Grotesque, body Figtree. Bright and inviting with
-  strong calls to action.
+- Brand: cream `#FFF6EC`, slate `#1E2B2F`, KeyHelm terracotta `#C8502D` (main buttons; `#A9401F` for
+  links and small text), marigold `#E8A33D`, mint `#0E9F6E`. Logo: terracotta square, cream house, slate keyhole.
+  Headlines Bricolage Grotesque, body Figtree. Bright and inviting with strong calls to action.
 - No pills, gradients, em or en dashes, made-up claims, testimonials, customer counts or stats.
 - Never say KeyHelm collects rent or deposits. Never describe neighborhoods, schools or safety.
 - Prices come from `src/billing/offers.ts` (`LIST_PRICE`). If prices change, change them there,

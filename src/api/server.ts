@@ -114,7 +114,7 @@ export function loadStatic() {
     if (existsSync(p)) STATIC.put(`/fonts/${lic}`, readFileSync(p), 'text/plain; charset=utf-8', DAY_S);
   }
 }
-const FAVICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 34"><rect width="34" height="34" rx="8" fill="#1B4DFF"/><circle cx="24.5" cy="10" r="4" fill="#FFC83D"/><path d="M8 18.5 15.5 11.5 23 18.5M10.5 16.5V25h10v-8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const FAVICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150"><rect width="150" height="150" rx="34" fill="#C8502D"/><polygon points="75,34 118,70 118,118 32,118 32,70" fill="#FFF6EC" stroke="#FFF6EC" stroke-width="8" stroke-linejoin="round"/><circle cx="75" cy="86" r="11" fill="#1E2B2F"/><polygon points="69,92 81,92 85,112 65,112" fill="#1E2B2F"/></svg>';
 loadStatic();
 
 /** "Book a demo" goes straight to the scheduling page; nothing is collected on our side. */

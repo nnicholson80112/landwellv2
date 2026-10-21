@@ -108,7 +108,7 @@ test('site: brand and writing rules, no third-party requests, footer and CTAs', 
   assert.doesNotMatch(SITE, /document\.cookie|localStorage|sessionStorage/, 'no cookies or browser storage');
   assert.match(SITE, /@font-face\{font-family:'Bricolage Grotesque'[^}]*src:url\(\/fonts\/bricolage-grotesque-latin\.woff2\)/);
   assert.match(SITE, /@font-face\{font-family:'Figtree'[^}]*src:url\(\/fonts\/figtree-latin\.woff2\)/);
-  assert.match(SITE, /#F6F9FF/i); assert.match(SITE, /#0E1B33/i); assert.match(SITE, /#1B4DFF/i); assert.match(SITE, /#FFC83D/i); assert.match(SITE, /#0E9F6E/i);
+  assert.match(SITE, /#FFF6EC/i); assert.match(SITE, /#1E2B2F/i); assert.match(SITE, /#C8502D/i); assert.match(SITE, /#E8A33D/i); assert.match(SITE, /#0E9F6E/i);
   // Hero and CTAs.
   assert.match(SITE, /<h1>[^<]*Your rentals, handled\./);
   assert.match(text(SITE), /Colorado landlords with 1 to 50 homes/);

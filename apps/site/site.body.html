@@ -1,4 +1,5 @@
 <title>KeyHelm: rental management software for Colorado landlords</title>
+<meta name="theme-color" content="#C8502D">
 <meta name="description" content="For Colorado landlords with 1 to 50 homes. KeyHelm answers tenants 24/7 and handles repairs, rent reminders, renewals and move-outs. You just approve. One flat price per door, from $8 a month.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preload" href="/fonts/figtree-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -9,28 +10,29 @@
 @font-face{font-family:'Figtree';font-style:normal;font-weight:300 900;font-display:swap;src:url(/fonts/figtree-latin.woff2) format('woff2')}
 /* Layout: one bright column of bands, mobile first. Hero = promise + sample phone feed; every band leads to Get started. */
 :root{
-  --bg:#F6F9FF;          /* airy sky white */
+  --bg:#FFF6EC;          /* warm cream */
   --surface:#FFFFFF;
-  --tint:#E8EFFF;        /* blue wash */
-  --sun:#FFC83D;         /* sunny highlight */
-  --sun-soft:#FFF3CF;
-  --ink:#0E1B33;         /* navy ink */
-  --muted:#4A5A78;
-  --line:#D8E1F2;
-  --brand:#1B4DFF;       /* KeyHelm blue: primary CTA */
+  --tint:#FBE6DC;        /* terracotta wash */
+  --sun:#E8A33D;         /* marigold highlight */
+  --sun-soft:#FCEBCB;
+  --ink:#1E2B2F;         /* slate ink */
+  --muted:#56636A;
+  --line:#EADFD2;
+  --brand:#C8502D;       /* KeyHelm terracotta: primary CTA */
   --brand-ink:#FFFFFF;
-  --brand-deep:#1238C2;
+  --brand-deep:#A9401F;
+  --brand-text:#A9401F;  /* terracotta for small text and links (passes contrast on cream) */
   --mint:#0E9F6E; --mint-soft:#DDF6EC; --mint-ink:#0B7A55;
   --coral:#9A3412; --coral-soft:#FFE7DA;
   --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
   --body:'Figtree','Segoe UI',system-ui,sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0B1324; --surface:#121D33; --tint:#17264A; --sun:#FFC83D; --sun-soft:#3A3115; --ink:#EEF3FF; --muted:#A9B7D3; --line:#24365C;
-  --brand:#5B82FF; --brand-ink:#08112A; --brand-deep:#7C9BFF; --mint:#3DD39B; --mint-soft:#123A2D; --mint-ink:#3DD39B; --coral:#FF9B6B; --coral-soft:#3D2416; color-scheme:dark}}
+  --bg:#12191B; --surface:#1A2427; --tint:#2E2420; --sun:#E8A33D; --sun-soft:#3A2E17; --ink:#F3EEE7; --muted:#A5B0B3; --line:#2B393D;
+  --brand:#E0714D; --brand-ink:#12191B; --brand-deep:#EE8A68; --brand-text:#F08F6C; --mint:#3DD39B; --mint-soft:#123A2D; --mint-ink:#3DD39B; --coral:#FF9B6B; --coral-soft:#3D2416; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0B1324; --surface:#121D33; --tint:#17264A; --sun:#FFC83D; --sun-soft:#3A3115; --ink:#EEF3FF; --muted:#A9B7D3; --line:#24365C;
-  --brand:#5B82FF; --brand-ink:#08112A; --brand-deep:#7C9BFF; --mint:#3DD39B; --mint-soft:#123A2D; --mint-ink:#3DD39B; --coral:#FF9B6B; --coral-soft:#3D2416; color-scheme:dark}
+  --bg:#12191B; --surface:#1A2427; --tint:#2E2420; --sun:#E8A33D; --sun-soft:#3A2E17; --ink:#F3EEE7; --muted:#A5B0B3; --line:#2B393D;
+  --brand:#E0714D; --brand-ink:#12191B; --brand-deep:#EE8A68; --brand-text:#F08F6C; --mint:#3DD39B; --mint-soft:#123A2D; --mint-ink:#3DD39B; --coral:#FF9B6B; --coral-soft:#3D2416; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{scroll-behavior:smooth;scroll-padding-top:76px;-webkit-text-size-adjust:100%}
@@ -38,7 +40,7 @@ html{scroll-behavior:smooth;scroll-padding-top:76px;-webkit-text-size-adjust:100
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;overflow-x:hidden}
 h1,h2,h3{font-family:var(--display);letter-spacing:-0.025em;text-wrap:balance;margin:0;line-height:1.05}
 p{margin:0}
-a{color:var(--brand)}
+a{color:var(--brand-text)}
 button,input,select{font:inherit;color:inherit}
 :focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 .wrap{max-width:1180px;margin:0 auto;padding-inline:16px}
@@ -73,7 +75,7 @@ button,input,select{font:inherit;color:inherit}
 .kicker{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:var(--ink);background:var(--sun-soft);border:1px solid var(--sun);border-radius:8px;padding:6px 12px}
 .kicker svg{width:16px;height:16px;flex:none;color:var(--brand)}
 .hero h1{font-size:clamp(40px,9vw,78px);font-weight:800;margin:18px 0 18px}
-.hero h1 .hl{text-decoration:underline;text-decoration-color:var(--sun);text-decoration-thickness:.16em;text-underline-offset:.12em;text-decoration-skip-ink:none}
+.hero h1 .hl{color:var(--brand)}
 .hero .lead{font-size:clamp(17px,2.2vw,20px);color:var(--muted);max-width:52ch}
 .hero .lead b{color:var(--ink)}
 .hero .ctas{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
@@ -83,7 +85,7 @@ button,input,select{font:inherit;color:inherit}
 .ticks li{display:inline-flex;align-items:center;gap:7px}
 .ticks li::before{content:"";width:16px;height:16px;flex:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5l3.2 3.2L13 4.5' fill='none' stroke='%230E9F6E' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat}
 
-.phone{justify-self:center;width:min(380px,100%);background:var(--surface);border:1px solid var(--line);border-radius:30px;padding:16px;box-shadow:0 30px 60px -30px rgba(14,27,51,.45)}
+.phone{justify-self:center;width:min(380px,100%);background:var(--surface);border:1px solid var(--line);border-radius:30px;padding:16px;box-shadow:0 30px 60px -30px rgba(30,43,47,.45)}
 .phone .bar{display:flex;justify-content:space-between;align-items:center;padding:4px 8px 14px;font-weight:700}
 .phone .bar small{font-weight:700;color:var(--muted);font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
 .feed{display:flex;flex-direction:column;gap:10px}
@@ -113,7 +115,7 @@ section.band{padding-block:60px}
 @media (min-width:760px){section.band{padding-block:88px}}
 .band.alt{background:var(--surface);border-block:1px solid var(--line)}
 .head{max-width:700px;margin-bottom:32px}
-.eyebrow{display:inline-block;font-weight:800;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--brand);margin-bottom:12px}
+.eyebrow{display:inline-block;font-weight:800;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--brand-text);margin-bottom:12px}
 .head h2{font-size:clamp(30px,5vw,50px);font-weight:800}
 .head p{color:var(--muted);font-size:18px;margin-top:14px}
 .after{margin-top:28px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
@@ -122,7 +124,7 @@ section.band{padding-block:60px}
 /* how it works */
 .steps{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;counter-reset:s}
 .steps li{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:10px;counter-increment:s}
-.steps li::before{content:counter(s);width:44px;height:44px;border-radius:13px;background:var(--sun);display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:20px;color:#0E1B33}
+.steps li::before{content:counter(s);width:44px;height:44px;border-radius:13px;background:var(--sun);display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:20px;color:#1E2B2F}
 .steps h3{font-size:21px}
 .steps p{color:var(--muted);font-size:15px}
 @media (min-width:600px){.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -137,7 +139,7 @@ section.band{padding-block:60px}
 .who ul{list-style:none;padding:0;margin:0;display:grid;gap:10px}
 .who li{display:grid;grid-template-columns:20px minmax(0,1fr);gap:10px;font-size:16px}
 .who li::before{content:"";width:20px;height:20px;margin-top:2px;border-radius:50%;background:var(--mint-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 10.5l3 3 6-6.5' fill='none' stroke='%230E9F6E' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/20px no-repeat}
-.who .you li::before{background:var(--sun) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='3' fill='%230E1B33'/%3E%3C/svg%3E") center/20px no-repeat}
+.who .you li::before{background:var(--sun) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='3' fill='%231E2B2F'/%3E%3C/svg%3E") center/20px no-repeat}
 .who li small{display:block;color:var(--muted);font-size:14px}
 .who .note{margin-top:16px;font-size:14px;color:var(--muted)}
 @media (min-width:860px){.who{grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:20px}}
@@ -155,7 +157,7 @@ section.band{padding-block:60px}
 .chain li{font-size:12.5px;font-weight:700;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 10px;color:var(--muted)}
 .chain li.you{background:var(--sun-soft);border-color:var(--sun);color:var(--ink)}
 
-.chat{background:var(--surface);border:1px solid var(--line);border-radius:26px;padding:20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 24px 50px -32px rgba(14,27,51,.4)}
+.chat{background:var(--surface);border:1px solid var(--line);border-radius:26px;padding:20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 24px 50px -32px rgba(30,43,47,.4)}
 .chat .who-l{font-weight:700;font-size:14px;color:var(--muted);margin-bottom:4px;display:flex;justify-content:space-between;gap:8px}
 .chat .who-l small{font-size:12px;border:1px solid var(--line);border-radius:6px;padding:1px 8px}
 .msg{max-width:86%;padding:10px 14px;border-radius:18px;font-size:15px}
@@ -183,7 +185,7 @@ section.band{padding-block:60px}
 .save table{width:100%;border-collapse:collapse;margin-top:16px;font-size:15px}
 .save td{padding:9px 0;border-top:1px solid color-mix(in srgb,var(--brand-ink) 25%,transparent)}
 .save td:last-child{text-align:right;font-weight:700}
-.save .cta{margin-top:20px;align-self:flex-start;background:var(--sun);color:#0E1B33;box-shadow:none}
+.save .cta{margin-top:20px;align-self:flex-start;background:var(--sun);color:#1E2B2F;box-shadow:none}
 .save .cta:hover{transform:translateY(-1px)}
 
 /* pricing */
@@ -191,7 +193,7 @@ section.band{padding-block:60px}
 @media (min-width:960px){.plans{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}}
 .plan{background:var(--surface);border:1.5px solid var(--line);border-radius:24px;padding:28px 24px 24px;display:flex;flex-direction:column;gap:14px;position:relative}
 .plan.pop{border:2.5px solid var(--brand);box-shadow:0 24px 50px -30px var(--brand)}
-.plan .tag{position:absolute;top:-14px;left:22px;background:var(--sun);color:#0E1B33;font-weight:800;font-size:13px;border-radius:6px;padding:4px 12px}
+.plan .tag{position:absolute;top:-14px;left:22px;background:var(--sun);color:#1E2B2F;font-weight:800;font-size:13px;border-radius:6px;padding:4px 12px}
 .plan h3{font-size:26px}
 .plan .sum{color:var(--muted);font-size:15px;margin-top:-6px}
 .prices{display:grid;gap:10px;border-block:1px solid var(--line);padding-block:14px}
@@ -222,14 +224,15 @@ details[open] summary::after{content:"\2212"}
 details > div{padding:0 20px 18px;color:var(--muted);font-size:15px;display:grid;gap:8px}
 
 /* final */
-.final{background:var(--sun);color:#0E1B33}
+.final{background:#C8502D;color:#FFFFFF}
 .final .wrap{display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap;padding-block:56px}
 .final h2{font-size:clamp(30px,5vw,46px);font-weight:800;max-width:18ch}
 .final p{margin-top:8px;font-size:17px;max-width:44ch}
 .final .ctas{display:flex;gap:12px;flex-wrap:wrap}
-.final .cta.primary{background:#0E1B33;color:#FFFFFF;box-shadow:none}
-.final .cta.primary:hover{background:#1B2B4D}
-.final .cta.ghost{background:transparent;border-color:#0E1B33;color:#0E1B33}
+.final .cta.primary{background:#1E2B2F;color:#FFFFFF;box-shadow:none}
+.final .cta.primary:hover{background:#0F1719}
+.final .cta.ghost{background:transparent;border-color:#FFFFFF;color:#FFFFFF}
+.final :focus-visible{outline-color:#1E2B2F}
 
 /* footer */
 footer{padding-block:40px;color:var(--muted);font-size:14px;border-top:1px solid var(--line)}
@@ -242,13 +245,13 @@ footer address{font-style:normal}
 footer .addr{display:block}
 footer .addr:empty{display:none}
 footer p+p,footer address+p{margin-top:8px}
-footer .brandline{font-family:var(--display);font-weight:800;font-size:18px;color:var(--ink)}
+footer .brandline{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:800;font-size:18px;color:var(--ink)}
 
 /* signup dialog */
 .check{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start;font-size:14px;color:var(--muted)}
 .check input{width:22px;height:22px;margin:1px 0 0;accent-color:var(--brand)}
-.check a{color:var(--brand)}
-.modal{position:fixed;inset:0;z-index:60;background:rgba(14,27,51,.55);display:grid;place-items:center;padding:12px}
+.check a{color:var(--brand-text)}
+.modal{position:fixed;inset:0;z-index:60;background:rgba(30,43,47,.55);display:grid;place-items:center;padding:12px}
 .sheet{background:var(--surface);border-radius:22px;padding:22px;width:min(540px,100%);max-height:calc(100dvh - 24px);overflow:auto;display:grid;gap:14px;overscroll-behavior:contain}
 @media (min-width:600px){.sheet{padding:28px}}
 .sheet h2{font-size:28px}
@@ -262,7 +265,7 @@ footer .brandline{font-family:var(--display);font-weight:800;font-size:18px;colo
 <header class="nav">
   <div class="wrap">
     <a class="logo" href="#top" aria-label="KeyHelm home">
-      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="10" fill="var(--brand)"/><circle cx="24.5" cy="10" r="4" fill="var(--sun)"/><path d="M8 18.5 15.5 11.5 23 18.5M10.5 16.5V25h10v-8.5" fill="none" stroke="var(--brand-ink)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg width="34" height="34" viewBox="0 0 150 150" aria-hidden="true"><rect width="150" height="150" rx="34" fill="#C8502D"/><polygon points="75,34 118,70 118,118 32,118 32,70" fill="#FFF6EC" stroke="#FFF6EC" stroke-width="8" stroke-linejoin="round"/><circle cx="75" cy="86" r="11" fill="#1E2B2F"/><polygon points="69,92 81,92 85,112 65,112" fill="#1E2B2F"/></svg>
       KeyHelm
     </a>
     <nav class="links" aria-label="Sections"><a href="#how">How it works</a><a href="#who">Who does what</a><a href="#savings">Savings</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></nav>
@@ -292,7 +295,7 @@ footer .brandline{font-family:var(--display);font-weight:800;font-size:18px;colo
           <div class="ev"><div class="ic" style="background:var(--mint-soft);color:var(--mint)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10.5l4 4L17 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><b>Rent reminders sent to 4 homes</b><span>After the due date you'll get one quick "Did rent arrive?" check.</span></div></div>
           <div class="ev"><div class="ic" style="background:var(--tint);color:var(--brand)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3c3 4 5 6.5 5 9a5 5 0 0 1-10 0c0-2.5 2-5 5-9z" fill="none" stroke="currentColor" stroke-width="2"/></svg></div><div><b>Leak reported at 7:42 AM</b><span>Your plumber is booked for Tue 9 to 11. $140, under your limit.</span></div></div>
           <div class="ev"><div class="ic" style="background:var(--tint);color:var(--brand)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14v9H8l-4 3v-3H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></div><div><b>Prospect asked about pets</b><span>Answered from your pet policy. Self-tour booked for Saturday.</span></div></div>
-          <div class="ev need"><div class="ic" style="background:var(--sun);color:#0E1B33"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v7M10 14.5v.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></div><div><b>Water heater quote: $1,240</b><span>Over your $500 limit, so it's your call.</span><div class="go" aria-hidden="true"><i class="y">Approve</i><i class="n">Decline</i></div></div></div>
+          <div class="ev need"><div class="ic" style="background:var(--sun);color:#1E2B2F"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v7M10 14.5v.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></div><div><b>Water heater quote: $1,240</b><span>Over your $500 limit, so it's your call.</span><div class="go" aria-hidden="true"><i class="y">Approve</i><i class="n">Decline</i></div></div></div>
         </div>
       </div>
     </div>
@@ -338,7 +341,7 @@ footer .brandline{font-family:var(--display);font-weight:800;font-size:18px;colo
           <p class="note">What's included depends on your plan. See <a href="#pricing">pricing</a>.</p>
         </div>
         <div class="col you">
-          <h3><svg viewBox="0 0 26 26" aria-hidden="true"><rect width="26" height="26" rx="8" fill="#0E1B33"/><circle cx="13" cy="10" r="3.5" fill="none" stroke="#FFC83D" stroke-width="2"/><path d="M6.5 20c1.2-3.2 3.6-4.8 6.5-4.8s5.3 1.6 6.5 4.8" fill="none" stroke="#FFC83D" stroke-width="2" stroke-linecap="round"/></svg>You still</h3>
+          <h3><svg viewBox="0 0 26 26" aria-hidden="true"><rect width="26" height="26" rx="8" fill="#1E2B2F"/><circle cx="13" cy="10" r="3.5" fill="none" stroke="#E8A33D" stroke-width="2"/><path d="M6.5 20c1.2-3.2 3.6-4.8 6.5-4.8s5.3 1.6 6.5 4.8" fill="none" stroke="#E8A33D" stroke-width="2" stroke-linecap="round"/></svg>You still</h3>
           <ul>
             <li><span>Approve or deny applicants<small>KeyHelm never scores, ranks or recommends people.</small></span></li>
             <li><span>OK repairs over your spending limit</span></li>
@@ -483,7 +486,7 @@ footer .brandline{font-family:var(--display);font-weight:800;font-size:18px;colo
 
 <footer><div class="wrap">
   <div>
-    <p class="brandline">KeyHelm</p>
+    <p class="brandline"><svg width="28" height="28" viewBox="0 0 150 150" aria-hidden="true"><rect width="150" height="150" rx="34" fill="#C8502D"/><polygon points="75,34 118,70 118,118 32,118 32,70" fill="#FFF6EC" stroke="#FFF6EC" stroke-width="8" stroke-linejoin="round"/><circle cx="75" cy="86" r="11" fill="#1E2B2F"/><polygon points="69,92 81,92 85,112 65,112" fill="#1E2B2F"/></svg>KeyHelm</p>
     <p><b>{{BUSINESS_LEGAL_NAME}}</b></p>
     <address><span class="addr">{{BUSINESS_ADDRESS}}</span><a href="mailto:{{BUSINESS_EMAIL}}">{{BUSINESS_EMAIL}}</a></address>
     <p>KeyHelm is software. It is not a property management company, a real estate broker or a law firm, and nothing on this site is legal advice.</p>

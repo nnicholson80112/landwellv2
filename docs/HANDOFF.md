@@ -44,7 +44,7 @@ under 30 minutes.
 - **Fair housing: stay out of the gray areas.** The AI never discusses neighborhoods, safety, schools, religion, protected traits or who a home is "good for". Accommodation requests, screening-decision questions, complaints and legal topics go straight to the owner.
 - **In-house AI service** (its own Railway service) with Claude underneath: Claude Haiku 5.5 for routine messages, Claude Sonnet 5.5 for repairs. Built-in rules are the fallback.
 - **Hosting:** Railway. **Database:** Postgres on Railway (code ready; see go-live). **Billing:** Stripe. **Email:** Postmark. **Texts + calls:** Twilio, one shared number to start. **Onboarding calls:** Calendly.
-- **Brand:** bright and inviting. Sky-white `#F6F9FF`, navy text `#0E1B33`, KeyHelm blue `#1B4DFF` (main buttons), sunny yellow `#FFC83D` (highlights), mint `#0E9F6E` (success). Fonts: Bricolage Grotesque (headlines), Figtree (body), self-hosted. Rules in `docs/LAUNCH-CHECKLIST.md`: no pills, gradients, em dashes, fake claims, testimonials or stats.
+- **Brand:** warm and inviting. Logo: terracotta rounded square with a cream house and slate keyhole. Cream `#FFF6EC` background, slate text `#1E2B2F`, KeyHelm terracotta `#C8502D` (main buttons; `#A9401F` for links and small text), marigold `#E8A33D` (highlights), mint `#0E9F6E` (success). Fonts: Bricolage Grotesque (headlines), Figtree (body), self-hosted. The owner app and admin pages still use the old blue colors. Rules in `docs/LAUNCH-CHECKLIST.md`: no pills, gradients, em dashes, fake claims, testimonials or stats.
 - **Demo calls:** a few slides, then mostly a hands-on product demo.
 
 ---

@@ -4,11 +4,12 @@ export const BRAND = {
   tagline: 'Your rentals, handled. You just approve.',
   supportEmail: 'help@keyhelm.example',
   colors: {
-    background: '#F6F9FF', // airy sky white
+    background: '#FFF6EC', // warm cream
     surface: '#FFFFFF',
-    ink: '#0E1B33', // navy text
-    primary: '#1B4DFF', // KeyHelm blue: main buttons and links
-    sun: '#FFC83D', // highlights and secondary buttons
+    ink: '#1E2B2F', // slate text
+    primary: '#C8502D', // KeyHelm terracotta: main buttons
+    primaryText: '#A9401F', // deeper terracotta for links and small text
+    sun: '#E8A33D', // marigold highlights
     mint: '#0E9F6E', // success
     coral: '#C2410C', // attention
   },
