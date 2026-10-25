@@ -10,16 +10,30 @@ lease, and change their rules and profile. Built on the owner API (`docs/notes/o
 | --- | --- |
 | `apps/owner/index.html` | The whole app: one file of HTML, CSS and plain JavaScript. No frameworks, no CDN, no outside requests. |
 | `apps/owner/manifest.webmanifest` | Install manifest ("Add to Home Screen"): name, colors, start page, shortcuts. |
-| `apps/owner/icon.svg` | App icon (the KeyHelm mark on blue, full-bleed so it also works as a maskable icon). |
+| `apps/owner/icon.svg` | App icon (the KeyHelm mark on terracotta, full-bleed so it also works as a maskable icon). |
 | `src/api/owner-routes.ts` | Serves the app (signed-in only), its Content-Security-Policy, deep links, the manifest and icon. |
 | `tests/owner-ui.test.ts` | 7 tests (list at the bottom). |
 | `scripts/check-owner-app.mjs` | Browser walk-through at 390px and 1280px (needs an existing Playwright install; not a dependency). |
 
 ## The screens
 
-Bottom tab bar on phones, side menu on screens 900px and wider. Each screen has its own address, so the browser's
-Back button, bookmarks and the install shortcuts work: `/app` (Today), `/app/rent`, `/app/repairs`, `/app/messages`,
-`/app/messages/<phone or email>`, `/app/homes`, `/app/settings`.
+Bottom tab bar on phones (Today, Rent, Repairs, Messages, More), dark slate side menu with every screen on screens
+900px and wider. **More** opens a sheet with Leasing, Homes, Calendar, Documents, Books and Settings. Each screen has
+its own address, so the browser's Back button, bookmarks and the install shortcuts work: `/app` (Today), `/app/rent`,
+`/app/repairs`, `/app/messages`, `/app/messages/<phone or email>`, `/app/leasing`, `/app/homes`, `/app/calendar`,
+`/app/documents`, `/app/books`, `/app/settings`.
+
+Added on `kh/owner-dashboard` (API in `docs/notes/owner-api.md`):
+- **Leasing**: homes for rent with "Copy listing", and a board from Inquiry to Lease sent. "Your decision" opens Today.
+- **Calendar**: month grid (hidden under 760px) and the month's agenda with links to each screen.
+- **Documents**: pick a tenant or home, pick a document; it's filled in on the server and shown in a frame (its own
+  script-free page), with "Open to print or save as a PDF". Documents the plan doesn't include show a lock card.
+- **Books**: this month's income, expenses and net, 6 months of bars, entries, "Add an expense".
+- **Settings** adds **Your plan** (what it includes, ✓ and ✕), **Team** (invite by link, roles, remove) and **Sign-in
+  and security** (two-step setup with an authenticator app, signed-in devices).
+- **Today**: on Essentials, a tenant question outside a workflow shows KeyHelm's draft with **Send draft**.
+- "Talk to us about <plan>" opens the onboarding Calendly (`onboarding.calendlyUrl` from `/api/me`) with the plan
+  picked; with no `CALENDLY_URL` the button is left out.
 
 1. **Today** (`/api/me`, `/api/approvals?status=pending`, `/api/tasks?status=open`, `/api/activity?limit=200`)
    - Decisions as cards: what kind, the title, the details, the plain question, and big buttons. Choices that need
@@ -78,18 +92,22 @@ Data refreshes after every action, when the tab comes back after a minute away, 
 - **Who gets it**: `GET /app` and `/app/<screen>` need the sign-in cookie. Signed out (or a dead session) → `302
   /login?next=<that screen>`, and signing in comes back to it. Unknown paths under `/app` are 404.
 - **Content-Security-Policy** (only for this page): `default-src 'none'; script-src 'nonce-…'; style-src 'nonce-…';
-  img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; form-action 'self';
+  img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self'; manifest-src 'self'; form-action 'self';
   frame-ancestors 'none'; base-uri 'none'; object-src 'none'; require-trusted-types-for 'script'`. A fresh random nonce
   is added to the page's `<script>` and `<style>` tags on every response (`sendApp` in `owner-routes.ts`). The page
   is `cache-control: no-store`. The server's usual headers (nosniff, DENY framing, HSTS...) still apply.
 - **No HTML from data**: every element is built with DOM calls (`h()` in the script); server text only ever goes in
   as text. The page never uses `innerHTML` and similar, and Trusted Types makes the browser refuse them anyway.
+  State documents are HTML, so they are never put into the app: they load as their own page in a same-site frame.
   Links from the server (Calendly, the billing page, photos) are used only when they are `https:`.
 - **CSRF**: all requests go through one helper, `api()`: `credentials: 'same-origin'`, and every non-GET sends
   `X-KeyHelm: 1` (the server refuses changes without it). A 401 sends the owner back to sign in.
 - **Install**: `/app/manifest.webmanifest` and `/app/icon.svg` are public (browsers fetch manifests without cookies),
   cached for a day / a week, served from memory with ETags. The app file is read again when it changes on disk.
-- **Fonts**: Bricolage Grotesque and Figtree from this site's `/fonts` (same as the website and legal pages).
+- **Look**: KeyHelm terracotta `#C8502D` on cream `#FFF6EC`, slate text and side menu `#1E2B2F`, amber `#E8A33D`
+  highlights, mint `#0E9F6E` for success; a matching dark mode. The sign-in, policy and lease-signing pages match.
+- **Fonts**: Montagu Slab (headings) and Figtree from this site's `/fonts`. Until `apps/site/fonts/montagu-slab-latin.woff2`
+  (Google Fonts, OFL) is added, headings fall back to Georgia; the server serves the file as soon as it exists.
 
 ## Small edits to shared files
 

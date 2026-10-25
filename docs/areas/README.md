@@ -38,7 +38,7 @@ Why it's split this way:
    Paste what the log says (not any secrets) into the chat. Check the **ai** service's deployments too.
    A local try on Oct 21 found the new code boots fine against old data, so Railway's own deploy list and
    logs are the place to look (infrastructure.md, "The stuck deploy").
-2. **Fix before launch: removing a vendor mid-repair can book the wrong vendor (area 2).** Found by the
+2. **Fixed on `kh/owner-dashboard`:** removing a vendor mid-repair could book the wrong vendor (area 2). Found by the
    Oct 21 doc check and confirmed in code (`src/workflows/maintenance.ts`, the `candidates` list is rebuilt
    outside a step). The wrong vendor then gets the tenant's name and phone. Details in automation.md.
 3. **Code review before selling (area 5).** The six-angle review never finished (the agents hit the
