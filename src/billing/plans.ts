@@ -17,11 +17,11 @@ export const TERMS: BillingTerm[] = ['monthly', 'contract12'];
 /** What customers see. */
 export const PLAN_NAMES: Record<Plan, string> = { essentials: 'Essentials', autopilot: 'Autopilot', pro: 'Autopilot Pro' };
 
-/** What each plan includes (the same words as the Stripe product descriptions). */
+/** What each plan includes (the same words as the Stripe product descriptions; the full list is in entitlements.ts). */
 export const PLAN_CONTENTS: Record<Plan, string> = {
-  essentials: 'Rent reminders and late notices, repair requests and vendor list, guided tenant fixes, applications and screening, lease fill-in and e-sign, income and expense books.',
-  autopilot: 'Everything in Essentials, plus a 24/7 tenant text and email assistant, automatic dispatch to your vendors and staff, renewals, move-outs and deposit statements, and monthly statements.',
-  pro: 'Everything in Autopilot, plus 24/7 emergency repair dispatch, smart-lock self-showings, listings on Zillow and more, and priority support.',
+  essentials: 'KeyHelm in-house AI, repair requests with guided fixes and vendor dispatch, 24/7 emergency dispatch, rent reminders and late notices, applications and screening, smart-lock self-showings and listings, your own lease filled in and e-signed, renewals, move-outs and deposit statements, income and expense books and monthly statements.',
+  autopilot: 'Everything in Essentials, plus text and email automation answering tenants 24/7, our high-end AI model, and state-specific leases with required disclosures.',
+  pro: 'Everything in Autopilot, plus the Landlord Forms Pack (all state documents), voice AI for calls, our best AI model, and 24/7 customer support.',
 };
 
 /**

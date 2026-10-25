@@ -17,6 +17,22 @@ export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 export const DEFAULT_ROUTINE_MODEL = 'claude-haiku-5-5';
 export const DEFAULT_COMPLEX_MODEL = 'claude-sonnet-5-5';
+/** Autopilot Pro's top model ("our best AI model, upgraded as it improves"). */
+export const DEFAULT_BEST_MODEL = 'claude-opus-5-5';
+
+export type Tier = 'essentials' | 'autopilot' | 'pro';
+
+/**
+ * Which model answers each route, by plan:
+ *   essentials  routine model for everything (the in-house AI; no stronger second ask)
+ *   autopilot   routine model, complex model for repairs and harder messages
+ *   pro         complex model for everyday messages, best model for repairs and harder ones
+ */
+export function modelsForTier<T>(tier: Tier | undefined, m: { routine: T; complex: T; best: T }): { low: T; high: T } {
+  if (tier === 'essentials') return { low: m.routine, high: m.routine };
+  if (tier === 'pro') return { low: m.complex, high: m.best };
+  return { low: m.routine, high: m.complex };
+}
 /** Below this confidence a routine answer is asked again on the stronger model. */
 export const ESCALATE_BELOW = 0.6;
 /** The fact the front desk adds while a tenant and the AI are talking a repair through. */
@@ -76,6 +92,7 @@ export function escalationReason(raw: any, confidence: number, input: AIInput, b
 export interface ModelConfig {
   routine: string;
   complex: string;
+  best: string;
   effortRoutine: Effort;
   effortComplex: Effort;
   /** Settings that were ignored or look wrong, for the startup log. */
@@ -102,6 +119,7 @@ export function modelConfig(env: Record<string, string | undefined>): ModelConfi
   return {
     routine: id('AI_MODEL_ROUTINE') ?? DEFAULT_ROUTINE_MODEL,
     complex: id('AI_MODEL_COMPLEX') ?? id('ANTHROPIC_MODEL') ?? DEFAULT_COMPLEX_MODEL,
+    best: id('AI_MODEL_BEST') ?? DEFAULT_BEST_MODEL,
     effortRoutine: effort('AI_EFFORT_ROUTINE'),
     effortComplex: effort('AI_EFFORT_COMPLEX'),
     warnings,

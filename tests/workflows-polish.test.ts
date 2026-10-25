@@ -12,6 +12,7 @@ import { looksLikeAddress, noteData, pickOption, textingKeyword, yesNo } from '.
 import { newApprovalCode } from '../src/workflows/owner.ts';
 import { nextSlots, slotPrefs } from '../src/workflows/showings-listings.ts';
 import { niceDate, quietUntil } from '../src/workflows/lib.ts';
+import { entitlementsOf, planOf } from '../src/billing/entitlements.ts';
 
 function setup(start = '2026-10-12T16:00:00Z' /* Mon 10:00 AM Denver */) {
   const clock = new FakeClock(start);
@@ -439,4 +440,49 @@ test('removing a vendor mid-repair never books the wrong vendor', async () => {
   assert.equal(after.vendorId, second.id, 'the vendor who said YES is the one booked');
   assert.equal(after.status, 'scheduled');
   assert.equal(sentTo(handy.phone!).length, 0, 'the third vendor never hears about the job or the tenant');
+});
+
+test('plans: what each one includes, every plan having everything below it', () => {
+  const on = (plan: 'essentials' | 'autopilot' | 'pro') => entitlementsOf({ plan }).features;
+  assert.deepEqual(on('essentials'), { assistant: false, high_ai: false, state_leases: false, best_ai: false, voice: false, forms_pack: false, support_247: false });
+  assert.deepEqual(on('autopilot'), { assistant: true, high_ai: true, state_leases: true, best_ai: false, voice: false, forms_pack: false, support_247: false });
+  assert.ok(Object.values(on('pro')).every(Boolean));
+  assert.equal(planOf(undefined), 'autopilot');
+  assert.equal(entitlementsOf({ plan: 'essentials' }).list.filter((f) => f.included).length, 9);
+  assert.equal(entitlementsOf({ plan: 'pro' }).list.length, 16);
+});
+
+test('Essentials: a tenant question gets a draft for the owner; repairs stay automatic', async () => {
+  const { store, svc, s, text, sentTo } = setup();
+  store.update('owners', s.owner.id, { plan: 'essentials' });
+  const phone = s.tenant.phone!;
+  const before = sentTo(phone).length;
+  await text(phone, 'When is rent due each month?');
+  assert.equal(sentTo(phone).length, before, 'nothing goes to the tenant on its own');
+  const draft = store.list('tasks', (t) => t.ownerId === s.owner.id && !!t.draft).pop();
+  assert.ok(draft, 'the owner gets a to-do with a drafted reply');
+  assert.equal(draft!.draft!.to, phone);
+  assert.match(draft!.draft!.body, /\S/);
+
+  await text(phone, 'The kitchen sink is leaking under the cabinet');
+  assert.ok(sentTo(phone).length > before, 'repairs are answered right away on every plan');
+
+  store.update('owners', s.owner.id, { plan: 'autopilot' });
+  const n = sentTo(phone).length;
+  await text(phone, 'Is there a fee for paying rent late?');
+  assert.ok(sentTo(phone).length > n, 'Autopilot answers on its own');
+  void svc;
+});
+
+test('calls are answered on Autopilot Pro; other plans point the caller to texting', async () => {
+  const { store, svc, s } = setup();
+  const call = async (body: string) => {
+    svc.engine.emit('message.received', { from: s.tenant.phone, channel: 'voice', body, ownerId: s.owner.id, providerMessageId: String(Math.random()) });
+    await svc.engine.drain();
+    return store.list('messages', (m) => m.direction === 'out' && m.to === s.tenant.phone && m.channel === 'voice').pop()?.body ?? '';
+  };
+  store.update('owners', s.owner.id, { plan: 'autopilot' });
+  assert.match(await call('When is rent due?'), /text it anytime.*911/);
+  store.update('owners', s.owner.id, { plan: 'pro' });
+  assert.doesNotMatch(await call('When is rent due?'), /text it anytime/);
 });

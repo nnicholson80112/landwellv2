@@ -14,6 +14,7 @@
 //
 // Run: npm start   (reads .env from the environment; see .env.example)
 
+import { allows } from '../billing/entitlements.ts';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -259,8 +260,11 @@ route('POST', '/webhooks/twilio/voice/turn', async (req, res, svc) => {
   const since = svc.clock.now().toISOString();
   svc.engine.emit('message.received', { from: b.From, to: b.To, channel: 'voice', body: speech, ownerId, providerMessageId: `${b.CallSid}:${speech}` });
   await svc.engine.drain();
-  const reply = svc.store.list('messages', (m) => m.direction === 'out' && m.threadKey === addressKey(b.From) && m.channel === 'voice' && m.at >= since).pop()?.body
-    ?? "Thanks, I've passed that along to the owner.";
+  const out = svc.store.list('messages', (m) => m.direction === 'out' && m.threadKey === addressKey(b.From) && m.channel === 'voice' && m.at >= since).pop();
+  const reply = out?.body ?? "Thanks, I've passed that along to the owner.";
+  // Calls are part of Autopilot Pro: on other plans the front desk pointed them to texting, so end there.
+  const lineOwner = svc.store.get('owners', out?.ownerId ?? ownerId ?? '');
+  if (lineOwner && !allows(lineOwner, 'voice')) return twiml(res, `<Say voice="${VOICE}">${xml(reply)} Goodbye.</Say>`);
   const emergency = svc.store.list('workOrders', (w) => w.urgency === 'emergency' && w.createdAt >= since).length > 0;
   // Shared number: no owner from the dialed line, so use the owner of the emergency this caller just reported.
   const owner = ownerId ? svc.store.get('owners', ownerId) : callerEmergencyOwner(svc.store, b.From, since);

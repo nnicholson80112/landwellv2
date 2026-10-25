@@ -337,6 +337,8 @@ export interface Task {
   detail: string;
   dueAt?: ISO;
   status: 'open' | 'done';
+  /** Essentials: a reply KeyHelm drafted for the owner to send (inbound-message.ts, draftForOwner). */
+  draft?: { to: string; channel: Channel; body: string };
 }
 
 /** Table name → record type, used by the Store. */

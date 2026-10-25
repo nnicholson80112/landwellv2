@@ -108,7 +108,8 @@ test('routing: when a routine answer is asked again on the stronger model', () =
 });
 
 test('model settings come from Railway Variables, with safe defaults', () => {
-  assert.deepEqual(modelConfig({}), { routine: HAIKU, complex: SONNET, effortRoutine: 'low', effortComplex: 'low', warnings: [] });
+  assert.deepEqual(modelConfig({}), { routine: HAIKU, complex: SONNET, best: 'claude-opus-5-5', effortRoutine: 'low', effortComplex: 'low', warnings: [] });
+  assert.equal(modelConfig({ AI_MODEL_BEST: 'claude-opus-5' }).best, 'claude-opus-5');
   assert.equal(modelConfig({ ANTHROPIC_MODEL: 'claude-opus-5-5' }).complex, 'claude-opus-5-5');
   assert.equal(modelConfig({ ANTHROPIC_MODEL: 'claude-opus-5-5', AI_MODEL_COMPLEX: SONNET }).complex, SONNET);
   const c = modelConfig({ AI_EFFORT_ROUTINE: 'Medium', AI_EFFORT_COMPLEX: 'turbo', AI_MODEL_ROUTINE: 'claude-haiku-4-5-20251001' });
@@ -117,6 +118,26 @@ test('model settings come from Railway Variables, with safe defaults', () => {
   assert.equal(c.warnings.length, 2);
   assert.match(c.warnings.join(' '), /date suffix.*claude-haiku-4-5\b/);
   for (const m of [c.complex, modelConfig({}).routine]) assert.doesNotMatch(m, /-\d{8}$/);
+});
+
+test('plans pick the models: Essentials stays on the in-house model, Pro moves up a step', async () => {
+  const OPUS = 'claude-opus-5-5';
+  const f = fakeFetch((req) => claudeSays(req.body.model, /leak/i.test(JSON.stringify(req.body.messages)) ? LEAK : RENT));
+  try {
+    const ai = router({ bestModel: OPUS });
+    const ask = async (tier: AIInput['tier'], msg: string) => { const before = f.seen.length; await ai.respond(input(msg, { tier })); return f.seen.slice(before).map((x) => x.body.model); };
+    const RENT_Q = 'When is rent due?', LEAK_Q = 'The kitchen sink is leaking under the cabinet';
+    assert.deepEqual(await ask('essentials', RENT_Q), [HAIKU]);
+    assert.deepEqual(await ask('essentials', LEAK_Q), [HAIKU], 'Essentials never asks a stronger model');
+    assert.deepEqual(await ask('autopilot', RENT_Q), [HAIKU]);
+    assert.deepEqual(await ask('autopilot', LEAK_Q), [SONNET]);
+    assert.deepEqual(await ask('pro', RENT_Q), [SONNET]);
+    assert.deepEqual(await ask('pro', LEAK_Q), [OPUS]);
+    assert.deepEqual(await ask(undefined, RENT_Q), [HAIKU], 'no plan given = Autopilot');
+    assert.match(ai.describe(), /best claude-opus-5-5/);
+  } finally {
+    f.restore();
+  }
 });
 
 /* ---------------- the request ---------------- */

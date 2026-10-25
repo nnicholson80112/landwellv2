@@ -2,7 +2,7 @@ import type { AICall, AIInput, AIResult, CommunicationAI, Intent } from './types
 import { INTENTS, RESULT_SCHEMA, SYSTEM_PROMPT, parseJson, systemPrompt, userPrompt } from './prompt.ts';
 import { RuleBasedAI } from './rules.ts';
 import { callFromResponse, promptTokens, sumCalls, usageFrom } from './cost.ts';
-import { ESCALATE_BELOW, chooseRoute, escalationReason, modelConfig, type Effort } from './route.ts';
+import { DEFAULT_BEST_MODEL, ESCALATE_BELOW, chooseRoute, escalationReason, modelConfig, modelsForTier, type Effort } from './route.ts';
 
 const ROUTES = ['routine', 'complex', 'escalated'];
 const isCost = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x) && x >= 0 && x < 100;
@@ -231,6 +231,8 @@ export class ClaudeRouter implements CommunicationAI {
   name = 'anthropic';
   readonly routine: AnthropicAI;
   readonly complex: AnthropicAI;
+  /** Autopilot Pro's top model (modelsForTier in route.ts). */
+  readonly best: AnthropicAI;
   private routineTimeoutMs: number;
   private complexTimeoutMs: number;
   private budgetMs: number;
@@ -238,13 +240,14 @@ export class ClaudeRouter implements CommunicationAI {
   log?: (line: string) => void;
 
   constructor(opts: {
-    apiKey: string; routineModel: string; complexModel: string; effortRoutine?: Effort; effortComplex?: Effort;
+    apiKey: string; routineModel: string; complexModel: string; bestModel?: string; effortRoutine?: Effort; effortComplex?: Effort;
     routineTimeoutMs?: number; complexTimeoutMs?: number; budgetMs?: number; escalateBelow?: number; url?: string; log?: (line: string) => void;
   }) {
     this.log = opts.log;
     const log = (l: string) => this.log?.(l);
     this.routine = new AnthropicAI({ apiKey: opts.apiKey, model: opts.routineModel, effort: opts.effortRoutine, url: opts.url, log });
     this.complex = new AnthropicAI({ apiKey: opts.apiKey, model: opts.complexModel, effort: opts.effortComplex, url: opts.url, log });
+    this.best = new AnthropicAI({ apiKey: opts.apiKey, model: opts.bestModel ?? DEFAULT_BEST_MODEL, effort: opts.effortComplex, url: opts.url, log });
     this.routineTimeoutMs = opts.routineTimeoutMs ?? 12_000;
     this.complexTimeoutMs = opts.complexTimeoutMs ?? 20_000;
     this.budgetMs = opts.budgetMs ?? 26_000;
@@ -252,28 +255,31 @@ export class ClaudeRouter implements CommunicationAI {
   }
 
   describe(): string {
-    return `routine ${this.routine.model} (effort ${this.routine.effort}), complex ${this.complex.model} (effort ${this.complex.effort})`;
+    return `routine ${this.routine.model} (effort ${this.routine.effort}), complex ${this.complex.model} (effort ${this.complex.effort}), best ${this.best.model} (Autopilot Pro)`;
   }
 
   async respond(input: AIInput): Promise<AIResult> {
     const t0 = Date.now();
     const pick = chooseRoute(input);
-    const first = pick.route === 'complex' ? this.complex : this.routine;
+    // The owner's plan decides which models play "everyday" and "stronger" (route.ts).
+    const { low, high } = modelsForTier(input.tier, { routine: this.routine, complex: this.complex, best: this.best });
+    const timeout = (m: AnthropicAI) => (m === this.routine ? this.routineTimeoutMs : this.complexTimeoutMs);
+    const first = pick.route === 'complex' ? high : low;
     // A failure here throws (with any billed call attached) and the caller falls back to rules.
-    const a = await first.ask(input, pick.route === 'complex' ? this.complexTimeoutMs : this.routineTimeoutMs);
+    const a = await first.ask(input, timeout(first));
     const calls = [a.call];
     let result = normalize(a.raw, `anthropic:${a.call.model}`, input);
     let model = a.call.model;
     let route: AIResult['route'] = pick.route;
     let reason = pick.reason;
 
-    const why = pick.route === 'routine' && this.complex.model !== this.routine.model ? escalationReason(a.raw, result.confidence, input, this.escalateBelow) : undefined;
+    const why = pick.route === 'routine' && high.model !== low.model ? escalationReason(a.raw, result.confidence, input, this.escalateBelow) : undefined;
     if (why) {
       const left = this.budgetMs - (Date.now() - t0);
       if (left < MIN_ESCALATION_MS) reason += `; kept (${why}, no time left to escalate)`;
       else {
         try {
-          const b = await this.complex.ask(input, Math.min(this.complexTimeoutMs, left));
+          const b = await high.ask(input, Math.min(timeout(high), left));
           calls.push(b.call);
           result = normalize(b.raw, `anthropic:${b.call.model}`, input);
           model = b.call.model;
@@ -305,7 +311,7 @@ export function claudeFromEnv(env: Record<string, string | undefined>, log: ((li
   if (!env.ANTHROPIC_API_KEY) return undefined;
   const cfg = modelConfig(env);
   for (const w of cfg.warnings) log?.(`[ai] ${w}`);
-  return new ClaudeRouter({ apiKey: env.ANTHROPIC_API_KEY, routineModel: cfg.routine, complexModel: cfg.complex, effortRoutine: cfg.effortRoutine, effortComplex: cfg.effortComplex, log });
+  return new ClaudeRouter({ apiKey: env.ANTHROPIC_API_KEY, routineModel: cfg.routine, complexModel: cfg.complex, bestModel: cfg.best, effortRoutine: cfg.effortRoutine, effortComplex: cfg.effortComplex, log });
 }
 
 /**

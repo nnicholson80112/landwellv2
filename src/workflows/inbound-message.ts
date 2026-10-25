@@ -25,6 +25,7 @@ import { addressKey, buildFacts, contactOf, firstName, identify, money, property
 import { optionLabel, replyHint } from './owner.ts';
 import { fmtTime, slotPrefs } from './showings-listings.ts';
 import { routeUnknownSender } from '../ops/lines.ts';
+import { allows, planOf } from '../billing/entitlements.ts';
 
 export interface InboundPayload {
   from: string;
@@ -96,11 +97,19 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
     const owner = store.get('owners', ownerId)!;
     const rules = store.get('rules', ownerId);
     const ownerFirst = firstName(owner.name);
+    const tier = planOf(owner);
+
+    // Voice AI answers calls on Autopilot Pro. Other plans point the caller to texting, 911 first.
+    if (m.channel === 'voice' && !allows(owner, 'voice')) {
+      await reply(`Thanks for calling. ${ownerFirst}'s homes are handled by text on this number, so please text it anytime, day or night. If anyone is in danger, hang up and call 911.`);
+      await ctx.log('message.voice-off', `A call from ${m.from} was pointed to texting (calls are part of Autopilot Pro).`);
+      return { voice: 'not_on_plan' };
+    }
 
     /* ---------------- vendors ---------------- */
     if (party.role === 'vendor' || sharedVendor) {
       const vendor = party.role === 'vendor' ? party.vendor : sharedVendor!;
-      const ai = await ctx.step('ai', () => svc.ai.respond({ ownerId, channel: m.channel, senderRole: 'vendor', senderName: vendor.name, message: m.body, mediaCount: media.length, history: [], facts: [], allowedIntents: ALLOWED.vendor, ownerFirstName: ownerFirst, brandName: svc.brand.name }));
+      const ai = await ctx.step('ai', () => svc.ai.respond({ ownerId, tier, channel: m.channel, senderRole: 'vendor', senderName: vendor.name, message: m.body, mediaCount: media.length, history: [], facts: [], allowedIntents: ALLOWED.vendor, ownerFirstName: ownerFirst, brandName: svc.brand.name }));
       const workOrderId = store.kvGet<string>('vendorLast', vendor.id);
       const e = ai.entities;
       await ctx.emit('vendor.replied', {
@@ -279,7 +288,7 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
     }
 
     const ai: AIResult = await ctx.step('ai', () =>
-      svc.ai.respond({ ownerId, channel: m.channel, senderRole: role, senderName: tenant?.name, message: m.body, mediaCount: media.length, history, facts, allowedIntents: ALLOWED[role], ownerFirstName: ownerFirst, brandName: svc.brand.name }),
+      svc.ai.respond({ ownerId, tier, channel: m.channel, senderRole: role, senderName: tenant?.name, message: m.body, mediaCount: media.length, history, facts, allowedIntents: ALLOWED[role], ownerFirstName: ownerFirst, brandName: svc.brand.name }),
     );
     let text = ai.reply;
     const check = postcheck(text, facts);
@@ -364,12 +373,36 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
         break;
     }
 
+    // Essentials: workflow conversations (repairs, emergencies, renewals, move-outs) stay automatic,
+    // but a tenant's general question gets a drafted reply the owner sends from the app.
+    // Answering those on its own, any hour, is the Autopilot assistant.
+    if (text && !handoff && tenant && !WORKFLOW_INTENTS.includes(ai.intent) && !allows(owner, 'assistant')) {
+      await draftForOwner(ctx, ownerId, `${tenant.name} (${m.from})`, m, text);
+      text = '';
+    }
+
     if (text) await reply(text);
     if (handoff) await routeToOwner(ctx, ownerId, `${tenant ? tenant.name : 'A prospect'} (${m.from})`, m.body, reason ?? 'Needs a person.', fyi);
     await ctx.log('message.answered', `${role} → ${ai.intent} (${ai.provider})${handoff ? ' · routed to owner' : ''}`, { actor: 'ai', data: { from: m.from, intent: ai.intent } });
     return { intent: ai.intent, handoff };
   },
 };
+
+/** Intents a workflow acts on: answered automatically on every plan. */
+const WORKFLOW_INTENTS: Intent[] = ['maintenance_request', 'maintenance_update', 'emergency', 'showing_request', 'renewal_response', 'move_out_notice'];
+
+/** Essentials: save the AI's reply as a draft on the owner's to-do list and let them know. */
+async function draftForOwner(ctx: C, ownerId: string, who: string, m: { from: string; channel: Channel; body: string }, draft: string) {
+  await ctx.step('owner-draft', () =>
+    ctx.store.insert('tasks', {
+      ownerId, title: `Reply to ${who}`, detail: `"${m.body}"\n\nKeyHelm drafted a reply. Send it as is, change it, or write your own.`,
+      status: 'open', dueAt: new Date(ctx.svc.clock.now().getTime() + 24 * 3600_000).toISOString(),
+      draft: { to: m.from, channel: m.channel, body: draft },
+    }),
+  );
+  await ctx.log('message.drafted', `Drafted a reply to ${who} for you to send.`, { actor: 'ai' });
+  await tellOwner(ctx, 'owner-draft', ownerId, `${ctx.svc.brand.name}: ${who} wrote ${quote(m.body)} I drafted a reply for you. Open the app to send it.`);
+}
 
 /** Tell the owner. FYI items (a neutral fair-housing reply already went out) skip the to-do list. */
 async function routeToOwner(ctx: C, ownerId: string, who: string, body: string, reason: string, fyi = false) {
