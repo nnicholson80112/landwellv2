@@ -8,23 +8,23 @@ import { MIN_PASSWORD } from './auth.ts';
 
 export const esc = (s: string) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-const LOGO = '<svg viewBox="0 0 34 34" width="30" height="30" aria-hidden="true"><rect width="34" height="34" rx="8" fill="#1B4DFF"/><circle cx="24.5" cy="10" r="4" fill="#FFC83D"/><path d="M8 18.5 15.5 11.5 23 18.5M10.5 16.5V25h10v-8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const LOGO = '<svg viewBox="0 0 34 34" width="30" height="30" aria-hidden="true"><rect width="34" height="34" rx="8" fill="#C8502D"/><circle cx="24.5" cy="10" r="4" fill="#E8A33D"/><path d="M8 18.5 15.5 11.5 23 18.5M10.5 16.5V25h10v-8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 const CSS = `
-@font-face{font-family:'Bricolage Grotesque';font-weight:200 800;font-display:swap;src:url(/fonts/bricolage-grotesque-latin.woff2) format('woff2')}
+@font-face{font-family:'Montagu Slab';font-weight:500 700;font-display:swap;src:url(/fonts/montagu-slab-latin.woff2) format('woff2')}
 @font-face{font-family:'Figtree';font-weight:300 900;font-display:swap;src:url(/fonts/figtree-latin.woff2) format('woff2')}
-:root{--bg:#F6F9FF;--surface:#FFFFFF;--ink:#0E1B33;--muted:#4A5A78;--line:#D8E1F2;--brand:#1B4DFF;--brand-deep:#1238C2;--brand-ink:#FFFFFF;--sun:#FFC83D;--sun-soft:#FFF3CF;--mint:#0E9F6E;--mint-soft:#DDF6EC;--coral:#9A3412;--coral-soft:#FFE7DA}
-@media (prefers-color-scheme:dark){:root{--bg:#0B1324;--surface:#121D33;--ink:#EEF3FF;--muted:#A9B7D3;--line:#24365C;--brand:#5B82FF;--brand-deep:#7C9BFF;--brand-ink:#08112A;--sun-soft:#3A3115;--mint:#3DD39B;--mint-soft:#123A2D;--coral:#FF9B6B;--coral-soft:#3D2416;color-scheme:dark}}
+:root{--bg:#FFF6EC;--surface:#FFFDF9;--ink:#1E2B2F;--muted:#56636A;--line:#EADFD2;--brand:#C8502D;--brand-deep:#A9401F;--brand-ink:#FFFFFF;--sun:#E8A33D;--sun-soft:#FCEBCB;--mint:#0E9F6E;--mint-soft:#DDF6EC;--coral:#9A3412;--coral-soft:#FFE7DA}
+@media (prefers-color-scheme:dark){:root{--bg:#12191B;--surface:#1A2427;--ink:#F3EEE7;--muted:#A5B0B3;--line:#2B393D;--brand:#E0714D;--brand-deep:#EE8A68;--brand-ink:#12191B;--sun-soft:#3A2E17;--mint:#3DD39B;--mint-soft:#123A2D;--coral:#FF9B6B;--coral-soft:#3D2416;color-scheme:dark}}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);font:17px/1.55 'Figtree','Segoe UI',system-ui,sans-serif}
 a{color:var(--brand);font-weight:600}
 :focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 header{padding:18px 20px}
-.logo{display:inline-flex;align-items:center;gap:9px;font:800 22px 'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;letter-spacing:-0.03em;color:var(--ink);text-decoration:none}
+.logo{display:inline-flex;align-items:center;gap:9px;font:700 22px 'Montagu Slab',Georgia,'Times New Roman',serif;letter-spacing:-0.03em;color:var(--ink);text-decoration:none}
 main{flex:1;width:100%;max-width:460px;margin:0 auto;padding:12px 16px 40px}
-h1{font:800 clamp(28px,7vw,36px)/1.1 'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;letter-spacing:-0.025em;margin:8px 0 10px}
+h1{font:700 clamp(28px,7vw,36px)/1.1 'Montagu Slab',Georgia,'Times New Roman',serif;letter-spacing:-0.025em;margin:8px 0 10px}
 .lead{color:var(--muted);margin:0 0 18px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 18px 40px -28px rgba(14,27,51,.35)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 18px 40px -28px rgba(30,43,47,.35)}
 label{display:block;font-weight:700;margin:14px 0 6px}
 label:first-child{margin-top:0}
 input{width:100%;min-height:50px;border:1.5px solid var(--line);border-radius:12px;padding:10px 14px;font:inherit;color:inherit;background:var(--surface)}
@@ -66,7 +66,7 @@ ${msg('error', o.error)}${msg('ok', o.notice)}
 <label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required${o.email ? ' autofocus' : ''}>
 <input type="hidden" name="next" value="${esc(o.next ?? '/app')}">
 <button class="cta">Sign in</button>
-<div class="links"><a href="/forgot">Forgot your password?</a><a href="/#pricing">New here? See plans</a></div>
+<div class="links"><a href="/forgot">Forgot your password?</a><a href="https://www.keyhelm.app/plans">New here? See plans</a></div>
 </form>`);
 }
 

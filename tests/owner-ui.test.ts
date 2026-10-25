@@ -93,7 +93,7 @@ test('/app: signed-out owners go to sign in and come back to the same screen; si
     const csp = cspOf(r);
     const nonce = /script-src 'nonce-([A-Za-z0-9+/=]{20,})'/.exec(csp)?.[1];
     assert.ok(nonce, `script-src uses a nonce: ${csp}`);
-    for (const part of ["default-src 'none'", `style-src 'nonce-${nonce}'`, "connect-src 'self'", "font-src 'self'", "manifest-src 'self'", "frame-ancestors 'none'", "base-uri 'none'", "object-src 'none'", "form-action 'self'", "require-trusted-types-for 'script'"]) {
+    for (const part of ["default-src 'none'", `style-src 'nonce-${nonce}'`, "connect-src 'self'", "font-src 'self'", "frame-src 'self'", "manifest-src 'self'", "frame-ancestors 'none'", "base-uri 'none'", "object-src 'none'", "form-action 'self'", "require-trusted-types-for 'script'"]) {
       assert.ok(csp.includes(part), `CSP has ${part}`);
     }
     assert.doesNotMatch(csp, /unsafe-inline|unsafe-eval|https?:|\*/, 'no inline or outside allowances');
@@ -128,14 +128,15 @@ test('the app page is self-contained: no outside URLs, no CDN, no HTML string si
   assert.doesNotMatch(page, /\son[a-z]+="/, 'no inline event handler attributes');
   assert.doesNotMatch(page, /[\u2014\u2013]/, 'no em or en dashes');
   assert.doesNotMatch(page, /gradient|border-radius:\s*(999|[3-9]\d)px/i, 'no gradients, no pill shapes');
-  assert.match(page, /@font-face\{font-family:'Bricolage Grotesque'[^}]*url\(\/fonts\/bricolage-grotesque-latin\.woff2\)/);
+  assert.match(page, /@font-face\{font-family:'Montagu Slab'[^}]*url\(\/fonts\/montagu-slab-latin\.woff2\)/);
+  assert.match(page, /--display:'Montagu Slab',Georgia/, 'Georgia until the slab font file is added');
   assert.match(page, /@font-face\{font-family:'Figtree'[^}]*url\(\/fonts\/figtree-latin\.woff2\)/);
-  for (const color of ['#F6F9FF', '#0E1B33', '#1B4DFF', '#FFC83D', '#0E9F6E']) assert.ok(page.includes(color), `brand color ${color}`);
+  for (const color of ['#FFF6EC', '#1E2B2F', '#C8502D', '#E8A33D', '#0E9F6E']) assert.ok(page.includes(color), `brand color ${color}`);
   assert.doesNotThrow(() => new Script(script(page), { filename: 'apps/owner/index.html' }), 'the inline script is valid JavaScript');
 
   const t = boot();
   try {
-    for (const font of ['/fonts/bricolage-grotesque-latin.woff2', '/fonts/figtree-latin.woff2', '/favicon.svg']) {
+    for (const font of ['/fonts/figtree-latin.woff2', '/favicon.svg']) {
       const r = await t.get(font);
       assert.equal(r.status, 200, `${font} is served by this site`);
     }
@@ -243,13 +244,13 @@ test('install manifest and icon: public, cached, and the manifest points at the 
     assert.equal(m.display, 'standalone');
     assert.ok(m.start_url.startsWith(m.scope), 'the start page is inside the app');
     assert.ok(m.scope.startsWith('/app'), 'the scope is the app');
-    assert.equal(m.background_color, '#F6F9FF');
+    assert.equal(m.background_color, '#FFF6EC');
     assert.ok(m.icons.length >= 1);
     for (const icon of m.icons) {
       const i = await t.get(icon.src);
       assert.equal(i.status, 200, icon.src);
       assert.equal(i.headers.get('content-type'), 'image/svg+xml');
-      assert.match(await i.text(), /<svg[^>]*viewBox="0 0 512 512"[\s\S]*#1B4DFF/);
+      assert.match(await i.text(), /<svg[^>]*viewBox="0 0 512 512"[\s\S]*#C8502D/);
     }
     assert.equal((await fetch(t.base + '/app/manifest.webmanifest', { headers: { 'if-none-match': etag } })).status, 304, 'browsers can revalidate cheaply');
     // The start page and every shortcut open the app (signed out: sign in first).

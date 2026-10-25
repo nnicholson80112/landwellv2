@@ -1,0 +1,1696 @@
+{
+ "updated": "2026-10-23",
+ "status": "Researched from statutes and 50-state surveys (Oct 2026). Not legal advice; check city and county rules too.",
+ "sources": {
+  "deposit": "https://nomadlease.com/blog/security-deposit-deadlines-maximums",
+  "depositCheck": "https://ipropertymanagement.com/laws/security-deposit-returns",
+  "entry": "https://ipropertymanagement.com/laws/landlords-right-to-entry",
+  "lateFee": "https://www.baselane.com/resources/late-fees-for-rent",
+  "lateFeeCheck": "https://hemlane.com/resources/late-fee-laws-by-state",
+  "monthToMonth": "https://ezel.ai/surveys/month-to-month-tenancy-termination-notice",
+  "eviction": "https://ipropertymanagement.com/laws/eviction-process"
+ },
+ "states": [
+  {
+   "code": "AL",
+   "name": "Alabama",
+   "deposit": {
+    "max": "1 month's rent (more allowed for pets, alterations, or added liability risk)",
+    "returnDeadline": "60 days",
+    "holding": "No account requirement",
+    "penalty": "2x the original deposit if the refund or accounting is late"
+   },
+   "entry": {
+    "notice": "2 days",
+    "statute": "Ala. Code § 35-9A-303"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "7 days",
+    "leaseViolation": "7 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "AK",
+   "name": "Alaska",
+   "deposit": {
+    "max": "2 months' rent; no cap if rent is over $2,000/month",
+    "returnDeadline": "14 days (30 days in some cases, such as deductions for damage)",
+    "holding": "Trust account where practicable",
+    "penalty": "Up to 2x the amount withheld, for willful violations"
+   },
+   "entry": {
+    "notice": "24 hours",
+    "statute": "AS § 34.03.140"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "7 days",
+    "leaseViolation": "5 or 10 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "AZ",
+   "name": "Arizona",
+   "deposit": {
+    "max": "1.5 months' rent",
+    "returnDeadline": "14 business days after move-out and the tenant's request",
+    "holding": "No account requirement",
+    "penalty": "2x the amount wrongfully withheld"
+   },
+   "entry": {
+    "notice": "2 days",
+    "statute": "Ariz. Rev. Stat. § 33-1343"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "5 days",
+    "leaseViolation": "10 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address",
+    "Tenant may get a copy of the Arizona Residential Landlord and Tenant Act",
+    "Move-in condition form",
+    "Purpose of any nonrefundable fees",
+    "Pool safety notice (if there is a pool)"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "AR",
+   "name": "Arkansas",
+   "deposit": {
+    "max": "2 months' rent",
+    "returnDeadline": "60 days",
+    "holding": "No account requirement",
+    "penalty": "2x the amount wrongfully withheld, plus costs and fees"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "3 or 10 days",
+    "leaseViolation": "14 days"
+   },
+   "disclosures": [],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "CA",
+   "name": "California",
+   "deposit": {
+    "max": "1 month's rent (2 months for some small landlords who own no more than 2 properties with 4 units total)",
+    "returnDeadline": "21 days",
+    "holding": "No account requirement",
+    "penalty": "Up to 2x the deposit for bad faith, plus actual damages"
+   },
+   "entry": {
+    "notice": "Reasonable notice (usually 24 hours)",
+    "statute": "Cal. Civ. Code § 1954"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be a reasonable estimate of the landlord's actual cost"
+   },
+   "monthToMonth": {
+    "landlord": "30 days if tenant has lived there under 1 year; 60 days after 1 year. Just cause required after 12 months for most rentals",
+    "tenant": "30 days",
+    "justCause": true
+   },
+   "notices": {
+    "nonpayment": "3 days",
+    "leaseViolation": "3 days"
+   },
+   "disclosures": [
+    "Registered sex offender database notice",
+    "Bed bug information",
+    "Mold disclosure",
+    "Shared utility meters",
+    "Flood hazard area notice",
+    "Pest control treatments",
+    "Former military ordnance nearby",
+    "Just-cause and rent-cap notice (unless exempt)",
+    "Smoking policy",
+    "Demolition permit applied for"
+   ],
+   "local": "Los Angeles, San Francisco, Oakland, San Jose and others have rent control and extra notices.",
+   "verify": ""
+  },
+  {
+   "code": "CO",
+   "name": "Colorado",
+   "deposit": {
+    "max": "2 months' rent",
+    "returnDeadline": "30 days (up to 60 if the lease says so)",
+    "holding": "No account requirement",
+    "penalty": "3x the amount wrongfully withheld, plus fees"
+   },
+   "entry": {
+    "notice": "No general statute; give reasonable notice (24 hours recommended). 24 hours required for bed bug inspections",
+    "statute": "Colo. Rev. Stat. § 38-12-503"
+   },
+   "lateFee": {
+    "grace": "7 days",
+    "cap": "Greater of $50 or 5% of the past-due rent"
+   },
+   "monthToMonth": {
+    "landlord": "21 days for tenancies not covered by Colorado's for-cause law; covered tenancies (12+ months) need a legal cause",
+    "tenant": "21 days",
+    "justCause": true
+   },
+   "notices": {
+    "nonpayment": "10 days",
+    "leaseViolation": "3 or 10 days"
+   },
+   "disclosures": [
+    "Radon brochure, testing history and signed radon warning, before signing",
+    "All required fees listed in the lease"
+   ],
+   "local": "Denver and Boulder have rental licensing and extra rules.",
+   "verify": "For-cause eviction law (2024) and radon disclosure (C.R.S. 38-12-803) are recent."
+  },
+  {
+   "code": "CT",
+   "name": "Connecticut",
+   "deposit": {
+    "max": "2 months' rent; 1 month for tenants 62 or older",
+    "returnDeadline": "21 days, or 15 days after receiving a forwarding address, whichever is later",
+    "holding": "Escrow account in a Connecticut institution; interest paid to the tenant",
+    "penalty": "2x the deposit"
+   },
+   "entry": {
+    "notice": "Reasonable Notice",
+    "statute": "Conn. Gen. Stat. § 47a-16"
+   },
+   "lateFee": {
+    "grace": "9 days",
+    "cap": "Lesser of $5 per day up to $50, or 5% of the late payment"
+   },
+   "monthToMonth": {
+    "landlord": "No fixed period; tenancy ends at the end of the rental month, then a notice to quit",
+    "tenant": "Not set by statute",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "3 days",
+    "leaseViolation": "15 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address",
+    "Common interest community notice (if applicable)"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "DE",
+   "name": "Delaware",
+   "deposit": {
+    "max": "1 month's rent for leases of 1 year or more (furnished units excluded)",
+    "returnDeadline": "20 days",
+    "holding": "Escrow account at a federally insured bank with a Delaware office",
+    "penalty": "2x the amount wrongfully withheld"
+   },
+   "entry": {
+    "notice": "48 hours",
+    "statute": "Del. Code tit. 25, § 5509"
+   },
+   "lateFee": {
+    "grace": "5 days",
+    "cap": "5% of monthly rent"
+   },
+   "monthToMonth": {
+    "landlord": "60 days, written, starting the first of the next month",
+    "tenant": "60 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "5 days",
+    "leaseViolation": "No written notice or 7 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address",
+    "Summary of the Delaware Landlord-Tenant Code"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "DC",
+   "name": "District of Columbia",
+   "deposit": {
+    "max": "1 month's rent",
+    "returnDeadline": "45 days to refund or give notice of withholding; balance within 30 days of that notice",
+    "holding": "Interest-bearing escrow account in D.C.; interest paid to the tenant",
+    "penalty": "The amount withheld; 3x for bad faith"
+   },
+   "entry": {
+    "notice": "48 hours (unless the tenant agrees to a shorter period)",
+    "statute": "D.C. Code § 42-3505.51"
+   },
+   "lateFee": {
+    "grace": "5 days",
+    "cap": "5% of monthly rent"
+   },
+   "monthToMonth": {
+    "landlord": "No no-cause termination; a landlord needs a legal ground",
+    "tenant": "30 days, written",
+    "justCause": true
+   },
+   "notices": {
+    "nonpayment": "30 days",
+    "leaseViolation": "30 days"
+   },
+   "disclosures": [
+    "DC Tenant Bill of Rights",
+    "Rental housing license (BBL) number",
+    "Rent control status and rent history",
+    "Lead disclosure (DC rules are stricter than federal)"
+   ],
+   "local": "Most DC rentals are covered by rent stabilization.",
+   "verify": ""
+  },
+  {
+   "code": "FL",
+   "name": "Florida",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "15 days if nothing is deducted; written notice of any claim within 30 days",
+    "holding": "Separate Florida account or a surety bond, with written disclosure",
+    "penalty": "Landlord loses the right to claim against the deposit, plus fees"
+   },
+   "entry": {
+    "notice": "24 hours for repairs; reasonable notice otherwise",
+    "statute": "Fla. Stat. 83.53"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written, before the end of a monthly period",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "3 days",
+    "leaseViolation": "7 days"
+   },
+   "disclosures": [
+    "Radon gas notice",
+    "Owner or agent name and address",
+    "Where the security deposit is held and the deposit statute text",
+    "Fire protection notice (buildings over 3 stories)",
+    "Flood history and insurance notice"
+   ],
+   "local": "",
+   "verify": "Entry notice for repairs changed from 12 to 24 hours in 2023; confirm current Fla. Stat. 83.53."
+  },
+  {
+   "code": "GA",
+   "name": "Georgia",
+   "deposit": {
+    "max": "2 months' rent (leases signed or renewed since July 1, 2024)",
+    "returnDeadline": "30 days",
+    "holding": "Escrow account at a regulated bank, or a bond; tenant told where",
+    "penalty": "Forfeiture; up to 3x the amount withheld if willful"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "60 days",
+    "tenant": "30 days",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "Not specified",
+    "leaseViolation": "Not specified"
+   },
+   "disclosures": [
+    "Flooding in the past 5 years",
+    "Owner and manager name and address",
+    "Move-in inspection list (before collecting a deposit)"
+   ],
+   "local": "",
+   "verify": "Deposit cap of 2 months applies to leases signed or renewed since July 1, 2024."
+  },
+  {
+   "code": "HI",
+   "name": "Hawaii",
+   "deposit": {
+    "max": "1 month's rent, plus an optional pet deposit of up to 1 more month",
+    "returnDeadline": "14 days",
+    "holding": "No separate account required",
+    "penalty": "Forfeiture; up to 3x for willful retention"
+   },
+   "entry": {
+    "notice": "2 days",
+    "statute": "Haw. Rev. Stat. § 521-53"
+   },
+   "lateFee": {
+    "grace": "5 days",
+    "cap": "8% of monthly rent"
+   },
+   "monthToMonth": {
+    "landlord": "45 days, written",
+    "tenant": "28 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "5 days",
+    "leaseViolation": "10 days"
+   },
+   "disclosures": [
+    "Owner or agent name and address",
+    "Move-in inventory"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "ID",
+   "name": "Idaho",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "21 days (up to 30 if the lease says so)",
+    "holding": "Separate account only when a third-party manager holds it",
+    "penalty": "Up to 3x actual damages in a court action after notice"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "1 month, written",
+    "tenant": "1 month, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "3 days",
+    "leaseViolation": "3 days"
+   },
+   "disclosures": [],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "IL",
+   "name": "Illinois",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "30 days to send an itemized statement; 45 days to return the deposit if no statement is sent",
+    "holding": "No account requirement; interest owed by landlords with 25+ units",
+    "penalty": "2x the deposit, plus costs and fees"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No hard cap; $10 a month on the first $1,000 of rent plus 5% above that is deemed reasonable. Chicago is stricter"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written",
+    "tenant": "30 days",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "5 days",
+    "leaseViolation": "10 days"
+   },
+   "disclosures": [
+    "Radon test results (if known)",
+    "Shared utility costs",
+    "Chicago: RLTO summary and other city notices"
+   ],
+   "local": "Chicago's Residential Landlord and Tenant Ordinance adds rules on deposits, late fees and notices.",
+   "verify": "Late-fee safe-harbor amount from 770 ILCS 95/; confirm current text."
+  },
+  {
+   "code": "IN",
+   "name": "Indiana",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "45 days",
+    "holding": "No account requirement",
+    "penalty": "The amount withheld plus attorney's fees"
+   },
+   "entry": {
+    "notice": "Reasonable notice",
+    "statute": "Ind. Code § 32-31-5-6"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "1 month",
+    "tenant": "1 month",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "10 days",
+    "leaseViolation": "30 days if no written lease"
+   },
+   "disclosures": [
+    "Owner and manager name and address",
+    "Move-in inventory and damage list"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "IA",
+   "name": "Iowa",
+   "deposit": {
+    "max": "2 months' rent",
+    "returnDeadline": "30 days after move-out and receipt of a forwarding address",
+    "holding": "Federally insured bank or credit union; not commingled",
+    "penalty": "Forfeiture; up to 2x the monthly rent for bad faith"
+   },
+   "entry": {
+    "notice": "24 hours",
+    "statute": "Iowa Code § 562A.19"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "Rent up to $700: $12/day, $60/month max. Over $700: $20/day, $100/month max"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "3 days",
+    "leaseViolation": "7 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address",
+    "Shared utility allocation",
+    "Known environmental contamination"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "KS",
+   "name": "Kansas",
+   "deposit": {
+    "max": "1 month's rent unfurnished, 1.5 months furnished, plus up to 1/2 month for pets",
+    "returnDeadline": "14 days after deductions are set, 30 days at most",
+    "holding": "No account requirement",
+    "penalty": "The amount due plus 1.5x the amount wrongfully withheld"
+   },
+   "entry": {
+    "notice": "Reasonable notice",
+    "statute": "Kan. Stat. § 58-2557"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "3 days",
+    "leaseViolation": "30 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address",
+    "Move-in inventory"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "KY",
+   "name": "Kentucky",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "No fixed deadline; signed move-in and move-out damage lists required",
+    "holding": "Separate account at a regulated bank; tenant told where",
+    "penalty": "Forfeiture of the right to withhold"
+   },
+   "entry": {
+    "notice": "2 days",
+    "statute": "Ky. Rev. Stat. § 383.615"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "7 days",
+    "leaseViolation": "14 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address (where URLTA applies)",
+    "Where the security deposit is held",
+    "Move-in damage list"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "LA",
+   "name": "Louisiana",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "1 month; itemized statement within 1 month, or 15 days after that (as of Aug. 1, 2026)",
+    "holding": "No account requirement",
+    "penalty": "The amount withheld plus the greater of $300 or 2x, for willful failure"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "10 days before the end of the month",
+    "tenant": "10 days before the end of the month",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "5 or 20 days",
+    "leaseViolation": "5 days"
+   },
+   "disclosures": [],
+   "local": "",
+   "verify": "Deposit statement deadline changes Aug. 1, 2026."
+  },
+  {
+   "code": "ME",
+   "name": "Maine",
+   "deposit": {
+    "max": "2 months' rent",
+    "returnDeadline": "Up to 30 days under a written lease; 21 days for a tenancy at will",
+    "holding": "Separate account beyond the reach of the landlord's creditors",
+    "penalty": "Forfeiture; 2x the amount withheld for wrongful retention"
+   },
+   "entry": {
+    "notice": "24 hours",
+    "statute": "Me. Rev. Stat. tit. 14, § 6025"
+   },
+   "lateFee": {
+    "grace": "15 days",
+    "cap": "4% of monthly rent"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "7 days if no written lease",
+    "leaseViolation": "30 days if no written lease"
+   },
+   "disclosures": [
+    "Energy efficiency disclosure",
+    "Radon testing and risk disclosure",
+    "Smoking policy",
+    "Bed bug information",
+    "Where the security deposit is held"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "MD",
+   "name": "Maryland",
+   "deposit": {
+    "max": "1 month's rent (2 months in a narrow utility-assistance case)",
+    "returnDeadline": "45 days",
+    "holding": "Escrow in an insured Maryland institution; interest paid to the tenant",
+    "penalty": "Up to 3x the amount withheld, plus fees"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "5% of the rent due"
+   },
+   "monthToMonth": {
+    "landlord": "60 days, written",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "No written notice required",
+    "leaseViolation": "14 or 30 days"
+   },
+   "disclosures": [
+    "Security deposit receipt with tenant rights",
+    "Owner and manager name and address",
+    "Right to a move-in inspection"
+   ],
+   "local": "Montgomery County and Baltimore City have extra rules.",
+   "verify": ""
+  },
+  {
+   "code": "MA",
+   "name": "Massachusetts",
+   "deposit": {
+    "max": "1 month's rent",
+    "returnDeadline": "30 days",
+    "holding": "Separate interest-bearing Massachusetts account; interest paid to the tenant",
+    "penalty": "Up to 3x the amount withheld, plus fees"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "30 days",
+    "cap": "No cap, but no fee until rent is 30 days late"
+   },
+   "monthToMonth": {
+    "landlord": "30 days or one rental period, whichever is longer",
+    "tenant": "Same as landlord",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "14 days, OR until a pending emergency rental assistance application resolves",
+    "leaseViolation": "Not specified"
+   },
+   "disclosures": [
+    "Security deposit receipt and statement of condition",
+    "Massachusetts tenant lead law notification",
+    "Bank and account for the deposit"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "MI",
+   "name": "Michigan",
+   "deposit": {
+    "max": "1.5 months' rent",
+    "returnDeadline": "30 days",
+    "holding": "Regulated financial institution, or a bond",
+    "penalty": "2x the amount retained"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "1 month",
+    "tenant": "1 month",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "7 days",
+    "leaseViolation": "30 days"
+   },
+   "disclosures": [
+    "Truth in Renting Act notice",
+    "Security deposit and forwarding address notice",
+    "Move-in inventory checklist",
+    "Domestic violence early termination notice"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "MN",
+   "name": "Minnesota",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "3 weeks after move-out and receipt of a forwarding address",
+    "holding": "No separate account; 1% simple interest owed",
+    "penalty": "2x the amount withheld, plus interest"
+   },
+   "entry": {
+    "notice": "Reasonable notice",
+    "statute": "Minn. Stat. § 504B.211"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "8% of the overdue rent"
+   },
+   "monthToMonth": {
+    "landlord": "One full rental period, written",
+    "tenant": "One full rental period, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "14 days",
+    "leaseViolation": "No written notice required"
+   },
+   "disclosures": [
+    "Owner and manager name and address",
+    "Outstanding inspection orders",
+    "Shared utility allocation"
+   ],
+   "local": "Minneapolis and St. Paul have extra tenant protections.",
+   "verify": ""
+  },
+  {
+   "code": "MS",
+   "name": "Mississippi",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "45 days after move-out and the tenant's request",
+    "holding": "No account requirement",
+    "penalty": "Up to $200 plus actual damages, for bad faith"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "3 days",
+    "leaseViolation": "14 days"
+   },
+   "disclosures": [],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "MO",
+   "name": "Missouri",
+   "deposit": {
+    "max": "2 months' rent (pet deposits not included)",
+    "returnDeadline": "30 days",
+    "holding": "Federally insured institution; interest belongs to the landlord",
+    "penalty": "2x the amount wrongfully withheld"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "1 month, written",
+    "tenant": "1 month, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "Not specified",
+    "leaseViolation": "10 days"
+   },
+   "disclosures": [],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "MT",
+   "name": "Montana",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "10 days if nothing is deducted; 30 days if it is",
+    "holding": "No account requirement",
+    "penalty": "Forfeiture of deductions; liable for the amount withheld"
+   },
+   "entry": {
+    "notice": "24 hours",
+    "statute": "Mont. Code § 70-24-312"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "3 days",
+    "leaseViolation": "3, 5 or 14 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address",
+    "Move-in condition list"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "NE",
+   "name": "Nebraska",
+   "deposit": {
+    "max": "1 month's rent, plus a pet deposit of up to 1/4 month",
+    "returnDeadline": "14 days",
+    "holding": "No account requirement",
+    "penalty": "Costs and fees; willful failure adds the lesser of 1 month's rent or 2x the deposit"
+   },
+   "entry": {
+    "notice": "24 hours",
+    "statute": "Neb. Rev. Stat. § 76-1423"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "7 days",
+    "leaseViolation": "30 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "NV",
+   "name": "Nevada",
+   "deposit": {
+    "max": "3 months' rent, including last month's rent and any surety bond",
+    "returnDeadline": "30 days",
+    "holding": "No account requirement",
+    "penalty": "The full deposit plus up to the deposit amount again"
+   },
+   "entry": {
+    "notice": "24 hours",
+    "statute": "Nev. Rev. Stat. § 118A.330"
+   },
+   "lateFee": {
+    "grace": "3 days",
+    "cap": "5% of the periodic rent"
+   },
+   "monthToMonth": {
+    "landlord": "30 days",
+    "tenant": "Not set by statute",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "7 days",
+    "leaseViolation": "No written notice or 5 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address",
+    "Move-in inventory",
+    "Foreclosure notice (if applicable)"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "NH",
+   "name": "New Hampshire",
+   "deposit": {
+    "max": "1 month's rent or $100, whichever is greater",
+    "returnDeadline": "30 days",
+    "holding": "Held in trust and not commingled; interest owed on deposits held 1 year or more",
+    "penalty": "2x the deposit plus interest, less lawful charges"
+   },
+   "entry": {
+    "notice": "Reasonable notice (usually 24 hours)",
+    "statute": "N.H. Rev. Stat. § 540-A:3"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written; good cause required for most residential property",
+    "tenant": "30 days, written",
+    "justCause": true
+   },
+   "notices": {
+    "nonpayment": "7 days",
+    "leaseViolation": "30 days"
+   },
+   "disclosures": [
+    "Security deposit receipt and move-in condition checklist"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "NJ",
+   "name": "New Jersey",
+   "deposit": {
+    "max": "1.5 months' rent",
+    "returnDeadline": "30 days",
+    "holding": "Held in trust and invested or interest-bearing; interest belongs to the tenant",
+    "penalty": "2x the amount owed, plus costs"
+   },
+   "entry": {
+    "notice": "Reasonable notice (usually 24 hours)",
+    "statute": "N.J. Stat. § 5:10-5.1"
+   },
+   "lateFee": {
+    "grace": "5 business days for tenants 62+",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "No no-cause termination for covered tenancies; a landlord needs a statutory ground",
+    "tenant": "1 month",
+    "justCause": true
+   },
+   "notices": {
+    "nonpayment": "No written notice required",
+    "leaseViolation": "30 days"
+   },
+   "disclosures": [
+    "Truth in Renting statement",
+    "Flood zone and flood history notice",
+    "Bank and account for the deposit (within 30 days)"
+   ],
+   "local": "Many towns have rent control ordinances.",
+   "verify": ""
+  },
+  {
+   "code": "NM",
+   "name": "New Mexico",
+   "deposit": {
+    "max": "1 month's rent for leases under 1 year; annual leases may require a \"reasonable\" deposit (interest owed above 1 month)",
+    "returnDeadline": "30 days",
+    "holding": "No account requirement",
+    "penalty": "Forfeiture and fees; $250 civil penalty for bad faith"
+   },
+   "entry": {
+    "notice": "24 hours",
+    "statute": "N.M. Stat. § 47-8-24"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "10% of the rent for the period"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "3 days",
+    "leaseViolation": "3 or 7 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "NY",
+   "name": "New York",
+   "deposit": {
+    "max": "1 month's rent",
+    "returnDeadline": "14 days after move-out",
+    "holding": "Held in trust, not commingled; interest-bearing in buildings with 6+ units",
+    "penalty": "Forfeiture; actual damages, up to 2x the deposit if willful"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "5 days",
+    "cap": "Lesser of $50 or 5% of monthly rent"
+   },
+   "monthToMonth": {
+    "landlord": "30 days (under 1 year), 60 days (1 to 2 years), 90 days (2+ years); good-cause law in some cities",
+    "tenant": "1 month",
+    "justCause": true
+   },
+   "notices": {
+    "nonpayment": "14 days",
+    "leaseViolation": "10 days"
+   },
+   "disclosures": [
+    "Sprinkler system notice",
+    "Flood history and flood zone notice",
+    "Bank and account for the deposit",
+    "NYC: bed bug history and other city notices"
+   ],
+   "local": "New York City adds many notices and rent stabilization rules.",
+   "verify": "Late-fee cap and occupancy-based notice from the 2019 HSTPA; good-cause law applies in some cities."
+  },
+  {
+   "code": "NC",
+   "name": "North Carolina",
+   "deposit": {
+    "max": "2 weeks' rent (week-to-week), 1.5 months (month-to-month), 2 months (longer terms)",
+    "returnDeadline": "30 days (interim accounting if needed, final within 60)",
+    "holding": "Trust account at an insured institution, or a bond",
+    "penalty": "Willful failure voids the right to keep any of it; damages and fees"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "5 days",
+    "cap": "Greater of $15 or 5% of monthly rent"
+   },
+   "monthToMonth": {
+    "landlord": "7 days",
+    "tenant": "7 days",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "10 days",
+    "leaseViolation": "No written notice required"
+   },
+   "disclosures": [
+    "Where the security deposit is held"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "ND",
+   "name": "North Dakota",
+   "deposit": {
+    "max": "1 month's rent (2 in limited cases), plus a pet deposit",
+    "returnDeadline": "30 days",
+    "holding": "Federally insured interest-bearing account; interest paid to the tenant",
+    "penalty": "Up to 3x for money withheld without reasonable justification"
+   },
+   "entry": {
+    "notice": "Reasonable notice (usually 24 hours)",
+    "statute": "N.D. Cent. Code § 47-16-07.3"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "1 calendar month",
+    "tenant": "1 calendar month",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "3 days",
+    "leaseViolation": "3 days"
+   },
+   "disclosures": [],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "OH",
+   "name": "Ohio",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "30 days",
+    "holding": "No account requirement; 5% interest on the amount over $50 or 1 month's rent, for tenancies of 6+ months",
+    "penalty": "The money due plus an equal amount, plus fees"
+   },
+   "entry": {
+    "notice": "24 hours",
+    "statute": "Ohio Rev. Code § 5321.04"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "30 days before the end of a rental period",
+    "tenant": "30 days",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "3 days",
+    "leaseViolation": "3 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address"
+   ],
+   "local": "",
+   "verify": "Sources disagree on whether Ohio caps late fees."
+  },
+  {
+   "code": "OK",
+   "name": "Oklahoma",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "45 days after move-out and the tenant's written request",
+    "holding": "Escrow account at a federally insured institution in Oklahoma",
+    "penalty": "Tenant recovers the deposit; misappropriation can be a crime"
+   },
+   "entry": {
+    "notice": "1 day",
+    "statute": "Okla. Stat. tit. 41, § 128"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "5 or 10 days",
+    "leaseViolation": "15 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address",
+    "Flooding history"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "OR",
+   "name": "Oregon",
+   "deposit": {
+    "max": "No cap (limits on adding a deposit in the first year)",
+    "returnDeadline": "31 days",
+    "holding": "No account requirement",
+    "penalty": "2x the amount withheld without an accounting or in bad faith"
+   },
+   "entry": {
+    "notice": "24 hours",
+    "statute": "Or. Rev. Stat. § 90.725"
+   },
+   "lateFee": {
+    "grace": "4 days",
+    "cap": "A reasonable flat fee, a daily fee up to 6% of that flat fee, or 5% of rent per 5 days late"
+   },
+   "monthToMonth": {
+    "landlord": "30 days in the first year; after the first year only for cause or a qualifying landlord reason (90 days)",
+    "tenant": "30 days, written",
+    "justCause": true
+   },
+   "notices": {
+    "nonpayment": "72 or 144 hours",
+    "leaseViolation": "30 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address",
+    "Flood zone notice",
+    "Smoking policy",
+    "Carbon monoxide alarm information"
+   ],
+   "local": "Portland has relocation payments and screening rules.",
+   "verify": ""
+  },
+  {
+   "code": "PA",
+   "name": "Pennsylvania",
+   "deposit": {
+    "max": "2 months' rent in year one; 1 month from year two",
+    "returnDeadline": "30 days",
+    "holding": "Escrow account for deposits over $100; interest paid to the tenant after year two",
+    "penalty": "Forfeiture; 2x the amount wrongfully withheld"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "15 days",
+    "tenant": "Not set by statute",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "10 days",
+    "leaseViolation": "15 or 30 days"
+   },
+   "disclosures": [],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "RI",
+   "name": "Rhode Island",
+   "deposit": {
+    "max": "1 month's rent (separate furniture deposit allowed for high-value furnishings)",
+    "returnDeadline": "20 days",
+    "holding": "No account requirement",
+    "penalty": "The amount due plus 2x the amount wrongfully withheld, plus fees"
+   },
+   "entry": {
+    "notice": "2 days",
+    "statute": "R.I. Gen. Laws § 34-18-26"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "5 days",
+    "leaseViolation": "20 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address",
+    "Outstanding code violations"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "SC",
+   "name": "South Carolina",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "30 days",
+    "holding": "No account requirement",
+    "penalty": "3x the amount wrongfully withheld, plus fees"
+   },
+   "entry": {
+    "notice": "24 hours",
+    "statute": "S.C. Code § 27-40-530"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "5 days",
+    "leaseViolation": "14 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "SD",
+   "name": "South Dakota",
+   "deposit": {
+    "max": "1 month's rent (more by agreement for special conditions)",
+    "returnDeadline": "21 days",
+    "holding": "No account requirement",
+    "penalty": "Forfeiture; up to $200 punitive damages for bad faith"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "One full rental period (up to 1 month)",
+    "tenant": "One full rental period",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "Not specified",
+    "leaseViolation": "Not specified"
+   },
+   "disclosures": [],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "TN",
+   "name": "Tennessee",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "No statutory deadline",
+    "holding": "Separate account at a regulated bank; tenant told where",
+    "penalty": "Forfeiture if the deposit wasn't held and documented as required"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "5 days",
+    "cap": "10% of the past-due rent"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "7 or 14 days",
+    "leaseViolation": "7 or 14 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address (where URLTA applies)"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "TX",
+   "name": "Texas",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "30 days after move-out (forwarding address required)",
+    "holding": "No account requirement",
+    "penalty": "$100 plus 3x the amount withheld and fees, for bad faith"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "Rent unpaid 2 full days after due",
+    "cap": "12% of monthly rent (4 or fewer units in the building) or 10% (more than 4 units)"
+   },
+   "monthToMonth": {
+    "landlord": "1 month",
+    "tenant": "1 month",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "3 days",
+    "leaseViolation": "3 days"
+   },
+   "disclosures": [
+    "Owner and management company (on request)",
+    "Flood zone and flood history notice",
+    "Towing and parking rules (multi-unit)",
+    "Emergency phone number"
+   ],
+   "local": "",
+   "verify": "Late-fee caps tied to building size (Tex. Prop. Code 92.019)."
+  },
+  {
+   "code": "UT",
+   "name": "Utah",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "30 days",
+    "holding": "No account requirement",
+    "penalty": "The full deposit plus a $100 civil penalty"
+   },
+   "entry": {
+    "notice": "24 hours (unless the lease agreement has different terms)",
+    "statute": "Utah Code § 57-22-4"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "Greater of 10% of monthly rent or $75"
+   },
+   "monthToMonth": {
+    "landlord": "15 days, ending at the end of a rental period",
+    "tenant": "Not set by statute",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "3 days",
+    "leaseViolation": "3 days"
+   },
+   "disclosures": [],
+   "local": "",
+   "verify": "Late-fee cap from Utah Code 57-22-4; confirm current text."
+  },
+  {
+   "code": "VT",
+   "name": "Vermont",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "14 days",
+    "holding": "No account requirement",
+    "penalty": "Forfeiture; 2x the amount withheld if willful"
+   },
+   "entry": {
+    "notice": "48 hours",
+    "statute": "Vt. Stat. tit. 9, § 4460"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "60 to 90 days depending on how long the tenant has lived there",
+    "tenant": "One rental period",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "14 days",
+    "leaseViolation": "30 days"
+   },
+   "disclosures": [],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "VA",
+   "name": "Virginia",
+   "deposit": {
+    "max": "2 months' rent",
+    "returnDeadline": "45 days",
+    "holding": "No account requirement",
+    "penalty": "Return of the deposit plus actual damages and fees, if willful"
+   },
+   "entry": {
+    "notice": "72 hours",
+    "statute": "Va. Code § 55.1-1229"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "Lesser of 10% of the periodic rent or 10% of the remaining balance"
+   },
+   "monthToMonth": {
+    "landlord": "30 days, written, before the next rent due date",
+    "tenant": "30 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "14 days",
+    "leaseViolation": "30 days"
+   },
+   "disclosures": [
+    "Statement of Tenant Rights and Responsibilities (state form)",
+    "Visible mold disclosure",
+    "Owner and manager name and address",
+    "Move-in inspection report",
+    "Military air installation notice (if applicable)"
+   ],
+   "local": "",
+   "verify": "Nonpayment notice changed from 5 to 14 days on July 1, 2026 (Va. Code 55.1-1245(F))."
+  },
+  {
+   "code": "WA",
+   "name": "Washington",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "30 days",
+    "holding": "Trust account at a financial institution",
+    "penalty": "The full deposit; a court may award up to 2x"
+   },
+   "entry": {
+    "notice": "2 days",
+    "statute": "Wash. Rev. Code § 59.18.150"
+   },
+   "lateFee": {
+    "grace": "5 days",
+    "cap": "No statutory cap; must be in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "No no-cause termination; a landlord needs a statutory cause",
+    "tenant": "20 days, written",
+    "justCause": true
+   },
+   "notices": {
+    "nonpayment": "14 days",
+    "leaseViolation": "No written notice or 3 or 10 days"
+   },
+   "disclosures": [
+    "Owner and manager name and address",
+    "Mold information",
+    "Fire safety and smoke detection",
+    "Move-in condition checklist (required to take a deposit)"
+   ],
+   "local": "Seattle has extra notice, deposit and screening rules.",
+   "verify": ""
+  },
+  {
+   "code": "WV",
+   "name": "West Virginia",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "60 days, or 45 days after a new tenant moves in, whichever is sooner",
+    "holding": "No account requirement",
+    "penalty": "The unreturned deposit plus 1.5x the amount withheld, if willful"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "One full rental period, written",
+    "tenant": "One full rental period, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "No written notice required",
+    "leaseViolation": "No written notice required"
+   },
+   "disclosures": [],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "WI",
+   "name": "Wisconsin",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "21 days",
+    "holding": "No account requirement",
+    "penalty": "2x the tenant's loss, plus fees"
+   },
+   "entry": {
+    "notice": "12 hours",
+    "statute": "Wis. Stat. § 704.05"
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be in the lease and reasonable"
+   },
+   "monthToMonth": {
+    "landlord": "28 days, written",
+    "tenant": "28 days, written",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "5, 14 or 30 days",
+    "leaseViolation": "5, 14 or 30 days"
+   },
+   "disclosures": [
+    "Check-in sheet",
+    "Known uncorrected code violations",
+    "Utility charge arrangements",
+    "Domestic abuse protections notice"
+   ],
+   "local": "",
+   "verify": ""
+  },
+  {
+   "code": "WY",
+   "name": "Wyoming",
+   "deposit": {
+    "max": "No cap",
+    "returnDeadline": "30 days, or 15 days after receiving a new address, whichever is later (30 more days if there's damage)",
+    "holding": "No account requirement",
+    "penalty": "The full deposit plus court costs, if the withholding was unreasonable"
+   },
+   "entry": {
+    "notice": "No statute; give reasonable notice (24 hours recommended)",
+    "statute": ""
+   },
+   "lateFee": {
+    "grace": "None",
+    "cap": "No statutory cap; must be reasonable and in the lease"
+   },
+   "monthToMonth": {
+    "landlord": "No statutory period",
+    "tenant": "No statutory period",
+    "justCause": false
+   },
+   "notices": {
+    "nonpayment": "3 days",
+    "leaseViolation": "3 days"
+   },
+   "disclosures": [],
+   "local": "",
+   "verify": ""
+  }
+ ]
+}

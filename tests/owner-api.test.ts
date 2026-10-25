@@ -725,3 +725,102 @@ test('/api/me lists what the plan includes', async () => {
     t.close();
   }
 });
+
+test('leasing, calendar and books: scoped to the owner; expenses in dollars become cents', async () => {
+  const t = boot();
+  try {
+    const leasing = await (await t.bearer('GET', '/api/leasing')).json();
+    assert.deepEqual(leasing.homes.map((h: any) => h.address), ['88 Aspen Ct']);
+    assert.equal(leasing.stages.length, 6);
+    assert.match(leasing.note, /never scores, ranks or recommends/);
+
+    const cal = await (await t.bearer('GET', '/api/calendar?month=2027-02')).json();
+    assert.ok(cal.events.some((e: any) => e.kind === 'deadline' && e.date === '2027-02-14' && /Lisa Chen/.test(e.title)));
+    assert.ok(cal.events.every((e: any) => e.date.startsWith('2027-02')));
+    assert.equal((await t.bearer('GET', '/api/calendar?month=2027-13')).status, 400);
+
+    const homeId = t.s.home.id;
+    const bad = await t.bearer('POST', '/api/expenses', { memo: 'Gutter cleaning', amount: '0', category: 'repairs', propertyId: homeId });
+    assert.equal(bad.status, 400);
+    assert.equal((await bad.json()).field, 'amount');
+    const ok = await t.bearer('POST', '/api/expenses', { memo: 'Gutter cleaning', amount: '$185.50', category: 'repairs', propertyId: homeId, date: '2026-10-10' });
+    assert.equal(ok.status, 201);
+    assert.equal((await ok.json()).expense.amount, 18_550);
+    const books = await (await t.bearer('GET', '/api/books')).json();
+    assert.equal(books.months.length, 6);
+    assert.equal(books.months.at(-1).month, '2026-10');
+    assert.equal(books.months.at(-1).expenses, 18_550);
+    assert.equal(books.entries[0].memo, 'Gutter cleaning');
+
+    // Someone else's home is not one of yours.
+    const other = t.store.insert('owners', { name: 'Other Owner', email: 'other@example.com', phone: '+17205550999', plan: 'autopilot' } as any);
+    const theirs = t.store.insert('properties', { ownerId: other.id, address: '1 Elm St', city: 'Denver', state: 'CO', zip: '80202', beds: 1, baths: 1, rent: 100_000, deposit: 100_000, status: 'listed' } as any);
+    assert.equal((await t.bearer('POST', '/api/expenses', { memo: 'x', amount: '10', category: 'other', propertyId: theirs.id })).status, 400);
+  } finally {
+    t.close();
+  }
+});
+
+test('documents: filled in from the lease and the state rules; locked by plan', async () => {
+  const t = boot();
+  try {
+    t.store.update('owners', t.s.owner.id, { plan: 'autopilot' });
+    const list = await (await t.bearer('GET', '/api/documents')).json();
+    assert.equal(list.docs.length, 10);
+    assert.equal(list.homes[0].stateName, 'Colorado');
+    const lease = list.docs.find((d: any) => d.id === 'lease');
+    assert.equal(lease.included, true);
+    const locked = list.docs.filter((d: any) => !d.included);
+    assert.ok(locked.length > 0 && locked.every((d: any) => d.plan === 'pro' && d.planName === 'Autopilot Pro'));
+
+    const doc = await (await t.bearer('GET', `/api/documents/lease?tenantId=${t.s.tenant.id}`)).json();
+    assert.equal(doc.state, 'Colorado');
+    assert.match(doc.html, /Lisa Chen/);
+    assert.match(doc.html, /\$2,750/);
+    assert.doesNotMatch(doc.html, /style=/);
+
+    const lockedRes = await t.bearer('GET', `/api/documents/${locked[0].id}?tenantId=${t.s.tenant.id}`);
+    assert.equal(lockedRes.status, 403);
+    assert.equal((await lockedRes.json()).plan, 'pro');
+
+    t.store.update('owners', t.s.owner.id, { plan: 'essentials' });
+    assert.equal((await t.bearer('GET', `/api/documents/lease?tenantId=${t.s.tenant.id}`)).status, 403);
+    t.store.update('owners', t.s.owner.id, { plan: 'pro' });
+    assert.equal((await t.bearer('GET', `/api/documents/${locked[0].id}?propertyId=${t.s.home.id}`)).status, 200);
+
+    assert.equal((await t.bearer('GET', '/api/documents/not-a-doc')).status, 404);
+    // Tenant names are escaped before they reach the page.
+    t.store.update('tenants', t.s.tenant.id, { name: '<img src=x onerror=alert(1)>' });
+    const esc = await (await t.bearer('GET', `/api/documents/lease?tenantId=${t.s.tenant.id}`)).json();
+    assert.doesNotMatch(esc.html, /<img/);
+  } finally {
+    t.close();
+  }
+});
+
+test('documents as printable pages: no scripts, framed only by this site, locked by plan, 404 for others', async () => {
+  const t = boot();
+  try {
+    t.store.update('owners', t.s.owner.id, { plan: 'autopilot' });
+    const cookie = await t.signInAs(t.s.owner.id);
+    const r = await t.call(cookie, 'GET', `/api/documents/lease/page?tenantId=${t.s.tenant.id}`, undefined, {});
+    assert.equal(r.status, 200);
+    assert.match(r.headers.get('content-type') ?? '', /text\/html/);
+    assert.equal(r.headers.get('x-frame-options'), 'SAMEORIGIN');
+    const csp = r.headers.get('content-security-policy') ?? '';
+    for (const part of ["default-src 'none'", "frame-ancestors 'self'", "form-action 'none'"]) assert.ok(csp.includes(part), `CSP has ${part}`);
+    assert.doesNotMatch(csp, /script-src/);
+    const page = await r.text();
+    assert.doesNotMatch(page, /<script/i);
+    assert.match(page, /Lisa Chen/);
+    assert.match(page, /<title>Residential Lease Agreement \(Colorado\)<\/title>/);
+
+    const locked = await t.call(cookie, 'GET', `/api/documents/payorquit/page?tenantId=${t.s.tenant.id}`, undefined, {});
+    assert.equal(locked.status, 403);
+    assert.match(await locked.text(), /part of Autopilot Pro/);
+    assert.equal((await t.call(cookie, 'GET', '/api/documents/lease/page?tenantId=nope', undefined, {})).status, 404);
+    assert.equal((await t.call('', 'GET', `/api/documents/lease/page?tenantId=${t.s.tenant.id}`, undefined, {})).status, 401);
+  } finally {
+    t.close();
+  }
+});

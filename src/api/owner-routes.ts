@@ -107,7 +107,7 @@ function signIn(req: Req, res: ServerResponse, svc: Services, ownerId: string, m
 
 const APP_DIR = join(ROOT, 'apps/owner');
 /** The app's screens. /app/<tab> and /app/messages/<key> open the same page on that screen. */
-export const APP_TABS = ['today', 'rent', 'repairs', 'messages', 'homes', 'settings'] as const;
+export const APP_TABS = ['today', 'rent', 'repairs', 'messages', 'leasing', 'homes', 'calendar', 'documents', 'books', 'settings'] as const;
 let appCache: { mtimeMs: number; html: string } | undefined;
 
 /** apps/owner/index.html from memory (read again when the file changes), or undefined when it doesn't exist. */
@@ -122,12 +122,13 @@ function appHtml(): string | undefined {
 /**
  * The app page's Content-Security-Policy: only its own inline script and style run (a fresh nonce on every
  * response), data comes only from this site, nothing can frame it, and Trusted Types blocks HTML string sinks
- * (the app builds every element with DOM calls, so server data is never parsed as HTML).
+ * (the app builds every element with DOM calls, so server data is never parsed as HTML). The one frame it
+ * shows is a state document, served from this site as its own script-free page.
  */
 export function appCsp(nonce: string): string {
   return [
     "default-src 'none'", `script-src 'nonce-${nonce}'`, `style-src 'nonce-${nonce}'`, "img-src 'self' data:", "font-src 'self'",
-    "connect-src 'self'", "manifest-src 'self'", "form-action 'self'", "frame-ancestors 'none'", "base-uri 'none'", "object-src 'none'",
+    "connect-src 'self'", "frame-src 'self'", "manifest-src 'self'", "form-action 'self'", "frame-ancestors 'none'", "base-uri 'none'", "object-src 'none'",
     "require-trusted-types-for 'script'",
   ].join('; ');
 }

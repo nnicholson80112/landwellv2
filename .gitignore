@@ -5,3 +5,6 @@ data/
 
 # Temporary agent worktrees
 .claude/worktrees/
+
+# Research pages copied from other sites (see scripts/state-library/build_state_rules.py)
+scripts/state-library/sources/

@@ -6,8 +6,8 @@
 <title>Today | KeyHelm</title>
 <meta name="robots" content="noindex">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#F6F9FF" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0B1324" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FFF6EC" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12191B" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="KeyHelm">
 <link rel="manifest" href="/app/manifest.webmanifest">
@@ -15,17 +15,18 @@
 <link rel="preload" href="/fonts/figtree-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
 /* KeyHelm owner app. One file: no frameworks, no outside requests. Fonts are served from this site. */
-@font-face{font-family:'Bricolage Grotesque';font-style:normal;font-weight:200 800;font-display:swap;src:url(/fonts/bricolage-grotesque-latin.woff2) format('woff2')}
+@font-face{font-family:'Montagu Slab';font-style:normal;font-weight:500 700;font-display:swap;src:url(/fonts/montagu-slab-latin.woff2) format('woff2')}
 @font-face{font-family:'Figtree';font-style:normal;font-weight:300 900;font-display:swap;src:url(/fonts/figtree-latin.woff2) format('woff2')}
 :root{
-  --bg:#F6F9FF;--surface:#FFFFFF;--tint:#E8EFFF;--sun:#FFC83D;--sun-soft:#FFF3CF;--ink:#0E1B33;--muted:#4A5A78;--line:#D8E1F2;
-  --brand:#1B4DFF;--brand-ink:#FFFFFF;--brand-deep:#1238C2;--mint:#0E9F6E;--mint-ink:#0B7A55;--mint-soft:#DDF6EC;--coral:#9A3412;--coral-soft:#FFE7DA;
-  --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;--body:'Figtree','Segoe UI',system-ui,sans-serif;
-  --nav-w:248px;--shadow:0 14px 34px -28px rgba(14,27,51,.55);color-scheme:light;
+  --bg:#FFF6EC;--surface:#FFFDF9;--tint:#F6ECDF;--sun:#E8A33D;--sun-soft:#FCEBCB;--ink:#1E2B2F;--muted:#56636A;--line:#EADFD2;
+  --brand:#C8502D;--brand-ink:#FFFFFF;--brand-deep:#A9401F;--mint:#0E9F6E;--mint-ink:#0B7A55;--mint-soft:#DDF6EC;--coral:#9A3412;--coral-soft:#FFE7DA;
+  --side:#1E2B2F;--side-2:#26363B;--side-ink:#F3EEE7;--side-muted:#A5B0B3;
+  --display:'Montagu Slab',Georgia,'Times New Roman',serif;--body:'Figtree','Segoe UI',system-ui,sans-serif;
+  --nav-w:248px;--shadow:0 14px 34px -28px rgba(30,43,47,.55);color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root{
-  --bg:#0B1324;--surface:#121D33;--tint:#17264A;--sun-soft:#3A3115;--ink:#EEF3FF;--muted:#A9B7D3;--line:#24365C;
-  --brand:#5B82FF;--brand-ink:#08112A;--brand-deep:#7C9BFF;--mint:#3DD39B;--mint-ink:#3DD39B;--mint-soft:#123A2D;--coral:#FF9B6B;--coral-soft:#3D2416;
+  --bg:#12191B;--surface:#1A2427;--tint:#1E2B2F;--sun-soft:#3A2E17;--ink:#F3EEE7;--muted:#A5B0B3;--line:#2B393D;
+  --brand:#E0714D;--brand-ink:#12191B;--brand-deep:#EE8A68;--side:#0F1719;--side-2:#1A2427;--mint:#3DD39B;--mint-ink:#3DD39B;--mint-soft:#123A2D;--coral:#FF9B6B;--coral-soft:#3D2416;
   --shadow:none;color-scheme:dark}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -43,14 +44,14 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ic{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 /* ---------- layout: bottom tabs on phones, side nav on wide screens ---------- */
-.offline{position:sticky;top:0;z-index:40;background:var(--sun);color:#0E1B33;font-weight:700;text-align:center;padding:10px 16px}
+.offline{position:sticky;top:0;z-index:40;background:var(--sun);color:#1E2B2F;font-weight:700;text-align:center;padding:10px 16px}
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 .nav ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,1fr)}
 .nav li a{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:62px;padding:6px 2px;color:var(--muted);text-decoration:none;font-size:12px;font-weight:700;letter-spacing:.01em}
 .nav li a:hover{color:var(--ink)}
 .nav li a[aria-current="page"]{color:var(--brand)}
 .nav li a[aria-current="page"]::before{content:'';position:absolute;top:0;left:22%;right:22%;height:3px;border-radius:0 0 3px 3px;background:var(--brand)}
-.nav .count{position:absolute;top:6px;left:calc(50% + 6px);min-width:20px;height:20px;padding:0 5px;border-radius:6px;background:var(--sun);color:#0E1B33;font-size:12px;font-weight:800;line-height:20px;text-align:center}
+.nav .count{position:absolute;top:6px;left:calc(50% + 6px);min-width:20px;height:20px;padding:0 5px;border-radius:6px;background:var(--sun);color:#1E2B2F;font-size:12px;font-weight:800;line-height:20px;text-align:center}
 .brand{display:none;align-items:center;gap:10px;font:800 22px var(--display);letter-spacing:-0.03em;color:var(--ink);text-decoration:none;min-height:48px;padding:0 10px;margin-bottom:18px}
 .brand svg{width:32px;height:32px}
 main{display:block;max-width:1000px;margin:0 auto;padding:12px 16px calc(96px + env(safe-area-inset-bottom,0px))}
@@ -119,7 +120,7 @@ details.block[open]>summary::before{transform:rotate(45deg)}
 .btn.primary:hover{background:var(--brand-deep)}
 .btn.ghost{background:var(--surface);color:var(--ink);border-color:var(--line)}
 .btn.ghost:hover{border-color:var(--brand)}
-.btn.sun{background:var(--sun);color:#0E1B33;box-shadow:0 8px 22px -14px #C78E00}
+.btn.sun{background:var(--sun);color:#1E2B2F;box-shadow:0 8px 22px -14px #B07A1F}
 .btn.choice{background:var(--surface);color:var(--ink);border-color:var(--ink)}
 .btn.danger{background:var(--surface);color:var(--coral);border-color:var(--coral)}
 .btn.big{min-height:56px;font-size:17px;padding:12px 22px}
@@ -241,8 +242,8 @@ progress::-moz-progress-bar{background:var(--mint);border-radius:6px}
 }
 
 /* ---------- sheet (dialog), toasts ---------- */
-dialog.sheet{width:min(640px,calc(100vw - 32px));max-width:none;max-height:min(92vh,920px);padding:0;border:0;border-radius:18px;background:var(--surface);color:var(--ink);box-shadow:0 30px 80px -30px rgba(14,27,51,.6)}
-dialog.sheet::backdrop{background:rgba(14,27,51,.5)}
+dialog.sheet{width:min(640px,calc(100vw - 32px));max-width:none;max-height:min(92vh,920px);padding:0;border:0;border-radius:18px;background:var(--surface);color:var(--ink);box-shadow:0 30px 80px -30px rgba(30,43,47,.6)}
+dialog.sheet::backdrop{background:rgba(30,43,47,.5)}
 .sheet-inner{display:flex;flex-direction:column;max-height:inherit}
 .sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 12px 12px 20px;border-bottom:1px solid var(--line)}
 .sheet-head h2{font-size:22px;font-weight:800}
@@ -250,10 +251,102 @@ dialog.sheet::backdrop{background:rgba(14,27,51,.5)}
 @media (max-width:640px){dialog.sheet{width:100vw;max-width:100vw;margin:auto 0 0;border-radius:18px 18px 0 0;max-height:94vh}.sheet-body{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}}
 .toasts{position:fixed;left:16px;right:16px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:50;display:grid;gap:8px;justify-items:center;pointer-events:none}
 .toasts>div{display:grid;gap:8px;justify-items:center}
-.toast{pointer-events:auto;max-width:520px;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;font-weight:700;box-shadow:0 14px 30px -14px rgba(14,27,51,.6)}
+.toast{pointer-events:auto;max-width:520px;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;font-weight:700;box-shadow:0 14px 30px -14px rgba(30,43,47,.6)}
 .toast.bad{background:var(--coral);color:#fff}
 @media (min-width:900px){.toasts{left:auto;right:28px;bottom:28px;justify-items:end}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+
+/* ---------- KeyHelm look: dark slate side menu on wide screens, "More" on phones ---------- */
+.nav li.extra{display:none}
+.nav ul{grid-template-columns:repeat(5,1fr)}
+.more-btn{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:100%;min-height:62px;padding:6px 2px;background:none;border:0;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer}
+.more-list{display:grid;gap:6px}
+.more-btn.on{color:var(--brand)}
+.more-btn.on::before{content:'';position:absolute;top:0;left:22%;right:22%;height:3px;border-radius:0 0 3px 3px;background:var(--brand)}
+.more-list a{justify-content:flex-start;width:100%}
+.more-list a[aria-current="page"]{border-color:var(--brand);color:var(--brand)}
+@media (min-width:900px){
+  .nav{background:var(--side);border-right:0}
+  .nav li.extra{display:block}
+  .nav li.more-li{display:none}
+  .nav .brand{color:var(--side-ink)}
+  .nav li a{color:var(--side-muted)}
+  .nav li a:hover{color:var(--side-ink);background:var(--side-2)}
+  .nav li a[aria-current="page"]{color:var(--side-ink);background:color-mix(in srgb,var(--brand) 26%,var(--side-2))}
+}
+
+/* ---------- leasing ---------- */
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:12px;overflow-x:auto;padding-bottom:6px}
+.lane{background:var(--tint);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:140px}
+.lane-h{display:flex;justify-content:space-between;gap:8px;font:800 13px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:2px 4px}
+.tile{padding:12px;display:grid;gap:6px}
+.tile h4{font:700 16px var(--body);text-transform:none;letter-spacing:0;color:var(--ink)}
+.tile.needs{box-shadow:inset 3px 0 0 var(--sun)}
+.small{font-size:14px}
+
+/* ---------- calendar ---------- */
+.cal-bar{align-items:center;gap:8px}
+.cal-bar h2{font-size:22px;min-width:180px;text-align:center}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface);margin:14px 0}
+.cal .dow{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:8px;background:var(--tint)}
+.cal-day{min-height:92px;border-top:1px solid var(--line);border-left:1px solid var(--line);padding:6px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.cal-day:nth-child(7n+1){border-left:0}
+.cal-day.other{background:var(--tint)}
+.cal-day .dn{font-size:12px;font-weight:800;align-self:flex-start}
+.cal-day.today .dn{background:var(--brand);color:var(--brand-ink);border-radius:6px;padding:0 6px}
+.ev{display:block;font-size:11.5px;font-weight:700;border-radius:5px;padding:2px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--tint)}
+.ev.showing,.ev.call{background:var(--mint-soft);color:var(--mint-ink)}
+.ev.deadline,.ev.task{background:var(--sun-soft)}
+.ev.repair{background:var(--coral-soft);color:var(--coral)}
+@media (max-width:760px){.cal{display:none}}
+.agenda-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 0;border-top:1px solid var(--line)}
+.agenda-row:first-child{border-top:0}
+.grow{flex:1;min-width:0}
+
+/* ---------- documents ---------- */
+.docs{display:grid;grid-template-columns:300px minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:1000px){.docs{grid-template-columns:1fr}}
+.doc-list{display:grid;gap:2px}
+.section-t{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:10px 0 4px}
+.doc-btn{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-radius:10px;padding:9px 10px;font-weight:600;cursor:pointer;color:var(--ink)}
+.doc-btn:hover{background:var(--tint)}
+.doc-btn[aria-current="true"]{background:var(--ink);color:var(--bg)}
+.tag.lock{display:inline-flex;align-items:center;gap:4px;margin-left:auto;white-space:nowrap}
+.tag.lock .ic{width:14px;height:14px}
+.doc-sheet{background:var(--tint);border-radius:14px;padding:18px}
+.paper{display:block;width:100%;max-width:820px;height:min(78vh,900px);margin:0 auto 12px;border:0;border-radius:6px;background:#FFFDF9;box-shadow:var(--shadow)}
+@media (max-width:640px){.doc-sheet{padding:8px}}
+.lockcard{display:grid;gap:10px;justify-items:start}
+
+/* ---------- books ---------- */
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:8px}
+@media (max-width:640px){.stats{grid-template-columns:1fr}}
+.stat{display:grid;gap:4px}
+.bars{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;align-items:end;height:150px}
+.bar{display:grid;justify-items:center;gap:6px}
+.pair{display:flex;gap:3px;align-items:flex-end;height:124px}
+.pair i{display:block;width:16px;border-radius:5px 5px 0 0}
+.pair i.inc,.legend .k.inc{background:var(--brand)}
+.pair i.exp,.legend .k.exp{background:var(--muted)}
+.bar span{font-size:12px;color:var(--muted);font-weight:700}
+.legend{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center;margin-bottom:8px}
+.legend .k{display:inline-block;width:10px;height:10px;border-radius:3px;margin-left:8px}
+.legend .k:first-child{margin-left:0}
+.table-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:15px;min-width:560px}
+.tbl th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:8px 10px}
+.tbl td{padding:10px;border-top:1px solid var(--line)}
+.tbl .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl .good{color:var(--mint-ink)}
+
+/* ---------- plan, team, security, drafts ---------- */
+.feats li{display:grid;grid-template-columns:24px 1fr auto;gap:8px;align-items:center;padding:6px 0}
+.feats li.yes .ic{color:var(--mint)}
+.feats li.no{color:var(--muted)}
+.key{font:700 16px ui-monospace,Menlo,monospace;background:var(--tint);padding:4px 8px;border-radius:6px;word-break:break-all}
+.steps-list{margin:0;padding-left:20px;display:grid;gap:8px}
+.sub-h{font-size:17px;margin:14px 0 8px}
+blockquote.draft{margin:0;padding:10px 14px;border-left:3px solid var(--sun);background:var(--sun-soft);border-radius:8px;white-space:pre-wrap}
 </style>
 </head>
 <body>
@@ -262,20 +355,25 @@ dialog.sheet::backdrop{background:rgba(14,27,51,.5)}
 <noscript><p class="note">The KeyHelm app needs JavaScript. Turn it on in your browser settings, then reload this page.</p></noscript>
 
 <nav class="nav" aria-label="Main">
-  <a class="brand" href="/app" data-nav><svg viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="8" fill="#1B4DFF"/><circle cx="24.5" cy="10" r="4" fill="#FFC83D"/><path d="M8 18.5 15.5 11.5 23 18.5M10.5 16.5V25h10v-8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>KeyHelm</span></a>
+  <a class="brand" href="/app" data-nav><svg viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="8" fill="#C8502D"/><circle cx="24.5" cy="10" r="4" fill="#E8A33D"/><path d="M8 18.5 15.5 11.5 23 18.5M10.5 16.5V25h10v-8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>KeyHelm</span></a>
   <ul>
     <li><a href="/app" data-nav data-tab="today"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16v13H4zM4 10.5h16M8.5 4v4M15.5 4v4M9 15l2 2 4-4"/></svg><span class="label">Today</span><span class="count" hidden></span></a></li>
     <li><a href="/app/rent" data-nav data-tab="rent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7h17v10h-17zM6.5 10v4M17.5 10v4"/><circle cx="12" cy="12" r="2.5"/></svg><span class="label">Rent</span><span class="count" hidden></span></a></li>
     <li><a href="/app/repairs" data-nav data-tab="repairs"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5a4 4 0 0 0-5 5L4 16l4 4 5.5-5.5a4 4 0 0 0 5-5l-2.6 2.6-2.9-.5-.5-2.9z"/></svg><span class="label">Repairs</span><span class="count" hidden></span></a></li>
     <li><a href="/app/messages" data-nav data-tab="messages"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10.5H10l-6 4z"/></svg><span class="label">Messages</span><span class="count" hidden></span></a></li>
-    <li><a href="/app/homes" data-nav data-tab="homes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11 12 4l8.5 7M6 9.5V20h12V9.5M10 20v-5h4v5"/></svg><span class="label">Homes</span><span class="count" hidden></span></a></li>
-    <li><a href="/app/settings" data-nav data-tab="settings"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M15 4.5v5M4 17h3M11 17h9M9 14.5v5"/></svg><span class="label">Settings</span><span class="count" hidden></span></a></li>
+    <li class="extra"><a href="/app/leasing" data-nav data-tab="leasing"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 10a4 4 0 1 0-3.9 4.9L4 21h4v-2h2v-2h2l1.2-1.2M15.5 8.5h.01"/></svg><span class="label">Leasing</span><span class="count" hidden></span></a></li>
+    <li class="extra"><a href="/app/homes" data-nav data-tab="homes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11 12 4l8.5 7M6 9.5V20h12V9.5M10 20v-5h4v5"/></svg><span class="label">Homes</span><span class="count" hidden></span></a></li>
+    <li class="extra"><a href="/app/calendar" data-nav data-tab="calendar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v15H4zM4 10h16M8 3v4M16 3v4"/></svg><span class="label">Calendar</span><span class="count" hidden></span></a></li>
+    <li class="extra"><a href="/app/documents" data-nav data-tab="documents"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v18h12V7zM14 3v4h4M9 12h6M9 16h6"/></svg><span class="label">Documents</span><span class="count" hidden></span></a></li>
+    <li class="extra"><a href="/app/books" data-nav data-tab="books"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21a2 2 0 0 1 2-2h13v2H6"/></svg><span class="label">Books</span><span class="count" hidden></span></a></li>
+    <li class="extra"><a href="/app/settings" data-nav data-tab="settings"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M15 4.5v5M4 17h3M11 17h9M9 14.5v5"/></svg><span class="label">Settings</span><span class="count" hidden></span></a></li>
+    <li class="more-li"><button type="button" id="more-btn" class="more-btn" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg><span class="label">More</span></button></li>
   </ul>
 </nav>
 
 <main id="main" tabindex="-1">
   <header class="top">
-    <svg class="mark" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="8" fill="#1B4DFF"/><circle cx="24.5" cy="10" r="4" fill="#FFC83D"/><path d="M8 18.5 15.5 11.5 23 18.5M10.5 16.5V25h10v-8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <svg class="mark" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="8" fill="#C8502D"/><circle cx="24.5" cy="10" r="4" fill="#E8A33D"/><path d="M8 18.5 15.5 11.5 23 18.5M10.5 16.5V25h10v-8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <h1 id="page-title" tabindex="-1">Today</h1>
     <button type="button" id="refresh" class="btn ghost icon-only" aria-label="Refresh"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg></button>
   </header>
@@ -283,7 +381,11 @@ dialog.sheet::backdrop{background:rgba(14,27,51,.5)}
   <section id="view-rent" class="view" data-view="rent" aria-labelledby="page-title" hidden></section>
   <section id="view-repairs" class="view" data-view="repairs" aria-labelledby="page-title" hidden></section>
   <section id="view-messages" class="view" data-view="messages" aria-labelledby="page-title" hidden></section>
+  <section id="view-leasing" class="view" data-view="leasing" aria-labelledby="page-title" hidden></section>
   <section id="view-homes" class="view" data-view="homes" aria-labelledby="page-title" hidden></section>
+  <section id="view-calendar" class="view" data-view="calendar" aria-labelledby="page-title" hidden></section>
+  <section id="view-documents" class="view" data-view="documents" aria-labelledby="page-title" hidden></section>
+  <section id="view-books" class="view" data-view="books" aria-labelledby="page-title" hidden></section>
   <section id="view-settings" class="view" data-view="settings" aria-labelledby="page-title" hidden></section>
 </main>
 
@@ -330,7 +432,7 @@ const fill = (el, ...kids) => { el.replaceChildren(); return add(el, kids); };
 const ICON = {
   check: 'M5 12.5l4.5 4.5L19 7.5', close: 'M6 6l12 12M18 6L6 18', back: 'M15 5l-7 7 7 7', plus: 'M12 5v14M5 12h14',
   phone: 'M6.5 3.5h3l1.5 4-2 1.2a11 11 0 0 0 6.3 6.3l1.2-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z',
-  chat: 'M4 5.5h16v10.5H10l-6 4z', ext: 'M14 4h6v6M20 4l-9 9M18 14v5H5V6h5',
+  chat: 'M4 5.5h16v10.5H10l-6 4z', fwd: 'M9 5l7 7-7 7', lock: 'M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4', copy: 'M8 8h12v12H8zM4 16V4h12', send: 'M21 3 10 14M21 3l-7 18-4-8-8-4z', ext: 'M14 4h6v6M20 4l-9 9M18 14v5H5V6h5',
 };
 function icon(name) {
   const s = document.createElementNS(SVG_NS, 'svg');
@@ -624,9 +726,11 @@ sheet.addEventListener('close', () => {
 /* =====================================================================
    Screens and navigation
    ===================================================================== */
-const TABS = ['today', 'rent', 'repairs', 'messages', 'homes', 'settings'];
-const TITLE = { today: 'Today', rent: 'Rent', repairs: 'Repairs', messages: 'Messages', homes: 'Homes', settings: 'Settings' };
-const LOADING = { today: 'Loading what needs you...', rent: 'Loading rent...', repairs: 'Loading repairs...', messages: 'Loading messages...', homes: 'Loading your homes...', settings: 'Loading settings...' };
+const TABS = ['today', 'rent', 'repairs', 'messages', 'leasing', 'homes', 'calendar', 'documents', 'books', 'settings'];
+const TITLE = { today: 'Today', rent: 'Rent', repairs: 'Repairs', messages: 'Messages', leasing: 'Leasing', homes: 'Homes', calendar: 'Calendar', documents: 'Documents', books: 'Books', settings: 'Settings' };
+const LOADING = { today: 'Loading what needs you...', rent: 'Loading rent...', repairs: 'Loading repairs...', messages: 'Loading messages...', leasing: 'Loading leasing...', homes: 'Loading your homes...', calendar: 'Loading your calendar...', documents: 'Loading documents...', books: 'Loading your books...', settings: 'Loading settings...' };
+/** Phones show four tabs and "More"; the rest open from a sheet. */
+const MORE_TABS = ['leasing', 'homes', 'calendar', 'documents', 'books', 'settings'];
 const pathFor = (tab, item) => (tab === 'today' ? '/app' : '/app/' + tab) + (item ? '/' + encodeURIComponent(item) : '');
 function where() {
   const parts = location.pathname.split('/').filter(Boolean);
@@ -649,6 +753,7 @@ async function show(userNav) {
   lastPath = location.pathname;
   const { tab, item } = where();
   $$('.nav a[data-tab]').forEach((a) => (a.dataset.tab === tab ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
+  $('#more-btn').classList.toggle('on', MORE_TABS.includes(tab));
   $$('.view').forEach((v) => { v.hidden = v.dataset.view !== tab; });
   $('#page-title').textContent = TITLE[tab];
   document.title = `${TITLE[tab]} | KeyHelm`;
@@ -681,6 +786,8 @@ document.addEventListener('click', (e) => {
 });
 window.addEventListener('popstate', () => { if (location.pathname !== lastPath) show(true); });
 $('#refresh').addEventListener('click', () => { refresh(); toast('Up to date.'); });
+$('#more-btn').addEventListener('click', () => openSheet('More', h('ul', { class: 'plain more-list' }, MORE_TABS.map((t) =>
+  h('li', null, h('a', { href: pathFor(t), 'data-nav': '', class: 'btn ghost big', 'aria-current': t === where().tab ? 'page' : null, onclick: () => closeSheet() }, TITLE[t]))))));
 
 /** Counts on the tabs: decisions and to-dos, late rent, people waiting for a reply. */
 async function badges() {
@@ -900,8 +1007,10 @@ function taskItem(t) {
   return h('li', { class: 'card task' + (late ? ' late' : '') },
     h('h3', null, prettyPhones(t.title)),
     t.detail && t.detail !== 'Setup step' ? h('p', { class: 'pre' }, prettyPhones(t.detail)) : null,
+    t.draft ? h('blockquote', { class: 'draft' }, t.draft.body) : null,
     t.dueAt ? h('p', { class: 'meta' + (late ? ' bad' : '') }, late ? `Overdue: it was due ${day(t.dueAt)}.` : `Due ${day(t.dueAt)}`) : null,
     h('div', { class: 'row-actions' },
+      t.draft ? draftButton(t) : null,
       key ? h('a', { class: 'btn ghost', href: pathFor('messages', key), 'data-nav': '' }, icon('chat'), 'Open messages') : null,
       t.setupStep && STEP_GO[t.setupStep] ? btn(STEP_LABEL[t.setupStep], STEP_GO[t.setupStep]) : null,
       done));
@@ -1409,8 +1518,9 @@ async function viewSettings(el, stale) {
   fill(el,
     h('nav', { class: 'toolbar', 'aria-label': 'Settings sections' },
       h('a', { class: 'btn ghost', href: '#set-rules' }, 'Rules'), h('a', { class: 'btn ghost', href: '#set-profile' }, 'Profile'),
-      h('a', { class: 'btn ghost', href: '#set-billing' }, 'Billing'), h('a', { class: 'btn ghost', href: '#set-account' }, 'Sign out')),
-    rulesSection(rules), profileSection(me), billingSection(me), accountSection());
+      h('a', { class: 'btn ghost', href: '#set-plan' }, 'Plan'), h('a', { class: 'btn ghost', href: '#set-team' }, 'Team'),
+      h('a', { class: 'btn ghost', href: '#set-security' }, 'Security'), h('a', { class: 'btn ghost', href: '#set-billing' }, 'Billing'), h('a', { class: 'btn ghost', href: '#set-account' }, 'Sign out')),
+    rulesSection(rules), profileSection(me), planSection(me), teamSection(me), securitySection(), billingSection(me), accountSection());
 }
 const CRIT = [['income_multiple', 'Income (times the rent)'], ['evictions_years', 'No evictions (years)'], ['collections_years', 'No rental collections (years)'], ['references', 'Landlord references'], ['pets', 'Pets'], ['custom', 'Something else']];
 const CRIT_DEFAULT = { income_multiple: ['Monthly income at least 3x rent', '3'], evictions_years: ['No evictions in the last 5 years', '5'], collections_years: ['No rental collections in the last 2 years', '2'], references: ['At least 1 positive landlord reference', '1'] };
@@ -1561,7 +1671,298 @@ function accountSection() {
     h('p', { class: 'muted' }, 'Signing out on a shared computer keeps your account safe.'),
     h('div', { class: 'row-actions' }, btn('Sign out', out(false), 'primary big'), btn('Sign out on all devices', out(true)))));
 }
-const VIEWS = { today: viewToday, rent: viewRent, repairs: viewRepairs, messages: viewMessages, homes: viewHomes, settings: viewSettings };
+/* =====================================================================
+   7) LEASING · 8) CALENDAR · 9) DOCUMENTS · 10) BOOKS
+   ===================================================================== */
+const PLAN_NAME = { essentials: 'Essentials', autopilot: 'Autopilot', pro: 'Autopilot Pro' };
+const lockTag = (plan) => h('span', { class: 'tag lock' }, icon('lock'), PLAN_NAME[plan] || plan);
+/** "Talk to us" goes to the onboarding calendar with the plan already picked (null when no calendar is set up). */
+function talkLink(plan) {
+  const base = S.me && S.me.onboarding && S.me.onboarding.calendlyUrl;
+  if (!base) return null;
+  try { const u = new URL(base); u.searchParams.set('a1', PLAN_NAME[plan] || plan); return u.href; } catch { return null; }
+}
+const talkButton = (plan, label) => { const href = talkLink(plan); return href ? h('a', { class: 'btn primary', href, target: '_blank', rel: 'noopener' }, label) : null; };
+async function copyText(textToCopy, done) {
+  try { await navigator.clipboard.writeText(textToCopy); toast(done); } catch { toast("Copying didn't work here. Select the text and copy it instead.", 'error'); }
+}
+
+async function viewLeasing(el, stale) {
+  const [d, rules] = await Promise.all([get('/api/leasing'), S.rules ? Promise.resolve(S.rules) : get('/api/rules')]);
+  if (stale()) return;
+  S.rules = rules;
+  const STATUS = { listed: ['Listed', 'ok'], vacant: ['Vacant', 'warn'], turnover: ['Getting ready', 'warn'] };
+  const homes = d.homes.length ? h('div', { class: 'stack' }, d.homes.map((p) => h('div', { class: 'card' },
+    h('div', { class: 'home-head' }, h('h3', null, p.address), tag(...(STATUS[p.status] || [cap(p.status)]))),
+    kv([['City', p.city], ['Rent', `${money(p.rent)} a month, all-in`], ['Size', `${p.beds} bed, ${p.baths} bath`],
+      ['Tours', p.selfTours ? 'Self-tours with your lock or lockbox' : 'Add a smart lock or lockbox in Homes for self-tours']]),
+    h('div', { class: 'row-actions' }, btn([icon('copy'), 'Copy listing'], () => copyText(
+      `${p.address}, ${p.city}. ${p.beds} bed, ${p.baths} bath. ${money(p.rent)} a month, all-in.${rules.petPolicy ? ' ' + rules.petPolicy : ''}`,
+      'Listing copied. Paste it into Zillow Rental Manager.')))))) : empty('Every home is rented.');
+  const lanes = d.stages.map((st) => {
+    const people = d.people.filter((x) => x.stage === st.id);
+    return h('section', { class: 'lane', 'aria-label': `${st.name}, ${plural(people.length, 'person')}` },
+      h('h3', { class: 'lane-h' }, st.name, h('span', null, String(people.length))),
+      people.length ? people.map((x) => h('div', { class: 'card tile' + (x.stage === 'decision' ? ' needs' : '') },
+        h('h4', null, x.name), x.address ? h('p', { class: 'meta' }, x.address) : null, h('p', { class: 'muted' }, x.detail),
+        x.when ? h('p', { class: 'meta' }, day(x.when)) : null,
+        x.stage === 'decision' ? btn('Open the decision', () => go('today'), 'primary') : null)) : h('p', { class: 'muted small' }, 'Nobody here yet.'));
+  });
+  fill(el,
+    h('p', { class: 'lead' }, 'From the first question to a signed lease. KeyHelm answers prospects with facts about the home and books self-tours. You approve applicants.'),
+    section('Homes for rent', null, homes),
+    section('Who is interested', null, h('div', { class: 'board' }, lanes)),
+    h('p', { class: 'note info' }, d.note));
+}
+
+const CAL_KIND = { showing: ['Tour', 'ok'], rent: ['Rent', ''], deadline: ['Deadline', 'warn'], repair: ['Repair', 'bad'], task: ['To-do', 'warn'], call: ['Call', 'ok'] };
+async function viewCalendar(el, stale) {
+  const month = S.calMonth || today().slice(0, 7);
+  const d = await get('/api/calendar?month=' + month);
+  if (stale()) return;
+  const [y, m] = month.split('-').map(Number);
+  const label = new Date(Date.UTC(y, m - 1, 15)).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const move = (n) => { S.calMonth = new Date(Date.UTC(y, m - 1 + n, 15)).toISOString().slice(0, 7); show(false); };
+  const startDow = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+  const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const cells = [];
+  for (let i = 0; i < startDow; i++) cells.push(h('div', { class: 'cal-day other', 'aria-hidden': 'true' }));
+  for (let n = 1; n <= days; n++) {
+    const ds = `${month}-${String(n).padStart(2, '0')}`;
+    cells.push(h('div', { class: 'cal-day' + (ds === today() ? ' today' : '') }, h('span', { class: 'dn' }, String(n)),
+      d.events.filter((e) => e.date === ds).map((e) => h('span', { class: 'ev ' + e.kind, title: e.title }, e.title))));
+  }
+  const byDate = new Map();
+  for (const e of d.events) { if (!byDate.has(e.date)) byDate.set(e.date, []); byDate.get(e.date).push(e); }
+  const agenda = byDate.size ? h('ul', { class: 'stack plain' }, [...byDate].map(([date, evs]) => h('li', { class: 'card' },
+    h('h3', null, day(date)),
+    h('ul', { class: 'plain' }, evs.map((e) => h('li', { class: 'agenda-row' },
+      tag(...CAL_KIND[e.kind]), h('span', { class: 'grow' }, e.title), e.time ? h('span', { class: 'meta' }, e.time) : null,
+      e.tab ? h('a', { href: pathFor(e.tab), 'data-nav': '', class: 'btn ghost' }, 'Open') : null)))))) : empty('Nothing on the calendar this month.');
+  fill(el,
+    h('div', { class: 'toolbar cal-bar' },
+      btn([icon('back'), h('span', { class: 'sr' }, 'Previous month')], () => move(-1), 'ghost icon-only'),
+      h('h2', null, label),
+      btn([icon('fwd'), h('span', { class: 'sr' }, 'Next month')], () => move(1), 'ghost icon-only')),
+    h('div', { class: 'cal', 'aria-hidden': 'true' }, ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((x) => h('div', { class: 'dow' }, x)), cells),
+    section('This month', null, agenda));
+}
+
+// Documents are filled in on the server (src/leases/state-docs.ts) as their own script-free page, shown here in a
+// frame, so nothing is parsed as HTML in the app. The same page prints or saves as a PDF.
+async function viewDocuments(el, stale) {
+  const d = await get('/api/documents');
+  if (stale()) return;
+  if (!d.homes.length) return fill(el, empty("Add a home first. Documents use its state's rules.", btn('Add a home', () => go('homes', null, () => homeForm()), 'primary')));
+  const who = S.docWho || (d.tenants[0] ? 't:' + d.tenants[0].id : 'p:' + d.homes[0].id);
+  const pickId = nid('who');
+  const pick = h('select', { id: pickId },
+    d.tenants.length ? h('optgroup', { label: 'Tenants' }, d.tenants.map((t) => h('option', { value: 't:' + t.id }, `${t.name}, ${(d.homes.find((p) => p.id === t.propertyId) || {}).address || ''}`))) : null,
+    h('optgroup', { label: 'Homes' }, d.homes.map((p) => h('option', { value: 'p:' + p.id }, `${p.address} (${p.stateName})`))));
+  pick.value = who;
+  pick.addEventListener('change', () => { S.docWho = pick.value; show(false); });
+  const meta = d.docs.find((x) => x.id === S.docId) || d.docs[0];
+  const groups = new Map();
+  for (const x of d.docs) { if (!groups.has(x.group)) groups.set(x.group, []); groups.get(x.group).push(x); }
+  const list = h('div', { class: 'doc-list' }, [...groups].map(([g, docs]) => [h('p', { class: 'section-t' }, g),
+    docs.map((x) => h('button', { type: 'button', class: 'doc-btn', 'aria-current': String(x.id === meta.id), onclick: () => { S.docId = x.id; show(false); } }, x.title, x.included ? null : lockTag(x.plan)))]));
+  const paperBox = h('div', { class: 'doc-sheet', 'aria-live': 'polite' }, h('p', { class: 'loading' }, 'Filling in the document...'));
+  fill(el,
+    h('p', { class: 'lead' }, "Leases, disclosures and notices, filled in with your tenant's details and your state's rules."),
+    h('div', { class: 'docs' },
+      h('div', { class: 'stack' }, h('div', { class: 'card field' }, h('label', { for: pickId }, 'Fill in for'), pick), h('div', { class: 'card' }, list)),
+      h('div', { class: 'stack' }, h('div', null, h('h2', null, meta.title), h('p', { class: 'muted' }, meta.summary)), paperBox)));
+  if (!meta.included) return fill(paperBox, lockCard(meta));
+  const [k, ref] = who.split(':');
+  const src = `/api/documents/${id(meta.id)}/page?${k === 't' ? 'tenantId' : 'propertyId'}=${id(ref)}`;
+  fill(paperBox, h('iframe', { class: 'paper', src, title: `${meta.title}, filled in` }),
+    h('div', { class: 'row-actions' }, h('a', { class: 'btn', href: src, target: '_blank', rel: 'noopener' }, 'Open to print or save as a PDF')));
+}
+function lockCard(meta) {
+  return h('div', { class: 'card lockcard' }, lockTag(meta.plan), h('h3', null, `${meta.title} is part of ${meta.planName}`),
+    h('p', { class: 'muted' }, meta.plan === 'pro' ? 'Autopilot Pro includes all 10 state documents.' : "Autopilot includes your state's lease, month-to-month agreement, disclosures addendum and lead-paint form."),
+    h('div', { class: 'row-actions' },
+      talkButton(meta.plan, `Talk to us about ${meta.planName}`),
+      btn('See your plan', () => go('settings', null, () => jumpTo('set-plan')))));
+}
+
+const CATEGORY = { rent: 'Rent', repairs: 'Repairs', cleaning: 'Cleaning', utilities: 'Utilities', insurance: 'Insurance', hoa: 'HOA', taxes: 'Taxes', software: 'Software', other: 'Other' };
+const stat = (label, value) => h('div', { class: 'card stat' }, h('span', { class: 'muted' }, label), h('b', { class: 'big-num' }, value));
+async function viewBooks(el, stale) {
+  const [d, props] = await Promise.all([get('/api/books'), get('/api/properties')]);
+  if (stale()) return;
+  const cur = d.months[d.months.length - 1];
+  const max = Math.max(1, ...d.months.map((x) => Math.max(x.income, x.expenses)));
+  const short = (ym) => new Date(ym + '-15T12:00:00Z').toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+  const bars = h('div', { class: 'bars', role: 'img', 'aria-label': 'Income and expenses for the last 6 months' }, d.months.map((x) => {
+    const inc = h('i', { class: 'inc', title: `Income ${money(x.income)}` }), exp = h('i', { class: 'exp', title: `Expenses ${money(x.expenses)}` });
+    inc.style.height = `${Math.round((x.income / max) * 120)}px`;
+    exp.style.height = `${Math.round((x.expenses / max) * 120)}px`;
+    return h('div', { class: 'bar' }, h('div', { class: 'pair' }, inc, exp), h('span', null, short(x.month)));
+  }));
+  const table = d.entries.length ? h('div', { class: 'table-wrap' }, h('table', { class: 'tbl' },
+    h('thead', null, h('tr', null, ['Date', 'What', 'Home', 'Amount'].map((x) => h('th', { scope: 'col' }, x)))),
+    h('tbody', null, d.entries.map((e) => h('tr', null,
+      h('td', null, day(e.date)), h('td', null, e.memo, ' ', tag(CATEGORY[e.category] || cap(e.category), e.kind === 'income' ? 'ok' : '')),
+      h('td', null, e.address), h('td', { class: 'num' + (e.kind === 'income' ? ' good' : '') }, (e.kind === 'income' ? '' : '-') + money(e.amount)))))))
+    : empty('Nothing recorded yet. Rent you mark received and repair invoices show up here.');
+  fill(el,
+    h('p', { class: 'lead' }, 'Income and expenses for every home. Rent you mark received and paid repair invoices are added for you.'),
+    h('div', { class: 'stats' }, stat('Income this month', money(cur.income)), stat('Expenses this month', money(cur.expenses)), stat('Net this month', money(cur.income - cur.expenses))),
+    section('Last 6 months', null, h('div', { class: 'card' }, h('p', { class: 'legend' }, h('span', { class: 'k inc' }), 'Income', h('span', { class: 'k exp' }), 'Expenses'), bars)),
+    section('Entries', btn([icon('plus'), 'Add an expense'], () => expenseForm(props, d.categories), 'primary'), table));
+}
+function expenseForm(props, cats) {
+  if (!props.length) return toast('Add a home first.', 'error');
+  const form = h('form', { class: 'form', novalidate: true },
+    field({ label: 'What was it for?', name: 'memo', maxlength: 200 }),
+    field({ label: 'Amount', name: 'amount', inputmode: 'decimal', prefix: '$' }),
+    field({ label: 'Category', name: 'category', type: 'select', options: cats.map((c) => [c, CATEGORY[c] || cap(c)]), value: 'repairs' }),
+    field({ label: 'Home', name: 'propertyId', type: 'select', options: props.map((p) => [p.id, p.address]) }),
+    field({ label: 'Date', name: 'date', type: 'date', value: today() }),
+    actions('Add expense'));
+  onSubmit(form, async () => {
+    await post('/api/expenses', { memo: val(form, 'memo'), amount: val(form, 'amount'), category: val(form, 'category'), propertyId: val(form, 'propertyId'), date: val(form, 'date') });
+    closeSheet();
+    toast('Expense added.');
+    refresh();
+  });
+  openSheet('Add an expense', form);
+}
+
+/* Essentials: send the reply KeyHelm drafted, then close the to-do. */
+function draftButton(t) {
+  const b = btn([icon('send'), 'Send draft'], () => busy(b, 'Sending...', async () => {
+    try {
+      await post('/api/messages/send', { to: t.draft.to, channel: t.draft.channel === 'email' ? 'email' : 'sms', body: t.draft.body });
+      await post(`/api/tasks/${id(t.id)}/done`);
+      toast('Sent.');
+      refresh();
+    } catch (e) { if (e.status !== 401) toast(e.message, 'error'); }
+  }), 'primary');
+  return b;
+}
+
+/* ---------- Settings: plan, team, sign-in and security ---------- */
+function planSection(me) {
+  const e = me.entitlements;
+  if (!e) return null;
+  const next = e.plan === 'essentials' ? 'autopilot' : 'pro';
+  return sectionWithId('set-plan', `Your plan: ${PLAN_NAME[e.plan]}`, h('div', { class: 'card' },
+    h('p', { class: 'muted' }, 'Each plan has everything in the one before it.'),
+    h('ul', { class: 'plain feats' }, [...e.list].sort((a, b) => Number(b.included) - Number(a.included)).map((f) => h('li', { class: f.included ? 'yes' : 'no' },
+      icon(f.included ? 'check' : 'close'), h('span', null, h('span', { class: 'sr' }, f.included ? 'Included: ' : 'Not included: '), f.label),
+      f.included ? null : h('span', { class: 'meta' }, PLAN_NAME[f.plan])))),
+    e.plan === 'pro' ? null : h('div', { class: 'row-actions' }, talkButton(next, `Talk to us about ${PLAN_NAME[next]}`))));
+}
+
+function teamSection(me) {
+  const box = h('div', { class: 'stack' });
+  if (me.me && me.me.kind === 'member') {
+    fill(box, h('p', { class: 'card' }, `You're on ${me.owner.name}'s team with ${me.me.roleName} access.`));
+    return sectionWithId('set-team', 'Team', box);
+  }
+  const load = async () => {
+    const t = await get('/api/team');
+    fill(box,
+      t.members.length ? h('ul', { class: 'stack plain' }, t.members.map((m) => memberRow(m, t.roles, load))) : h('p', { class: 'muted' }, "It's just you for now."),
+      inviteForm(t.roles, load));
+  };
+  load().catch((e) => { if (e.status !== 401) fill(box, errorCard(e)); });
+  return sectionWithId('set-team', 'Team',
+    h('p', { class: 'muted' }, '"Can approve" answers decisions and does the day-to-day work. "View only" sees everything and changes nothing. Only you can change billing, the team and the rules.'), box);
+}
+function memberRow(m, roles, reload) {
+  const sel = h('select', { 'aria-label': `Access for ${m.name}` }, roles.map((r) => h('option', { value: r.id }, r.name)));
+  sel.value = m.role;
+  sel.addEventListener('change', async () => {
+    try { await api('PATCH', `/api/team/${id(m.id)}`, { role: sel.value }); toast(`${m.name} now has ${sel.selectedOptions[0].textContent} access.`); }
+    catch (e) { if (e.status !== 401) toast(e.message, 'error'); }
+  });
+  const resend = btn('New invite link', async () => {
+    try { showInviteLink(m.name, await post(`/api/team/${id(m.id)}/invite`)); } catch (e) { if (e.status !== 401) toast(e.message, 'error'); }
+  });
+  let armed = false;
+  const remove = btn('Remove', async () => {
+    if (!armed) { armed = true; remove.textContent = `Tap again to remove ${firstName(m.name)}`; return; }
+    try { await api('DELETE', `/api/team/${id(m.id)}`); toast(`${m.name} was removed and signed out.`); reload(); } catch (e) { if (e.status !== 401) toast(e.message, 'error'); }
+  }, 'danger');
+  return h('li', { class: 'card person' },
+    h('div', { class: 'grow' }, h('h3', null, m.name), h('p', { class: 'meta' }, m.email, ' · ', m.status === 'invited' ? 'Invite sent' : m.lastLoginAt ? `Last signed in ${day(m.lastLoginAt)}` : 'Active', m.twoStep ? ' · Two-step on' : '')),
+    h('div', { class: 'row-actions' }, sel, m.status === 'invited' ? resend : null, remove));
+}
+function inviteForm(roles, reload) {
+  const form = h('form', { class: 'form card', novalidate: true }, h('h3', null, 'Invite someone'),
+    h('div', { class: 'grid2' }, field({ label: 'Name', name: 'name', maxlength: 80, autocomplete: 'off' }), field({ label: 'Email', name: 'email', type: 'email', autocomplete: 'off' })),
+    field({ label: 'Access', name: 'role', type: 'select', options: roles.map((r) => [r.id, r.name]), value: 'approver' }),
+    actions('Send invite', false));
+  onSubmit(form, async () => {
+    const r = await post('/api/team', { name: val(form, 'name'), email: val(form, 'email'), role: val(form, 'role') });
+    form.reset();
+    showInviteLink(r.member.name, r);
+    reload();
+  }, 'Inviting...');
+  return form;
+}
+function showInviteLink(name, r) {
+  const link = h('input', { type: 'text', readOnly: true, value: r.inviteUrl, 'aria-label': 'Invite link' });
+  openSheet(`Invite for ${name}`,
+    h('p', null, r.emailed ? `We emailed ${firstName(name)} this link too. ` : "Email isn't set up yet, so send this link yourself. ", `It works once, until ${day(r.expiresAt)}.`),
+    h('div', { class: 'field' }, link),
+    h('div', { class: 'row-actions' }, btn([icon('copy'), 'Copy link'], () => copyText(r.inviteUrl, 'Link copied.')), btn('Done', () => closeSheet(), 'primary')));
+}
+
+function securitySection() {
+  const twoBox = h('div', { class: 'card stack' });
+  const devBox = h('div', { class: 'card' });
+  const drawTwo = async () => {
+    const st = await get('/api/me/two-step');
+    if (st.enabled) {
+      const form = h('form', { class: 'form', novalidate: true },
+        h('p', null, tag('On', 'ok'), ` Since ${day(st.enabledAt)}. Every sign-in asks for a code from your authenticator app.`),
+        field({ label: 'Your password', name: 'password', type: 'password', autocomplete: 'current-password', help: 'Needed to turn it off.' }),
+        actions('Turn off two-step sign-in', false));
+      onSubmit(form, async () => { await post('/api/me/two-step/disable', { password: form.elements.namedItem('password').value }); toast('Two-step sign-in is off.'); drawTwo(); });
+      return fill(twoBox, form);
+    }
+    const start = btn('Set up two-step sign-in', () => busy(start, 'Starting...', async () => {
+      try {
+        const k = await post('/api/me/two-step/setup');
+        const form = h('form', { class: 'form', novalidate: true },
+          h('ol', { class: 'steps-list' },
+            h('li', null, 'Open an authenticator app (Google Authenticator, 1Password, Authy or similar) and add an account with a setup key.'),
+            h('li', null, 'Type this key: ', h('code', { class: 'key' }, k.secret)),
+            h('li', null, 'Enter the 6-digit code the app shows.')),
+          h('p', { class: 'help' }, 'On this phone? ', h('a', { href: k.uri }, 'Open it in my authenticator app')),
+          field({ label: '6-digit code', name: 'code', inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: 7 }),
+          actions('Turn on', false));
+        onSubmit(form, async () => { await post('/api/me/two-step/enable', { code: val(form, 'code') }); toast('Two-step sign-in is on.'); drawTwo(); });
+        fill(twoBox, form);
+      } catch (e) { if (e.status !== 401) toast(e.message, 'error'); }
+    }), 'primary');
+    fill(twoBox, h('p', null, tag('Off'), ' After your password, enter a code from an authenticator app on your phone. Recommended, since this account approves spending.'), h('div', { class: 'row-actions' }, start));
+  };
+  const drawDevices = async () => {
+    const d = await get('/api/me/sessions');
+    const others = btn('Sign out everywhere else', async () => {
+      try { const r = await post('/api/me/sessions/others'); toast(`Signed out on ${plural(r.signedOut, 'other device')}.`); drawDevices(); } catch (e) { if (e.status !== 401) toast(e.message, 'error'); }
+    });
+    fill(devBox,
+      h('ul', { class: 'plain stack' }, d.sessions.map((x) => h('li', { class: 'person' },
+        h('div', { class: 'grow' }, h('h3', null, x.device), h('p', { class: 'meta' }, `${x.ip ? x.ip + ' · ' : ''}Last used ${stamp(x.lastSeenAt)}`)),
+        x.current ? tag('This device', 'ok') : btn('Sign out', async () => {
+          try { await api('DELETE', `/api/me/sessions/${id(x.id)}`); toast('Signed out on that device.'); drawDevices(); } catch (e) { if (e.status !== 401) toast(e.message, 'error'); }
+        })))),
+      d.sessions.length > 1 ? h('div', { class: 'row-actions' }, others) : null);
+  };
+  drawTwo().catch((e) => { if (e.status !== 401) fill(twoBox, errorCard(e)); });
+  drawDevices().catch((e) => { if (e.status !== 401) fill(devBox, errorCard(e)); });
+  return sectionWithId('set-security', 'Sign-in and security',
+    h('h3', { class: 'sub-h' }, 'Two-step sign-in'), twoBox,
+    h('h3', { class: 'sub-h' }, "Where you're signed in"), devBox);
+}
+
+const VIEWS = { today: viewToday, rent: viewRent, repairs: viewRepairs, messages: viewMessages, leasing: viewLeasing, homes: viewHomes, calendar: viewCalendar, documents: viewDocuments, books: viewBooks, settings: viewSettings };
 
 /* =====================================================================
    Start: offline banner, fresh data when you come back, first screen
