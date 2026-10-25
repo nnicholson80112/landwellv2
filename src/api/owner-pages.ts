@@ -70,11 +70,14 @@ ${msg('error', o.error)}${msg('ok', o.notice)}
 </form>`);
 }
 
-export function setPasswordPage(o: { email: string; purpose: 'setup' | 'reset'; action: string; error?: string }): string {
-  const setup = o.purpose === 'setup';
+export function setPasswordPage(o: { email: string; purpose: 'setup' | 'reset' | 'invite'; action: string; error?: string; ownerName?: string }): string {
+  const setup = o.purpose !== 'reset';
+  const lead = o.purpose === 'invite'
+    ? `${esc(o.ownerName ?? 'The owner')} added you to their ${esc(BRAND.name)} account. Pick a password to sign in on your phone or computer.`
+    : setup ? `You're in. Pick a password so you can sign in to ${esc(BRAND.name)} anytime, on your phone or computer.` : 'Pick a new password. You will be signed out on your other devices.';
   return ownerPage(setup ? 'Create your password' : 'Choose a new password', `
 <h1>${setup ? 'Create your password' : 'Choose a new password'}</h1>
-<p class="lead">${setup ? `You're in. Pick a password so you can sign in to ${esc(BRAND.name)} anytime, on your phone or computer.` : 'Pick a new password. You will be signed out on your other devices.'}</p>
+<p class="lead">${lead}</p>
 <form class="card" method="post" action="${esc(o.action)}" novalidate>
 ${msg('error', o.error)}
 <p class="who">${esc(o.email)}</p>
@@ -83,6 +86,20 @@ ${msg('error', o.error)}
 <p class="hint" id="pw-hint">At least ${MIN_PASSWORD} characters. A short sentence is easy to remember.</p>
 <label for="confirm">Type it again</label><input id="confirm" name="confirm" type="password" autocomplete="new-password" minlength="${MIN_PASSWORD}" required>
 <button class="cta">${setup ? 'Save and open my account' : 'Save and sign in'}</button>
+</form>`);
+}
+
+/** Two-step sign-in: the 6-digit code from the authenticator app. */
+export function codePage(o: { ticket: string; error?: string }): string {
+  return ownerPage('Enter your code', `
+<h1>Enter your code</h1>
+<p class="lead">Open your authenticator app and type the 6-digit code for ${esc(BRAND.name)}.</p>
+<form class="card" method="post" action="/login/code" novalidate>
+${msg('error', o.error)}
+<label for="code">6-digit code</label><input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="7" required autofocus>
+<input type="hidden" name="ticket" value="${esc(o.ticket)}">
+<button class="cta">Verify and sign in</button>
+<p class="hint">Lost your phone? Email <a href="mailto:${esc(BUSINESS.email)}">${esc(BUSINESS.email)}</a> and we'll help you back in.</p>
 </form>`);
 }
 

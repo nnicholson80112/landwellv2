@@ -28,7 +28,7 @@ import { verifyStripeSignature, verifyTwilioSignature } from '../adapters/live.t
 import { registerBillingRoutes } from './billing-routes.ts';
 import { startStripeSetup } from '../billing/catalog.ts';
 import { registerOwnerRoutes } from './owner-routes.ts';
-import { sessionAuth, withoutSecrets, type AuthResult } from './auth.ts';
+import { roleProblem, sessionAuth, withoutSecrets, type AuthResult, type Role } from './auth.ts';
 import type { SignRequest } from '../adapters/esign-native.ts';
 import { addressKey, money } from '../workflows/lib.ts';
 import { seed } from '../sim/seed.ts';
@@ -43,7 +43,7 @@ import { noteTick, ops, startOps } from '../ops/index.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-export type Req = IncomingMessage & { raw: string; body: any; params: Record<string, string>; query: URLSearchParams; auth?: { via: 'bearer' | 'session'; sessionId?: string } };
+export type Req = IncomingMessage & { raw: string; body: any; params: Record<string, string>; query: URLSearchParams; auth?: { via: 'bearer' | 'session'; sessionId?: string; memberId?: string; role?: Role } };
 export type Handler = (req: Req, res: ServerResponse, svc: Services) => Promise<void> | void;
 interface Route { method: string; pattern: RegExp; keys: string[]; auth: boolean; h: Handler }
 
@@ -417,7 +417,10 @@ export function createApp(svc: Services) {
         const wait = LIMIT.owner.take(who.ownerId);
         if (wait) return tooMany(res, wait);
         req.params.ownerId = who.ownerId;
-        req.auth = { via: who.via, sessionId: who.sessionId };
+        req.auth = { via: who.via, sessionId: who.sessionId, memberId: who.memberId, role: who.role };
+        // Team members: "view only" changes nothing; "can approve" can't touch billing, the team or the rules.
+        const denied = roleProblem(who.role, method!, url.pathname);
+        if (denied) return json(res, 403, { error: denied });
       }
       // Signed-in owners may upload lease templates; everything else is small.
       req.raw = method === 'GET' ? '' : await readBody(req, r.auth ? 2_000_000 : 256_000);

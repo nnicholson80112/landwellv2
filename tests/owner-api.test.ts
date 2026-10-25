@@ -16,6 +16,7 @@ import { createApp, LIMIT } from '../src/api/server.ts';
 import { RateLimiter, limitsFromEnv } from '../src/api/guard.ts';
 import { hashPassword, passwordProblem, resetLoginLimits, safeNext, verifyPassword } from '../src/api/auth.ts';
 import type { OutboxMessaging } from '../src/adapters/mock.ts';
+import { base32Encode, stepOf, totpAt, verifyTotp } from '../src/api/totp.ts';
 
 const PW = 'blue spruce porch light';
 
@@ -607,5 +608,120 @@ test('admin one-time sign-in link; forgot password emails a 1-hour link without 
     } finally { restoreMail(); }
   } finally {
     restoreEnv(); t.close();
+  }
+});
+
+/* ---------------- two-step sign-in, team members, devices ---------------- */
+
+test('authenticator codes match RFC 6238 and each code works once', () => {
+  const sec = base32Encode(Buffer.from('12345678901234567890'));
+  assert.equal(totpAt(sec, stepOf(59_000)), '287082');
+  assert.equal(totpAt(sec, stepOf(1_111_111_109_000)), '081804');
+  assert.equal(totpAt(sec, stepOf(2_000_000_000_000)), '279037');
+  const now = 1_800_000_000_000, code = totpAt(sec, stepOf(now));
+  const step = verifyTotp(sec, code, now);
+  assert.equal(step, stepOf(now));
+  assert.equal(verifyTotp(sec, code, now, step), undefined, 'the same code twice is refused');
+  assert.equal(verifyTotp(sec, totpAt(sec, stepOf(now) - 1), now), stepOf(now) - 1, 'one step of clock drift is fine');
+  assert.equal(verifyTotp(sec, totpAt(sec, stepOf(now) - 3), now), undefined);
+  assert.equal(verifyTotp(sec, 'abcdef', now), undefined);
+});
+
+test('two-step sign-in: set up with a code, then every sign-in asks for a fresh one', async () => {
+  const t = boot();
+  try {
+    const cookie = await t.signInAs(t.s.owner.id);
+    const setup = await (await t.call(cookie, 'POST', '/api/me/two-step/setup', {})).json();
+    const secret = setup.secret.replace(/\s/g, '');
+    assert.match(setup.uri, /^otpauth:\/\/totp\/KeyHelm/);
+    assert.equal((await t.call(cookie, 'POST', '/api/me/two-step/enable', { code: '000000' })).status, 400);
+    const codeNow = () => totpAt(secret, stepOf(t.clock.now().getTime()));
+    assert.equal((await t.call(cookie, 'POST', '/api/me/two-step/enable', { code: codeNow() })).status, 200);
+    assert.equal(t.store.get('owners', t.s.owner.id)!.totpSecret, secret);
+    assert.ok(!('totpSecret' in (await (await t.call(cookie, 'GET', '/api/me')).json()).owner), 'the secret never goes to the app');
+
+    const pw = await t.form('/login', { email: t.s.owner.email, password: PW });
+    assert.equal(pw.status, 200, 'the password alone does not sign in');
+    assert.equal(cookieOf(pw), undefined);
+    const ticket = (await pw.text()).match(/name="ticket" value="([^"]+)"/)![1];
+    assert.equal((await t.form('/login/code', { ticket, code: codeNow() })).status, 401, 'the code used to turn it on works only once');
+    t.clock.advance(30_000);
+    const ok = await t.form('/login/code', { ticket, code: codeNow() });
+    assert.equal(ok.status, 303);
+    assert.ok(cookieOf(ok));
+    assert.equal((await t.form('/login/code', { ticket, code: codeNow() })).status, 401, 'a ticket works once');
+
+    assert.equal((await t.call(cookie, 'POST', '/api/me/two-step/disable', { password: 'wrong password here' })).status, 400);
+    assert.equal((await t.call(cookie, 'POST', '/api/me/two-step/disable', { password: PW })).status, 200);
+    assert.equal((await t.form('/login', { email: t.s.owner.email, password: PW })).status, 303, 'off again: password only');
+  } finally {
+    t.close();
+  }
+});
+
+test('team: invite by link, roles limit what members can change, removing signs them out', async () => {
+  const t = boot();
+  try {
+    const owner = await t.signInAs(t.s.owner.id);
+    const inv = await t.call(owner, 'POST', '/api/team', { name: 'Casey Avery', email: 'casey@example.com', role: 'approver' });
+    assert.equal(inv.status, 201);
+    const { member, inviteUrl } = await inv.json();
+    assert.equal(member.status, 'invited');
+    const path = new URL(inviteUrl).pathname;
+    assert.match(await (await fetch(t.base + path)).text(), /added you to their KeyHelm account/);
+    const join = await t.form(path, { password: 'casey has a long password', confirm: 'casey has a long password' });
+    assert.equal(join.status, 303);
+    const casey = cookieOf(join)!;
+
+    const me = await (await t.call(casey, 'GET', '/api/me')).json();
+    assert.equal(me.me.kind, 'member');
+    assert.equal(me.me.role, 'approver');
+    assert.equal(me.owner.id, t.s.owner.id, "a member sees the owner's account");
+    assert.equal((await t.call(casey, 'GET', '/api/properties')).status, 200);
+    assert.equal((await t.call(casey, 'PUT', '/api/rules', { repairSpendLimit: 9000 })).status, 403, 'approvers cannot change the rules');
+    assert.equal((await t.call(casey, 'POST', '/api/team', { name: 'X', email: 'x@example.com', role: 'viewer' })).status, 403);
+    assert.equal((await t.call(casey, 'PATCH', '/api/me', { name: 'Someone' })).status, 403);
+
+    assert.equal((await t.call(owner, 'PATCH', `/api/team/${member.id}`, { role: 'viewer' })).status, 200);
+    const viewerTry = await t.call(casey, 'POST', '/api/tasks/nope/done', {});
+    assert.equal(viewerTry.status, 403);
+    assert.match((await viewerTry.json()).error, /view-only/);
+    assert.equal((await t.call(casey, 'GET', '/api/me/sessions')).status, 200, 'everyone manages their own devices');
+
+    assert.equal((await t.form('/login', { email: 'casey@example.com', password: 'casey has a long password' })).status, 303, 'members sign in at /login');
+    assert.equal((await t.call(owner, 'DELETE', `/api/team/${member.id}`)).status, 200);
+    assert.equal((await t.call(casey, 'GET', '/api/me')).status, 401, 'removed: signed out');
+    assert.equal((await t.form('/login', { email: 'casey@example.com', password: 'casey has a long password' })).status, 401);
+  } finally {
+    t.close();
+  }
+});
+
+test('devices: see where you are signed in and sign the others out', async () => {
+  const t = boot();
+  try {
+    const a = await t.signInAs(t.s.owner.id);
+    const b = await t.login(t.s.owner.email);
+    const list = (await (await t.call(a, 'GET', '/api/me/sessions')).json()).sessions;
+    assert.equal(list.length, 2);
+    assert.equal(list.filter((s: any) => s.current).length, 1);
+    assert.equal((await (await t.call(a, 'POST', '/api/me/sessions/others', {})).json()).signedOut, 1);
+    assert.equal((await t.call(b, 'GET', '/api/me')).status, 401);
+    assert.equal((await t.call(a, 'GET', '/api/me')).status, 200);
+  } finally {
+    t.close();
+  }
+});
+
+test('/api/me lists what the plan includes', async () => {
+  const t = boot();
+  try {
+    t.store.update('owners', t.s.owner.id, { plan: 'essentials' });
+    const me = await (await t.bearer('GET', '/api/me')).json();
+    assert.equal(me.entitlements.plan, 'essentials');
+    assert.equal(me.entitlements.features.assistant, false);
+    assert.equal(me.entitlements.list.length, 16);
+  } finally {
+    t.close();
   }
 });
