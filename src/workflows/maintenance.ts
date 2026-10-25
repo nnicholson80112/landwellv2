@@ -84,12 +84,18 @@ export const maintenance: WorkflowDef<Services, RepairInput> = {
       .sort((a, b) => Number(b.preferred) - Number(a.preferred) || Number(b.trades.includes(wo.trade)) - Number(a.trades.includes(wo.trade)))
       .slice(0, 3)
       .map((v) => v.id));
-    const candidates = candidateIds.map((id) => store.get('vendors', id)).filter((v): v is Vendor => !!v);
+    // Each vendor keeps its place in the list. The vendor is recorded the moment it's asked, so removing
+    // one later (or one that was skipped) never shifts the others: the waits below are numbered in order,
+    // and a shift would hand vendor 2's YES to vendor 3, who'd then get the tenant's name and phone.
+    let asked = 0;
 
     let vendor: Vendor | undefined;
     let window: string | undefined;
     let quote: number | undefined;
-    for (const [i, v] of candidates.entries()) {
+    for (const [i, id] of candidateIds.entries()) {
+      const v = await ctx.step(`vendor-at-${i}`, () => store.get('vendors', id) ?? null);
+      if (!v) continue; // removed before we got to it: skipped the same way on every replay
+      asked++;
       await upd({ status: 'awaiting_vendor', vendorId: v.id }, `ask-${i}`);
       await ctx.step(`vendor-last-${i}`, () => store.kvSet('vendorLast', v.id, wo.id));
       await tellVendor(ctx, `job-${i}`, v,
@@ -108,7 +114,7 @@ export const maintenance: WorkflowDef<Services, RepairInput> = {
       if (tenant) await tellTenant(ctx, 'still-looking', tenant, `Quick update on "${wo.summary}": I'm still lining up a pro. ${ownerFirst} is on it and you'll hear back soon.${input.urgency === 'emergency' ? ' If anyone is in danger, call 911.' : ''}`);
       const a = await ctx.approval({
         kind: 'vendor_needed', title: `No vendor available: ${address}`,
-        body: `"${wo.summary}". ${candidates.length ? 'Your vendors did not accept in time.' : `You have no ${wo.trade} vendor on file.`} Colorado requires work to start by ${new Date(wo.respondBy).toLocaleString('en-US', { timeZone: ctx.svc.cfg.tz, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}.`,
+        body: `"${wo.summary}". ${asked ? 'Your vendors did not accept in time.' : `You have no ${wo.trade} vendor on file.`} Colorado requires work to start by ${new Date(wo.respondBy).toLocaleString('en-US', { timeZone: ctx.svc.cfg.tz, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}.`,
         options: ['i_will_arrange_it', 'cancel_request'],
         data: { workOrderId: wo.id },
       });

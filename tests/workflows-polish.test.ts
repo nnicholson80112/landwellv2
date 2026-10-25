@@ -415,3 +415,28 @@ test('a prospect asking about a home that is not for rent hears so, and what is 
   await text('+17205550123', 'yes');
   assert.match(lastTo('+17205550123'), /verify your ID/);
 });
+
+test('removing a vendor mid-repair never books the wrong vendor', async () => {
+  const { store, svc, s, sentTo } = setup();
+  const second = store.insert('vendors', { ownerId: s.owner.id, name: 'Second Plumbing', trades: ['plumbing'], phone: '+17205550155', emergency: false, preferred: false });
+  const first = store.list('vendors', (v) => v.name === 'Front Range Plumbing')[0];
+  const handy = store.list('vendors', (v) => v.name === 'Mile High Handyman')[0];
+  const prop = store.list('properties', (p) => p.ownerId === s.owner.id)[0];
+  svc.engine.start('maintenance', { ownerId: s.owner.id, propertyId: prop.id, summary: 'Leaking kitchen faucet', trade: 'plumbing', urgency: 'routine', photos: ['https://example.com/faucet.jpg'] });
+  await svc.engine.drain();
+  const wo = store.list('workOrders', (w) => w.summary === 'Leaking kitchen faucet')[0];
+  assert.equal(wo.vendorId, first.id, 'the preferred plumber is asked first');
+
+  svc.engine.emit('vendor.replied', { workOrderId: wo.id, vendorId: first.id, accept: false });
+  await svc.engine.drain();
+  assert.equal(store.get('workOrders', wo.id)!.vendorId, second.id, 'then the second plumber');
+
+  store.remove('vendors', first.id); // the owner removes the vendor who said no
+  svc.engine.emit('vendor.replied', { workOrderId: wo.id, vendorId: second.id, accept: true, window: 'Tue 9-11', quote: 14_000 });
+  await svc.engine.drain();
+
+  const after = store.get('workOrders', wo.id)!;
+  assert.equal(after.vendorId, second.id, 'the vendor who said YES is the one booked');
+  assert.equal(after.status, 'scheduled');
+  assert.equal(sentTo(handy.phone!).length, 0, 'the third vendor never hears about the job or the tenant');
+});
