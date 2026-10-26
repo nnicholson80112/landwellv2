@@ -1,6 +1,7 @@
 name: Live check
-# After every push to main: wait for Railway to deploy that commit, then check the live app.
-# Run it by hand (Actions → Live check → Run workflow) to also talk to the front desk.
+# After every push to main: wait for Railway to deploy that commit, then check the live app and talk to the front
+# desk by call and by text (the AI must answer). Run it by hand (Actions → Live check → Run workflow) any time.
+# Conversations skip themselves once real texting is connected, so no real texts go out.
 on:
   push:
     branches: [main]
@@ -22,7 +23,7 @@ jobs:
           node-version: 22
       - name: Deployed and healthy
         if: github.event_name == 'push'
-        run: node scripts/live-check.mjs "$LIVE_URL" --expect-commit "${GITHUB_SHA::7}" --wait 900
+        run: node scripts/live-check.mjs "$LIVE_URL" --expect-commit "${GITHUB_SHA::7}" --wait 900 --conversations
       - name: Live check with conversations
         if: github.event_name == 'workflow_dispatch'
         run: node scripts/live-check.mjs "$LIVE_URL" ${{ inputs.conversations && '--conversations' || '' }}
