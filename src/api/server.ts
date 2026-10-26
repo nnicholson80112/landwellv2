@@ -14,6 +14,8 @@
 //
 // Run: npm start   (reads .env from the environment; see .env.example)
 
+import { registerMoreRoutes } from './owner-more.ts';
+import { allows } from '../billing/entitlements.ts';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -27,7 +29,7 @@ import { verifyStripeSignature, verifyTwilioSignature } from '../adapters/live.t
 import { registerBillingRoutes } from './billing-routes.ts';
 import { startStripeSetup } from '../billing/catalog.ts';
 import { registerOwnerRoutes } from './owner-routes.ts';
-import { sessionAuth, withoutSecrets, type AuthResult } from './auth.ts';
+import { roleProblem, sessionAuth, withoutSecrets, type AuthResult, type Role } from './auth.ts';
 import type { SignRequest } from '../adapters/esign-native.ts';
 import { addressKey, money } from '../workflows/lib.ts';
 import { seed } from '../sim/seed.ts';
@@ -42,7 +44,7 @@ import { noteTick, ops, startOps } from '../ops/index.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-export type Req = IncomingMessage & { raw: string; body: any; params: Record<string, string>; query: URLSearchParams; auth?: { via: 'bearer' | 'session'; sessionId?: string } };
+export type Req = IncomingMessage & { raw: string; body: any; params: Record<string, string>; query: URLSearchParams; auth?: { via: 'bearer' | 'session'; sessionId?: string; memberId?: string; role?: Role } };
 export type Handler = (req: Req, res: ServerResponse, svc: Services) => Promise<void> | void;
 interface Route { method: string; pattern: RegExp; keys: string[]; auth: boolean; h: Handler }
 
@@ -59,11 +61,11 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 
 function page(title: string, inner: string): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title>
-<style>body{margin:0;background:#F6F9FF;color:#0E1B33;font:16px/1.55 system-ui,sans-serif}main{max-width:720px;margin:0 auto;padding:32px 20px}h1{font-size:28px;margin:0 0 8px}
-.card{background:#fff;border:1px solid #D8E1F2;border-radius:18px;padding:22px;margin:16px 0}label{display:block;font-weight:700;margin:12px 0 6px}input{width:100%;box-sizing:border-box;min-height:48px;border:1.5px solid #D8E1F2;border-radius:12px;padding:10px 14px;font:inherit}
-button{background:#1B4DFF;color:#fff;border:0;border-radius:10px;padding:14px 22px;font:700 16px system-ui;margin-top:16px;cursor:pointer}pre{white-space:pre-wrap;font:15px/1.6 Georgia,serif;max-height:60vh;overflow:auto;background:#FAFBFF;border:1px solid #D8E1F2;border-radius:12px;padding:18px}.muted{color:#4A5A78;font-size:14px}
-.check{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;font-weight:400;font-size:14px;color:#4A5A78}.check input{width:20px;height:20px;min-height:0;margin:2px 0 0}:focus-visible{outline:3px solid #FFC83D;outline-offset:2px}
-footer{max-width:720px;margin:0 auto;padding:0 20px 32px;font-size:14px;color:#4A5A78}footer a{color:#4A5A78;margin-right:16px}</style></head><body><main>${inner}</main>
+<style>body{margin:0;background:#FFF6EC;color:#1E2B2F;font:16px/1.55 system-ui,sans-serif}main{max-width:720px;margin:0 auto;padding:32px 20px}h1{font-size:28px;margin:0 0 8px}
+.card{background:#FFFDF9;border:1px solid #EADFD2;border-radius:18px;padding:22px;margin:16px 0}label{display:block;font-weight:700;margin:12px 0 6px}input{width:100%;box-sizing:border-box;min-height:48px;border:1.5px solid #EADFD2;border-radius:12px;padding:10px 14px;font:inherit}
+button{background:#C8502D;color:#fff;border:0;border-radius:10px;padding:14px 22px;font:700 16px system-ui;margin-top:16px;cursor:pointer}pre{white-space:pre-wrap;font:15px/1.6 Georgia,serif;max-height:60vh;overflow:auto;background:#FFFDF9;border:1px solid #EADFD2;border-radius:12px;padding:18px}.muted{color:#56636A;font-size:14px}
+.check{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;font-weight:400;font-size:14px;color:#56636A}.check input{width:20px;height:20px;min-height:0;margin:2px 0 0}:focus-visible{outline:3px solid #E8A33D;outline-offset:2px}
+footer{max-width:720px;margin:0 auto;padding:0 20px 32px;font-size:14px;color:#56636A}footer a{color:#56636A;margin-right:16px}</style></head><body><main>${inner}</main>
 <footer><nav aria-label="Policies">${POLICY_LINKS.map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}</nav></footer></body></html>`;
 }
 
@@ -105,16 +107,16 @@ export function loadStatic() {
   STATIC.put('/favicon.svg', FAVICON, 'image/svg+xml', DAY_S * 7);
   STATIC.put('/favicon.ico', FAVICON, 'image/svg+xml', DAY_S * 7);
   STATIC.put('/robots.txt', 'User-agent: *\nDisallow: /api/\nDisallow: /play\nDisallow: /admin\nDisallow: /sign/\nDisallow: /offer/\n', 'text/plain; charset=utf-8', DAY_S);
-  for (const font of ['bricolage-grotesque-latin.woff2', 'figtree-latin.woff2']) {
+  for (const font of ['montagu-slab-latin.woff2', 'bricolage-grotesque-latin.woff2', 'figtree-latin.woff2']) {
     const p = join(ROOT, 'apps/site/fonts', font);
     if (existsSync(p)) STATIC.put(`/fonts/${font}`, readFileSync(p), 'font/woff2', YEAR_S);
   }
-  for (const lic of ['OFL-Figtree.txt', 'OFL-BricolageGrotesque.txt']) {
+  for (const lic of ['OFL-Figtree.txt', 'OFL-MontaguSlab.txt', 'OFL-BricolageGrotesque.txt']) {
     const p = join(ROOT, 'apps/site/fonts', lic);
     if (existsSync(p)) STATIC.put(`/fonts/${lic}`, readFileSync(p), 'text/plain; charset=utf-8', DAY_S);
   }
 }
-const FAVICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 34"><rect width="34" height="34" rx="8" fill="#1B4DFF"/><circle cx="24.5" cy="10" r="4" fill="#FFC83D"/><path d="M8 18.5 15.5 11.5 23 18.5M10.5 16.5V25h10v-8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const FAVICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 34"><rect width="34" height="34" rx="8" fill="#C8502D"/><circle cx="24.5" cy="10" r="4" fill="#E8A33D"/><path d="M8 18.5 15.5 11.5 23 18.5M10.5 16.5V25h10v-8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 loadStatic();
 
 /** "Book a demo" goes straight to the scheduling page; nothing is collected on our side. */
@@ -259,8 +261,11 @@ route('POST', '/webhooks/twilio/voice/turn', async (req, res, svc) => {
   const since = svc.clock.now().toISOString();
   svc.engine.emit('message.received', { from: b.From, to: b.To, channel: 'voice', body: speech, ownerId, providerMessageId: `${b.CallSid}:${speech}` });
   await svc.engine.drain();
-  const reply = svc.store.list('messages', (m) => m.direction === 'out' && m.threadKey === addressKey(b.From) && m.channel === 'voice' && m.at >= since).pop()?.body
-    ?? "Thanks, I've passed that along to the owner.";
+  const out = svc.store.list('messages', (m) => m.direction === 'out' && m.threadKey === addressKey(b.From) && m.channel === 'voice' && m.at >= since).pop();
+  const reply = out?.body ?? "Thanks, I've passed that along to the owner.";
+  // Calls are part of Autopilot Pro: on other plans the front desk pointed them to texting, so end there.
+  const lineOwner = svc.store.get('owners', out?.ownerId ?? ownerId ?? '');
+  if (lineOwner && !allows(lineOwner, 'voice')) return twiml(res, `<Say voice="${VOICE}">${xml(reply)} Goodbye.</Say>`);
   const emergency = svc.store.list('workOrders', (w) => w.urgency === 'emergency' && w.createdAt >= since).length > 0;
   // Shared number: no owner from the dialed line, so use the owner of the emergency this caller just reported.
   const owner = ownerId ? svc.store.get('owners', ownerId) : callerEmergencyOwner(svc.store, b.From, since);
@@ -319,6 +324,7 @@ route('GET', '/api/dashboard', (req, res, svc) => {
 // to-dos, rent, repairs, messages, activity) live in ./owner-routes.ts. Registered before the plain
 // lists below, so its checked and filled-in versions answer first.
 registerOwnerRoutes({ route, json, html });
+registerMoreRoutes({ route, json });
 
 for (const [path, table] of [['properties', 'properties'], ['tenants', 'tenants'], ['vendors', 'vendors'], ['leases', 'leases'], ['work-orders', 'workOrders'], ['charges', 'charges'], ['payments', 'payments'], ['expenses', 'expenses'], ['applications', 'applications'], ['showings', 'showings'], ['tasks', 'tasks'], ['messages', 'messages'], ['audit', 'audit']] as [string, TableName][]) {
   route('GET', `/api/${path}`, (req, res, svc) => json(res, 200, mine(svc, table, req.params.ownerId)), true);
@@ -413,7 +419,10 @@ export function createApp(svc: Services) {
         const wait = LIMIT.owner.take(who.ownerId);
         if (wait) return tooMany(res, wait);
         req.params.ownerId = who.ownerId;
-        req.auth = { via: who.via, sessionId: who.sessionId };
+        req.auth = { via: who.via, sessionId: who.sessionId, memberId: who.memberId, role: who.role };
+        // Team members: "view only" changes nothing; "can approve" can't touch billing, the team or the rules.
+        const denied = roleProblem(who.role, method!, url.pathname);
+        if (denied) return json(res, 403, { error: denied });
       }
       // Signed-in owners may upload lease templates; everything else is small.
       req.raw = method === 'GET' ? '' : await readBody(req, r.auth ? 2_000_000 : 256_000);

@@ -26,6 +26,13 @@ export interface Owner {
   passwordHash?: string;
   passwordSetAt?: ISO;
   lastLoginAt?: ISO;
+  /** Two-step sign-in with an authenticator app (src/api/totp.ts). Never sent to a client. */
+  totpSecret?: string;
+  totpEnabledAt?: ISO;
+  /** The 30-second step of the last code accepted, so a code works only once. */
+  totpLastStep?: number;
+  /** A secret being set up, until the owner proves it works with a code. */
+  totpPending?: string;
   createdAt: ISO;
 }
 
@@ -337,6 +344,8 @@ export interface Task {
   detail: string;
   dueAt?: ISO;
   status: 'open' | 'done';
+  /** Essentials: a reply KeyHelm drafted for the owner to send (inbound-message.ts, draftForOwner). */
+  draft?: { to: string; channel: Channel; body: string };
 }
 
 /** Table name → record type, used by the Store. */

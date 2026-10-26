@@ -33,14 +33,17 @@ import { RateLimiter, StaticCache, clientIp, safeEqual } from './guard.ts';
 import {
   LINK_TTL_MS, LOGIN_LIMIT, MAX_PASSWORD, RESET_TTL_MS, clearedCookie, consumeLoginLink, createSession, currentSession, emailConfigured,
   hashPassword, issueLoginLink, passwordProblem, peekLoginLink, revokeAllSessions, revokeLoginLinks, revokeSession, safeNext, sameOrigin, verifyPassword,
+  ROLE_NAMES, getMember, issueMfaTicket, memberByEmail, memberView, membersOf, redeemMfaTicket, saveMember, sessionsOf, type Member, type Role, type SessionRec,
 } from './auth.ts';
+import { newTotpSecret, otpauthUri, verifyTotp } from './totp.ts';
+import { entitlementsOf } from '../billing/entitlements.ts';
 import {
   Invalid, approvalView, body, bool, calendlyUrlFor, checkDecision, checklist, conflict, contactFor, defaultRules, dollars, email, ensureRules, fail,
   facts, int, isObj, links, notFound, oneOf, phone, planId, planName, rooms, rulesPatch, rulesSaved, stepOfTask, syncSetupTasks, text,
   threadMessages, threads, trades, ymd,
 } from './owner-data.ts';
 import {
-  appPlaceholderPage, blockedPage, checkoutEmailPage, checkoutWaitingPage, forgotPage, forgotSentPage, linkInvalidPage, loginPage, setPasswordPage,
+  appPlaceholderPage, blockedPage, checkoutEmailPage, checkoutWaitingPage, codePage, forgotPage, forgotSentPage, linkInvalidPage, loginPage, setPasswordPage,
 } from './owner-pages.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -90,10 +93,12 @@ function api(kit: OwnerKit, fn: (req: Req, res: ServerResponse, svc: Services, o
 }
 
 /** Start a session, set the cookie, remember the sign-in. */
-function signIn(req: Req, res: ServerResponse, svc: Services, ownerId: string): void {
-  const s = createSession(svc, ownerId, { ip: clientIp(req), ua: String(req.headers['user-agent'] ?? '') });
+function signIn(req: Req, res: ServerResponse, svc: Services, ownerId: string, memberId?: string): void {
+  const s = createSession(svc, ownerId, { ip: clientIp(req), ua: String(req.headers['user-agent'] ?? ''), memberId });
   res.setHeader('set-cookie', s.cookie);
-  svc.store.update('owners', ownerId, { lastLoginAt: nowIso(svc) });
+  const m = getMember(svc, memberId);
+  if (m) saveMember(svc, { ...m, lastLoginAt: nowIso(svc) });
+  else svc.store.update('owners', ownerId, { lastLoginAt: nowIso(svc) });
   ensureRules(svc, ownerId); // workflows read the owner's rules, so a new owner starts with safe defaults
   svc.store.flush();
 }
@@ -102,7 +107,7 @@ function signIn(req: Req, res: ServerResponse, svc: Services, ownerId: string): 
 
 const APP_DIR = join(ROOT, 'apps/owner');
 /** The app's screens. /app/<tab> and /app/messages/<key> open the same page on that screen. */
-export const APP_TABS = ['today', 'rent', 'repairs', 'messages', 'homes', 'settings'] as const;
+export const APP_TABS = ['today', 'rent', 'repairs', 'messages', 'leasing', 'homes', 'calendar', 'documents', 'books', 'settings'] as const;
 let appCache: { mtimeMs: number; html: string } | undefined;
 
 /** apps/owner/index.html from memory (read again when the file changes), or undefined when it doesn't exist. */
@@ -117,12 +122,13 @@ function appHtml(): string | undefined {
 /**
  * The app page's Content-Security-Policy: only its own inline script and style run (a fresh nonce on every
  * response), data comes only from this site, nothing can frame it, and Trusted Types blocks HTML string sinks
- * (the app builds every element with DOM calls, so server data is never parsed as HTML).
+ * (the app builds every element with DOM calls, so server data is never parsed as HTML). The one frame it
+ * shows is a state document, served from this site as its own script-free page.
  */
 export function appCsp(nonce: string): string {
   return [
     "default-src 'none'", `script-src 'nonce-${nonce}'`, `style-src 'nonce-${nonce}'`, "img-src 'self' data:", "font-src 'self'",
-    "connect-src 'self'", "manifest-src 'self'", "form-action 'self'", "frame-ancestors 'none'", "base-uri 'none'", "object-src 'none'",
+    "connect-src 'self'", "frame-src 'self'", "manifest-src 'self'", "form-action 'self'", "frame-ancestors 'none'", "base-uri 'none'", "object-src 'none'",
     "require-trusted-types-for 'script'",
   ].join('; ');
 }
@@ -201,6 +207,29 @@ async function sendLinkEmail(svc: Services, owner: Owner, url: string, purpose: 
     : `Hi ${first},\n\nUse this link to create your ${BRAND.name} password and open your account. It works once:\n${url}\n\nQuestions? Reply to this email.\n\n${BRAND.name}`;
   // Not saved to the message history: the link is a key to the account.
   await svc.adapters.messaging.send({ channel: 'email', to: owner.email, subject: purpose === 'reset' ? `Reset your ${BRAND.name} password` : `Set up your ${BRAND.name} sign-in`, body });
+}
+
+async function sendMemberEmail(svc: Services, m: Member, url: string, purpose: 'invite' | 'reset'): Promise<void> {
+  const owner = svc.store.get('owners', m.ownerId);
+  const first = firstName(m.name);
+  const body = purpose === 'reset'
+    ? `Hi ${first},\n\nUse this link to choose a new ${BRAND.name} password. It works once, for 1 hour:\n${url}\n\nIf you didn't ask for this, you can ignore this email.\n\n${BRAND.name}`
+    : `Hi ${first},\n\n${owner?.name ?? 'The owner'} added you to their ${BRAND.name} account (${ROLE_NAMES[m.role]}). Use this link to create your password. It works once, for 7 days:\n${url}\n\n${BRAND.name}`;
+  await svc.adapters.messaging.send({ channel: 'email', to: m.email, subject: purpose === 'reset' ? `Reset your ${BRAND.name} password` : `You're invited to ${owner?.name ?? 'a'} ${BRAND.name} account`, body });
+}
+
+/** Who is signed in, for /api/me: the owner, or a team member and their role. */
+function meWho(svc: Services, o: Owner, auth: Req['auth']) {
+  const m = getMember(svc, auth?.memberId);
+  return m ? { kind: 'member' as const, ...memberView(m) } : { kind: 'owner' as const, name: o.name, email: o.email, role: 'owner' as const, roleName: 'Owner', twoStep: !!o.totpSecret };
+}
+
+/** A device in "where you're signed in". Only part of the IP address is shown. */
+function sessionView(s: SessionRec, currentId?: string) {
+  const ua = s.ua ?? '';
+  const browser = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : /Firefox\//.test(ua) ? 'Firefox' : 'A browser';
+  const device = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android' : /Mac OS X/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : 'a computer';
+  return { id: s.id.slice(0, 16), device: `${browser} on ${device}`, ip: s.ip ? s.ip.replace(/(\d+\.\d+)\.\d+\.\d+$/, '$1.x.x') : null, createdAt: s.createdAt, lastSeenAt: s.lastSeenAt, current: s.id === currentId };
 }
 
 /* ======================= views ======================= */
@@ -313,11 +342,39 @@ export function registerOwnerRoutes(kit: OwnerKit) {
     const wait = LOGIN_LIMIT.ip.take(clientIp(req)) || (emailIn ? LOGIN_LIMIT.email.take(emailIn) : 0);
     if (wait) { res.setHeader('retry-after', String(wait)); return reply(429, `Too many sign-in attempts. Please wait ${mins(wait)} and try again, or reset your password.`); }
     const owner = emailIn ? svc.store.find('owners', (o) => sameEmail(o.email, emailIn)) : undefined;
+    const member = !owner && emailIn ? memberByEmail(svc, emailIn) : undefined;
+    const rec = owner ?? (member?.status === 'active' ? member : undefined);
     // Always run the full password check, so a wrong email takes as long as a wrong password.
-    const ok = await verifyPassword(String(b.password ?? '').slice(0, MAX_PASSWORD + 1), owner?.passwordHash);
-    if (!ok || !owner) return reply(401, "That email and password don't match. Try again, or reset your password.");
-    signIn(req, res, svc, owner.id);
+    const ok = await verifyPassword(String(b.password ?? '').slice(0, MAX_PASSWORD + 1), rec?.passwordHash);
+    if (!ok || !rec) return reply(401, "That email and password don't match. Try again, or reset your password.");
+    const ownerId = owner ? owner.id : member!.ownerId;
+    if (rec.totpSecret) return askForCode(res, svc, asJson, { ownerId, memberId: member?.id }, next);
+    signIn(req, res, svc, ownerId, member?.id);
     asJson ? json(res, 200, { ok: true, next }) : redirect(res, next);
+  });
+
+  /* Two-step sign-in: the password step handed out a ticket; a good code trades it for a session. */
+  function askForCode(res: ServerResponse, svc: Services, asJson: boolean, who: { ownerId: string; memberId?: string }, next: string) {
+    const ticket = issueMfaTicket(svc, who, next);
+    asJson ? json(res, 200, { needsCode: true, ticket }) : sendHtml(res, 200, codePage({ ticket }));
+  }
+
+  route('POST', '/login/code', (req, res, svc) => {
+    const b = isObj(req.body) ? req.body : {};
+    const asJson = wantsJson(req);
+    const ticket = String(b.ticket ?? '');
+    const reply = (code: number, error: string, again = true) => (asJson ? json(res, code, { error, again }) : sendHtml(res, code, again ? codePage({ ticket, error }) : loginPage({ error })));
+    if (!sameOrigin(req, svc)) return reply(403, 'This sign-in came from another website, so it was blocked.', false);
+    const wait = LOGIN_LIMIT.ip.take(clientIp(req));
+    if (wait) { res.setHeader('retry-after', String(wait)); return reply(429, `Too many tries. Please wait ${mins(wait)} and try again.`); }
+    const out = redeemMfaTicket(svc, ticket, b.code);
+    if (out.result !== 'ok') {
+      return out.result === 'expired'
+        ? reply(401, 'That took too long or had too many tries. Please sign in again.', false)
+        : reply(401, "That code didn't work. Check your authenticator app and try the newest code.");
+    }
+    signIn(req, res, svc, out.ticket.ownerId, out.ticket.memberId);
+    asJson ? json(res, 200, { ok: true, next: out.ticket.next }) : redirect(res, out.ticket.next);
   });
 
   route('POST', '/logout', (req, res, svc) => {
@@ -338,7 +395,8 @@ export function registerOwnerRoutes(kit: OwnerKit) {
     const rec = peekLoginLink(svc, req.params.token);
     if (!rec) return sendHtml(res, 410, linkInvalidPage());
     const owner = svc.store.get('owners', rec.ownerId)!;
-    sendHtml(res, 200, setPasswordPage({ email: owner.email, purpose: rec.purpose, action: `/login/link/${req.params.token}` }));
+    const member = getMember(svc, rec.memberId);
+    sendHtml(res, 200, setPasswordPage({ email: member?.email ?? owner.email, purpose: rec.purpose, action: `/login/link/${req.params.token}`, ownerName: owner.name }));
   });
 
   route('POST', '/login/link/:token', async (req, res, svc) => {
@@ -351,16 +409,28 @@ export function registerOwnerRoutes(kit: OwnerKit) {
     if (wait) return asJson ? json(res, 429, { error: `Too many attempts. Please wait ${mins(wait)}.` }) : sendHtml(res, 429, blockedPage(`Too many attempts. Please wait ${mins(wait)} and try again.`));
     if (!rec) return asJson ? json(res, 410, { error: 'This link has expired or was already used. Ask for a new one.' }) : sendHtml(res, 410, linkInvalidPage());
     const owner = svc.store.get('owners', rec.ownerId)!;
+    const member = getMember(svc, rec.memberId);
+    const who = member ?? owner;
     const pw = typeof b.password === 'string' ? b.password : '';
-    const problem = passwordProblem(pw, owner.email) ?? (b.confirm !== undefined && b.confirm !== pw ? "The two passwords don't match. Please type them again." : undefined);
-    if (problem) return asJson ? json(res, 400, { error: problem, field: 'password' }) : sendHtml(res, 400, setPasswordPage({ email: owner.email, purpose: rec.purpose, action: `/login/link/${req.params.token}`, error: problem }));
+    const problem = passwordProblem(pw, who.email) ?? (b.confirm !== undefined && b.confirm !== pw ? "The two passwords don't match. Please type them again." : undefined);
+    if (problem) return asJson ? json(res, 400, { error: problem, field: 'password' }) : sendHtml(res, 400, setPasswordPage({ email: who.email, purpose: rec.purpose, action: `/login/link/${req.params.token}`, error: problem, ownerName: owner.name }));
     if (!consumeLoginLink(svc, req.params.token)) return asJson ? json(res, 410, { error: 'This link has expired or was already used. Ask for a new one.' }) : sendHtml(res, 410, linkInvalidPage());
     const now = nowIso(svc);
-    svc.store.update('owners', owner.id, { passwordHash: await hashPassword(pw), passwordSetAt: now });
-    revokeAllSessions(svc, owner.id);
-    revokeLoginLinks(svc, owner.id);
-    svc.engine.audit({ ownerId: owner.id, actor: 'owner', action: owner.passwordHash ? 'owner.password_reset' : 'owner.password_set', detail: owner.passwordHash ? 'Password changed with a one-time link. Other devices were signed out.' : 'Password created.' });
-    signIn(req, res, svc, owner.id);
+    const hash = await hashPassword(pw);
+    if (member) {
+      saveMember(svc, { ...member, passwordHash: hash, passwordSetAt: now, status: 'active' });
+      revokeAllSessions(svc, owner.id, undefined, { memberId: member.id });
+      revokeLoginLinks(svc, owner.id, member.id);
+      svc.engine.audit({ ownerId: owner.id, actor: 'owner', action: member.passwordHash ? 'team.password_reset' : 'team.joined', detail: member.passwordHash ? `${member.name} changed their password with a one-time link.` : `${member.name} joined your team (${ROLE_NAMES[member.role]}).` });
+    } else {
+      svc.store.update('owners', owner.id, { passwordHash: hash, passwordSetAt: now });
+      revokeAllSessions(svc, owner.id, undefined, { memberId: null });
+      revokeLoginLinks(svc, owner.id, null);
+      svc.engine.audit({ ownerId: owner.id, actor: 'owner', action: owner.passwordHash ? 'owner.password_reset' : 'owner.password_set', detail: owner.passwordHash ? 'Password changed with a one-time link. Other devices were signed out.' : 'Password created.' });
+    }
+    // A reset link proves the email, not the phone: two-step sign-in still asks for the code.
+    if (who.totpSecret) return askForCode(res, svc, asJson, { ownerId: owner.id, memberId: member?.id }, '/app');
+    signIn(req, res, svc, owner.id, member?.id);
     asJson ? json(res, 200, { ok: true, next: '/app' }) : redirect(res, '/app');
   });
 
@@ -376,6 +446,11 @@ export function registerOwnerRoutes(kit: OwnerKit) {
     if (wait) return asJson ? json(res, 429, { error: `Too many requests. Please wait ${mins(wait)} and try again.` }) : sendHtml(res, 429, blockedPage(`Too many requests. Please wait ${mins(wait)} and try again.`));
     const works = emailConfigured();
     const owner = works ? svc.store.find('owners', (o) => sameEmail(o.email, emailIn)) : undefined;
+    const member = works && !owner ? memberByEmail(svc, emailIn) : undefined;
+    if (member && member.status === 'active') {
+      const link = issueLoginLink(svc, member.ownerId, { purpose: 'reset', via: 'forgot', ttlMs: RESET_TTL_MS, memberId: member.id });
+      void sendMemberEmail(svc, member, link.url, 'reset').catch((e) => console.error('[auth] reset email failed:', (e as Error).message));
+    }
     if (owner) {
       const link = issueLoginLink(svc, owner.id, { purpose: owner.passwordHash ? 'reset' : 'setup', via: 'forgot', ttlMs: RESET_TTL_MS });
       svc.engine.audit({ ownerId: owner.id, actor: 'owner', action: 'owner.reset_requested', detail: 'A password reset link was emailed.' });
@@ -419,10 +494,22 @@ export function registerOwnerRoutes(kit: OwnerKit) {
     json(res, 201, { url: link.url, expiresAt: link.expiresAt, purpose, owner: { id: owner.id, name: owner.name, email: owner.email } });
   });
 
+  route('POST', '/api/admin/owners/:id/two-step/off', (req, res, svc) => {
+    if (!isAdmin(req)) return json(res, 401, { error: 'unauthorized' });
+    const owner = svc.store.get('owners', req.params.id);
+    if (!owner) return json(res, 404, { error: 'not found' });
+    svc.store.update('owners', owner.id, { totpSecret: undefined, totpPending: undefined, totpEnabledAt: undefined, totpLastStep: undefined });
+    revokeAllSessions(svc, owner.id, undefined, { memberId: null });
+    svc.engine.audit({ ownerId: owner.id, actor: 'system', action: 'auth.two_step_reset', detail: `${BRAND.name} support turned off two-step sign-in (lost phone). You were signed out everywhere.` });
+    svc.store.flush();
+    json(res, 200, { ok: true });
+  });
+
   /* ---------------- me ---------------- */
   r('GET', '/api/me', (req, res, svc, ownerId) => {
     if (syncSetupTasks(svc, ownerId)) svc.store.flush();
-    json(res, 200, meView(svc, svc.store.get('owners', ownerId) ?? notFound(), req.auth?.via ?? 'bearer'));
+    const o = svc.store.get('owners', ownerId) ?? notFound();
+    json(res, 200, { ...meView(svc, o, req.auth?.via ?? 'bearer'), me: meWho(svc, o, req.auth), entitlements: entitlementsOf(o) });
   });
 
   r('PATCH', '/api/me', async (req, res, svc, ownerId) => {
@@ -457,6 +544,16 @@ export function registerOwnerRoutes(kit: OwnerKit) {
 
   r('POST', '/api/me/password', async (req, res, svc, ownerId) => {
     const b = body(req.body);
+    const member = getMember(svc, req.auth?.memberId);
+    if (member) {
+      if (LOGIN_LIMIT.email.blocked(member.email.toLowerCase())) fail('Too many tries. Please wait a few minutes.', 'currentPassword', 429);
+      if (!(await verifyPassword(String(b.currentPassword ?? ''), member.passwordHash))) { LOGIN_LIMIT.email.take(member.email.toLowerCase()); fail("Your current password isn't right.", 'currentPassword'); }
+      const problem = passwordProblem(b.newPassword, member.email);
+      if (problem) fail(problem, 'newPassword');
+      saveMember(svc, { ...member, passwordHash: await hashPassword(String(b.newPassword)), passwordSetAt: nowIso(svc) });
+      revokeAllSessions(svc, ownerId, req.auth?.sessionId, { memberId: member.id });
+      return json(res, 200, { ok: true });
+    }
     const o = svc.store.get('owners', ownerId) ?? notFound();
     if (o.passwordHash) {
       if (LOGIN_LIMIT.email.blocked(o.email.toLowerCase())) fail('Too many tries. Please wait a few minutes.', 'currentPassword', 429);
@@ -465,9 +562,113 @@ export function registerOwnerRoutes(kit: OwnerKit) {
     const problem = passwordProblem(b.newPassword, o.email);
     if (problem) fail(problem, 'newPassword');
     svc.store.update('owners', ownerId, { passwordHash: await hashPassword(String(b.newPassword)), passwordSetAt: nowIso(svc) });
-    const others = revokeAllSessions(svc, ownerId, req.auth?.sessionId);
-    revokeLoginLinks(svc, ownerId);
+    const others = revokeAllSessions(svc, ownerId, req.auth?.sessionId, { memberId: null });
+    revokeLoginLinks(svc, ownerId, null);
     svc.engine.audit({ ownerId, actor: 'owner', action: 'owner.password_changed', detail: `Password changed${others ? `; ${others} other device${others === 1 ? '' : 's'} signed out` : ''}.` });
+    json(res, 200, { ok: true });
+  });
+
+  /* ---------------- two-step sign-in (the signed-in person's own) ---------------- */
+  const person = (svc: Services, ownerId: string, req: Req): { rec: Owner | Member; save: (p: Partial<Member & Owner>) => void } => {
+    const m = getMember(svc, req.auth?.memberId);
+    if (m) return { rec: m, save: (p) => saveMember(svc, { ...m, ...p } as Member) };
+    const o = svc.store.get('owners', ownerId) ?? notFound();
+    return { rec: o, save: (p) => svc.store.update('owners', ownerId, p as Partial<Owner>) };
+  };
+
+  r('GET', '/api/me/two-step', (req, res, svc, ownerId) => {
+    const { rec } = person(svc, ownerId, req);
+    json(res, 200, { enabled: !!rec.totpSecret, enabledAt: rec.totpEnabledAt ?? null, settingUp: !!rec.totpPending });
+  });
+
+  /** Start: a new secret the owner adds to their authenticator app (by key or otpauth link). Not on until they confirm a code. */
+  r('POST', '/api/me/two-step/setup', (req, res, svc, ownerId) => {
+    const { rec, save } = person(svc, ownerId, req);
+    if (rec.totpSecret) conflict('Two-step sign-in is already on. Turn it off first to set up a new phone.');
+    const secret = newTotpSecret();
+    save({ totpPending: secret });
+    json(res, 200, { secret: secret.replace(/(.{4})/g, '$1 ').trim(), uri: otpauthUri({ issuer: BRAND.name, account: rec.email, secret }) });
+  });
+
+  r('POST', '/api/me/two-step/enable', (req, res, svc, ownerId) => {
+    const b = body(req.body);
+    const { rec, save } = person(svc, ownerId, req);
+    if (!rec.totpPending) fail('Start setup first.', 'code');
+    const step = verifyTotp(rec.totpPending, b.code, svc.clock.now().getTime());
+    if (step === undefined) fail("That code didn't match. Make sure your phone's time is set automatically, then try the newest code.", 'code');
+    save({ totpSecret: rec.totpPending, totpPending: undefined, totpEnabledAt: nowIso(svc), totpLastStep: step });
+    svc.engine.audit({ ownerId, actor: 'owner', action: 'auth.two_step_on', detail: `Two-step sign-in turned on for ${rec.name}.` });
+    json(res, 200, { enabled: true });
+  });
+
+  r('POST', '/api/me/two-step/disable', async (req, res, svc, ownerId) => {
+    const b = body(req.body);
+    const { rec, save } = person(svc, ownerId, req);
+    if (!(await verifyPassword(String(b.password ?? ''), rec.passwordHash))) fail('Enter your password to turn off two-step sign-in.', 'password');
+    save({ totpSecret: undefined, totpPending: undefined, totpEnabledAt: undefined, totpLastStep: undefined });
+    svc.engine.audit({ ownerId, actor: 'owner', action: 'auth.two_step_off', detail: `Two-step sign-in turned off for ${rec.name}.` });
+    json(res, 200, { enabled: false });
+  });
+
+  /* ---------------- devices ("where you're signed in") ---------------- */
+  r('GET', '/api/me/sessions', (req, res, svc, ownerId) => {
+    json(res, 200, { sessions: sessionsOf(svc, ownerId, req.auth?.memberId ?? null).map((s) => sessionView(s, req.auth?.sessionId)) });
+  });
+  r('DELETE', '/api/me/sessions/:id', (req, res, svc, ownerId) => {
+    const s = sessionsOf(svc, ownerId, req.auth?.memberId ?? null).find((x) => x.id.slice(0, 16) === req.params.id) ?? notFound();
+    svc.store.kvDelete('sessions', s.id);
+    json(res, 200, { ok: true, current: s.id === req.auth?.sessionId });
+  });
+  r('POST', '/api/me/sessions/others', (req, res, svc, ownerId) => {
+    json(res, 200, { signedOut: revokeAllSessions(svc, ownerId, req.auth?.sessionId, { memberId: req.auth?.memberId ?? null }) });
+  });
+
+  /* ---------------- team (owner only; roleProblem in auth.ts keeps members out of changes) ---------------- */
+  const ROLES = Object.keys(ROLE_NAMES) as Role[];
+  r('GET', '/api/team', (_req, res, svc, ownerId) => json(res, 200, { members: membersOf(svc, ownerId).map(memberView), roles: ROLES.map((id) => ({ id, name: ROLE_NAMES[id] })) }));
+
+  r('POST', '/api/team', (req, res, svc, ownerId) => {
+    const b = body(req.body);
+    const owner = svc.store.get('owners', ownerId) ?? notFound();
+    const name = text(b.name, { field: 'name', label: 'their name', max: 80, required: true })!;
+    const mail = email(b.email, { field: 'email', label: 'their email', required: true })!;
+    const role = oneOf(b.role, ROLES, { field: 'role', label: 'access', required: true })!;
+    if (sameEmail(owner.email, mail) || svc.store.find('owners', (o) => sameEmail(o.email, mail)) || memberByEmail(svc, mail)) conflict('That email already has a KeyHelm sign-in.', 'email');
+    if (membersOf(svc, ownerId).length >= 10) conflict('A team can have up to 10 people.');
+    const m = saveMember(svc, { id: `mem_${randomBytes(8).toString('hex')}`, ownerId, name, email: mail, role, status: 'invited', createdAt: nowIso(svc) });
+    const link = issueLoginLink(svc, ownerId, { purpose: 'invite', via: 'owner', memberId: m.id });
+    const emailed = emailConfigured();
+    if (emailed) void sendMemberEmail(svc, m, link.url, 'invite').catch((e) => console.error('[auth] invite email failed:', (e as Error).message));
+    svc.engine.audit({ ownerId, actor: 'owner', action: 'team.invited', detail: `Invited ${name} (${ROLE_NAMES[role]}).` });
+    // The owner can also pass the link on themselves (needed until email is set up).
+    json(res, 201, { member: memberView(m), inviteUrl: link.url, expiresAt: link.expiresAt, emailed });
+  });
+
+  r('PATCH', '/api/team/:id', (req, res, svc, ownerId) => {
+    const b = body(req.body);
+    const m = getMember(svc, req.params.id);
+    if (!m || m.ownerId !== ownerId) notFound();
+    const role = oneOf(b.role, ROLES, { field: 'role', label: 'access', required: true })!;
+    const next = saveMember(svc, { ...m!, role });
+    svc.engine.audit({ ownerId, actor: 'owner', action: 'team.role', detail: `${m!.name} now has ${ROLE_NAMES[role]} access.` });
+    json(res, 200, { member: memberView(next) });
+  });
+
+  r('POST', '/api/team/:id/invite', (req, res, svc, ownerId) => {
+    const m = getMember(svc, req.params.id);
+    if (!m || m.ownerId !== ownerId) notFound();
+    const link = issueLoginLink(svc, ownerId, { purpose: m!.passwordHash ? 'reset' : 'invite', via: 'owner', memberId: m!.id });
+    if (emailConfigured()) void sendMemberEmail(svc, m!, link.url, m!.passwordHash ? 'reset' : 'invite').catch((e) => console.error('[auth] invite email failed:', (e as Error).message));
+    json(res, 200, { inviteUrl: link.url, expiresAt: link.expiresAt, emailed: emailConfigured() });
+  });
+
+  r('DELETE', '/api/team/:id', (req, res, svc, ownerId) => {
+    const m = getMember(svc, req.params.id);
+    if (!m || m.ownerId !== ownerId) notFound();
+    svc.store.kvDelete('members', m!.id);
+    revokeAllSessions(svc, ownerId, undefined, { memberId: m!.id });
+    revokeLoginLinks(svc, ownerId, m!.id);
+    svc.engine.audit({ ownerId, actor: 'owner', action: 'team.removed', detail: `Removed ${m!.name} from your team. They were signed out.` });
     json(res, 200, { ok: true });
   });
 

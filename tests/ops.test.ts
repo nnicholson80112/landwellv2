@@ -316,6 +316,7 @@ test('shared number: tenants route by sender, new people by the home they name, 
     assert.match(t.alertTexts().pop()!.body, /^KeyHelm alert: Possible EMERGENCY, no owner matched: \+13035550125\n.*"I smell gas in the kitchen!"/s);
 
     // A known tenant calls the shared number with an emergency: the call is put through to their own owner.
+    t.store.update('owners', sam.ownerId, { plan: 'pro' }); // calls are answered on Autopilot Pro
     const form = (f: Record<string, string>) => ({ method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(f) });
     const greet = await (await fetch(`${base}/webhooks/twilio/voice`, form({ From: sam.phone!, To: SHARED, CallSid: 'CAops1' }))).text();
     assert.doesNotMatch(greet, /Nate|Pat/, 'the shared line greets without an owner name');

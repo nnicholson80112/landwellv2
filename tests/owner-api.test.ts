@@ -16,6 +16,7 @@ import { createApp, LIMIT } from '../src/api/server.ts';
 import { RateLimiter, limitsFromEnv } from '../src/api/guard.ts';
 import { hashPassword, passwordProblem, resetLoginLimits, safeNext, verifyPassword } from '../src/api/auth.ts';
 import type { OutboxMessaging } from '../src/adapters/mock.ts';
+import { base32Encode, stepOf, totpAt, verifyTotp } from '../src/api/totp.ts';
 
 const PW = 'blue spruce porch light';
 
@@ -607,5 +608,219 @@ test('admin one-time sign-in link; forgot password emails a 1-hour link without 
     } finally { restoreMail(); }
   } finally {
     restoreEnv(); t.close();
+  }
+});
+
+/* ---------------- two-step sign-in, team members, devices ---------------- */
+
+test('authenticator codes match RFC 6238 and each code works once', () => {
+  const sec = base32Encode(Buffer.from('12345678901234567890'));
+  assert.equal(totpAt(sec, stepOf(59_000)), '287082');
+  assert.equal(totpAt(sec, stepOf(1_111_111_109_000)), '081804');
+  assert.equal(totpAt(sec, stepOf(2_000_000_000_000)), '279037');
+  const now = 1_800_000_000_000, code = totpAt(sec, stepOf(now));
+  const step = verifyTotp(sec, code, now);
+  assert.equal(step, stepOf(now));
+  assert.equal(verifyTotp(sec, code, now, step), undefined, 'the same code twice is refused');
+  assert.equal(verifyTotp(sec, totpAt(sec, stepOf(now) - 1), now), stepOf(now) - 1, 'one step of clock drift is fine');
+  assert.equal(verifyTotp(sec, totpAt(sec, stepOf(now) - 3), now), undefined);
+  assert.equal(verifyTotp(sec, 'abcdef', now), undefined);
+});
+
+test('two-step sign-in: set up with a code, then every sign-in asks for a fresh one', async () => {
+  const t = boot();
+  try {
+    const cookie = await t.signInAs(t.s.owner.id);
+    const setup = await (await t.call(cookie, 'POST', '/api/me/two-step/setup', {})).json();
+    const secret = setup.secret.replace(/\s/g, '');
+    assert.match(setup.uri, /^otpauth:\/\/totp\/KeyHelm/);
+    assert.equal((await t.call(cookie, 'POST', '/api/me/two-step/enable', { code: '000000' })).status, 400);
+    const codeNow = () => totpAt(secret, stepOf(t.clock.now().getTime()));
+    assert.equal((await t.call(cookie, 'POST', '/api/me/two-step/enable', { code: codeNow() })).status, 200);
+    assert.equal(t.store.get('owners', t.s.owner.id)!.totpSecret, secret);
+    assert.ok(!('totpSecret' in (await (await t.call(cookie, 'GET', '/api/me')).json()).owner), 'the secret never goes to the app');
+
+    const pw = await t.form('/login', { email: t.s.owner.email, password: PW });
+    assert.equal(pw.status, 200, 'the password alone does not sign in');
+    assert.equal(cookieOf(pw), undefined);
+    const ticket = (await pw.text()).match(/name="ticket" value="([^"]+)"/)![1];
+    assert.equal((await t.form('/login/code', { ticket, code: codeNow() })).status, 401, 'the code used to turn it on works only once');
+    t.clock.advance(30_000);
+    const ok = await t.form('/login/code', { ticket, code: codeNow() });
+    assert.equal(ok.status, 303);
+    assert.ok(cookieOf(ok));
+    assert.equal((await t.form('/login/code', { ticket, code: codeNow() })).status, 401, 'a ticket works once');
+
+    assert.equal((await t.call(cookie, 'POST', '/api/me/two-step/disable', { password: 'wrong password here' })).status, 400);
+    assert.equal((await t.call(cookie, 'POST', '/api/me/two-step/disable', { password: PW })).status, 200);
+    assert.equal((await t.form('/login', { email: t.s.owner.email, password: PW })).status, 303, 'off again: password only');
+  } finally {
+    t.close();
+  }
+});
+
+test('team: invite by link, roles limit what members can change, removing signs them out', async () => {
+  const t = boot();
+  try {
+    const owner = await t.signInAs(t.s.owner.id);
+    const inv = await t.call(owner, 'POST', '/api/team', { name: 'Casey Avery', email: 'casey@example.com', role: 'approver' });
+    assert.equal(inv.status, 201);
+    const { member, inviteUrl } = await inv.json();
+    assert.equal(member.status, 'invited');
+    const path = new URL(inviteUrl).pathname;
+    assert.match(await (await fetch(t.base + path)).text(), /added you to their KeyHelm account/);
+    const join = await t.form(path, { password: 'casey has a long password', confirm: 'casey has a long password' });
+    assert.equal(join.status, 303);
+    const casey = cookieOf(join)!;
+
+    const me = await (await t.call(casey, 'GET', '/api/me')).json();
+    assert.equal(me.me.kind, 'member');
+    assert.equal(me.me.role, 'approver');
+    assert.equal(me.owner.id, t.s.owner.id, "a member sees the owner's account");
+    assert.equal((await t.call(casey, 'GET', '/api/properties')).status, 200);
+    assert.equal((await t.call(casey, 'PUT', '/api/rules', { repairSpendLimit: 9000 })).status, 403, 'approvers cannot change the rules');
+    assert.equal((await t.call(casey, 'POST', '/api/team', { name: 'X', email: 'x@example.com', role: 'viewer' })).status, 403);
+    assert.equal((await t.call(casey, 'PATCH', '/api/me', { name: 'Someone' })).status, 403);
+
+    assert.equal((await t.call(owner, 'PATCH', `/api/team/${member.id}`, { role: 'viewer' })).status, 200);
+    const viewerTry = await t.call(casey, 'POST', '/api/tasks/nope/done', {});
+    assert.equal(viewerTry.status, 403);
+    assert.match((await viewerTry.json()).error, /view-only/);
+    assert.equal((await t.call(casey, 'GET', '/api/me/sessions')).status, 200, 'everyone manages their own devices');
+
+    assert.equal((await t.form('/login', { email: 'casey@example.com', password: 'casey has a long password' })).status, 303, 'members sign in at /login');
+    assert.equal((await t.call(owner, 'DELETE', `/api/team/${member.id}`)).status, 200);
+    assert.equal((await t.call(casey, 'GET', '/api/me')).status, 401, 'removed: signed out');
+    assert.equal((await t.form('/login', { email: 'casey@example.com', password: 'casey has a long password' })).status, 401);
+  } finally {
+    t.close();
+  }
+});
+
+test('devices: see where you are signed in and sign the others out', async () => {
+  const t = boot();
+  try {
+    const a = await t.signInAs(t.s.owner.id);
+    const b = await t.login(t.s.owner.email);
+    const list = (await (await t.call(a, 'GET', '/api/me/sessions')).json()).sessions;
+    assert.equal(list.length, 2);
+    assert.equal(list.filter((s: any) => s.current).length, 1);
+    assert.equal((await (await t.call(a, 'POST', '/api/me/sessions/others', {})).json()).signedOut, 1);
+    assert.equal((await t.call(b, 'GET', '/api/me')).status, 401);
+    assert.equal((await t.call(a, 'GET', '/api/me')).status, 200);
+  } finally {
+    t.close();
+  }
+});
+
+test('/api/me lists what the plan includes', async () => {
+  const t = boot();
+  try {
+    t.store.update('owners', t.s.owner.id, { plan: 'essentials' });
+    const me = await (await t.bearer('GET', '/api/me')).json();
+    assert.equal(me.entitlements.plan, 'essentials');
+    assert.equal(me.entitlements.features.assistant, false);
+    assert.equal(me.entitlements.list.length, 16);
+  } finally {
+    t.close();
+  }
+});
+
+test('leasing, calendar and books: scoped to the owner; expenses in dollars become cents', async () => {
+  const t = boot();
+  try {
+    const leasing = await (await t.bearer('GET', '/api/leasing')).json();
+    assert.deepEqual(leasing.homes.map((h: any) => h.address), ['88 Aspen Ct']);
+    assert.equal(leasing.stages.length, 6);
+    assert.match(leasing.note, /never scores, ranks or recommends/);
+
+    const cal = await (await t.bearer('GET', '/api/calendar?month=2027-02')).json();
+    assert.ok(cal.events.some((e: any) => e.kind === 'deadline' && e.date === '2027-02-14' && /Lisa Chen/.test(e.title)));
+    assert.ok(cal.events.every((e: any) => e.date.startsWith('2027-02')));
+    assert.equal((await t.bearer('GET', '/api/calendar?month=2027-13')).status, 400);
+
+    const homeId = t.s.home.id;
+    const bad = await t.bearer('POST', '/api/expenses', { memo: 'Gutter cleaning', amount: '0', category: 'repairs', propertyId: homeId });
+    assert.equal(bad.status, 400);
+    assert.equal((await bad.json()).field, 'amount');
+    const ok = await t.bearer('POST', '/api/expenses', { memo: 'Gutter cleaning', amount: '$185.50', category: 'repairs', propertyId: homeId, date: '2026-10-10' });
+    assert.equal(ok.status, 201);
+    assert.equal((await ok.json()).expense.amount, 18_550);
+    const books = await (await t.bearer('GET', '/api/books')).json();
+    assert.equal(books.months.length, 6);
+    assert.equal(books.months.at(-1).month, '2026-10');
+    assert.equal(books.months.at(-1).expenses, 18_550);
+    assert.equal(books.entries[0].memo, 'Gutter cleaning');
+
+    // Someone else's home is not one of yours.
+    const other = t.store.insert('owners', { name: 'Other Owner', email: 'other@example.com', phone: '+17205550999', plan: 'autopilot' } as any);
+    const theirs = t.store.insert('properties', { ownerId: other.id, address: '1 Elm St', city: 'Denver', state: 'CO', zip: '80202', beds: 1, baths: 1, rent: 100_000, deposit: 100_000, status: 'listed' } as any);
+    assert.equal((await t.bearer('POST', '/api/expenses', { memo: 'x', amount: '10', category: 'other', propertyId: theirs.id })).status, 400);
+  } finally {
+    t.close();
+  }
+});
+
+test('documents: filled in from the lease and the state rules; locked by plan', async () => {
+  const t = boot();
+  try {
+    t.store.update('owners', t.s.owner.id, { plan: 'autopilot' });
+    const list = await (await t.bearer('GET', '/api/documents')).json();
+    assert.equal(list.docs.length, 10);
+    assert.equal(list.homes[0].stateName, 'Colorado');
+    const lease = list.docs.find((d: any) => d.id === 'lease');
+    assert.equal(lease.included, true);
+    const locked = list.docs.filter((d: any) => !d.included);
+    assert.ok(locked.length > 0 && locked.every((d: any) => d.plan === 'pro' && d.planName === 'Autopilot Pro'));
+
+    const doc = await (await t.bearer('GET', `/api/documents/lease?tenantId=${t.s.tenant.id}`)).json();
+    assert.equal(doc.state, 'Colorado');
+    assert.match(doc.html, /Lisa Chen/);
+    assert.match(doc.html, /\$2,750/);
+    assert.doesNotMatch(doc.html, /style=/);
+
+    const lockedRes = await t.bearer('GET', `/api/documents/${locked[0].id}?tenantId=${t.s.tenant.id}`);
+    assert.equal(lockedRes.status, 403);
+    assert.equal((await lockedRes.json()).plan, 'pro');
+
+    t.store.update('owners', t.s.owner.id, { plan: 'essentials' });
+    assert.equal((await t.bearer('GET', `/api/documents/lease?tenantId=${t.s.tenant.id}`)).status, 403);
+    t.store.update('owners', t.s.owner.id, { plan: 'pro' });
+    assert.equal((await t.bearer('GET', `/api/documents/${locked[0].id}?propertyId=${t.s.home.id}`)).status, 200);
+
+    assert.equal((await t.bearer('GET', '/api/documents/not-a-doc')).status, 404);
+    // Tenant names are escaped before they reach the page.
+    t.store.update('tenants', t.s.tenant.id, { name: '<img src=x onerror=alert(1)>' });
+    const esc = await (await t.bearer('GET', `/api/documents/lease?tenantId=${t.s.tenant.id}`)).json();
+    assert.doesNotMatch(esc.html, /<img/);
+  } finally {
+    t.close();
+  }
+});
+
+test('documents as printable pages: no scripts, framed only by this site, locked by plan, 404 for others', async () => {
+  const t = boot();
+  try {
+    t.store.update('owners', t.s.owner.id, { plan: 'autopilot' });
+    const cookie = await t.signInAs(t.s.owner.id);
+    const r = await t.call(cookie, 'GET', `/api/documents/lease/page?tenantId=${t.s.tenant.id}`, undefined, {});
+    assert.equal(r.status, 200);
+    assert.match(r.headers.get('content-type') ?? '', /text\/html/);
+    assert.equal(r.headers.get('x-frame-options'), 'SAMEORIGIN');
+    const csp = r.headers.get('content-security-policy') ?? '';
+    for (const part of ["default-src 'none'", "frame-ancestors 'self'", "form-action 'none'"]) assert.ok(csp.includes(part), `CSP has ${part}`);
+    assert.doesNotMatch(csp, /script-src/);
+    const page = await r.text();
+    assert.doesNotMatch(page, /<script/i);
+    assert.match(page, /Lisa Chen/);
+    assert.match(page, /<title>Residential Lease Agreement \(Colorado\)<\/title>/);
+
+    const locked = await t.call(cookie, 'GET', `/api/documents/payorquit/page?tenantId=${t.s.tenant.id}`, undefined, {});
+    assert.equal(locked.status, 403);
+    assert.match(await locked.text(), /part of Autopilot Pro/);
+    assert.equal((await t.call(cookie, 'GET', '/api/documents/lease/page?tenantId=nope', undefined, {})).status, 404);
+    assert.equal((await t.call('', 'GET', `/api/documents/lease/page?tenantId=${t.s.tenant.id}`, undefined, {})).status, 401);
+  } finally {
+    t.close();
   }
 });

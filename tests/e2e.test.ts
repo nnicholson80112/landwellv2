@@ -33,6 +33,7 @@ test('API: inbound text, owner dashboard, signing page', async () => {
   install(svc);
   const s = seed(store, {});
   store.kvSet('tokens', 'tok', s.owner.id);
+  store.update('owners', s.owner.id, { plan: 'pro' }); // the voice webhook below answers on Autopilot Pro
   const server = createApp(svc).listen(0);
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   try {

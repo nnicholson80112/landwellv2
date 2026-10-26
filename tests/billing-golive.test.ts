@@ -297,7 +297,7 @@ test('ensureCatalog creates exactly the missing products and prices with the rig
       assert.equal(p.get('metadata[brand]'), 'keyhelm');
       assert.notEqual(p.get('type'), 'good', 'a service product');
     }
-    assert.match(PLAN_CONTENTS.pro, /emergency repair dispatch.*smart-lock self-showings.*Zillow.*priority support/);
+    assert.match(PLAN_CONTENTS.pro, /Landlord Forms Pack.*voice AI.*best AI model.*24\/7 customer support/);
 
     const made = f.writes().filter((c) => c.path === 'prices').map((c) => c.params);
     assert.deepEqual(made.map((p) => p.get('lookup_key')).sort(), ['keyhelm_autopilot_annual', 'keyhelm_essentials_annual', 'keyhelm_essentials_monthly', 'keyhelm_pro_annual', 'keyhelm_pro_monthly']);

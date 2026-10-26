@@ -185,6 +185,49 @@ Unchanged and still working: `/api/dashboard`, `/api/billing`, `/api/billing/che
 `/api/listings/:propertyId`, `/api/applications/:id/report`, `/api/workflows`, `/api/runs`, `/api/dev/*`, and the
 plain lists `/api/leases`, `/api/payments`, `/api/expenses`, `/api/applications`, `/api/showings`, `/api/messages`, `/api/audit`.
 
+## Two-step sign-in, team and devices (branch `kh/owner-dashboard`)
+
+- **Two-step sign-in** (`src/api/totp.ts`, RFC 6238 with `node:crypto`, no dependencies): 6-digit codes from any
+  authenticator app, 30-second steps, one step of clock drift either way, and each code works once (`totpLastStep`).
+  After the password, `/login` hands out a 10-minute ticket (5 tries) and shows the code page; `POST /login/code`
+  finishes sign-in. A password reset also asks for a code when two-step is on.
+  - `GET /api/me/two-step` → `{ enabled, enabledAt }` · `POST /api/me/two-step/setup` → `{ secret, uri }` (pending until
+    confirmed) · `POST /api/me/two-step/enable` `{ code }` · `POST /api/me/two-step/disable` `{ password }`.
+  - Locked out: `POST /api/admin/owners/:id/two-step/off` (admin token).
+- **Team** (kv `members`): an owner invites people by link (7 days, emailed when Postmark is on). Roles: **Can approve**
+  (`approver`: decisions and day-to-day work, but not billing, the team, the rules or the profile) and **View only**
+  (`viewer`: GET only, plus their own password, two-step and devices). Checked on the server for every request
+  (`roleProblem` in `auth.ts`, 403). Removing someone signs them out everywhere.
+  - `GET /api/team` → `{ members, roles }` · `POST /api/team` `{ name, email, role }` → `{ member, inviteUrl, expiresAt, emailed }`
+    · `PATCH /api/team/:id` `{ role }` · `POST /api/team/:id/invite` (new link) · `DELETE /api/team/:id`.
+- **Devices**: `GET /api/me/sessions` → `{ sessions: [{ id, device, ip, lastSeenAt, current }] }` ·
+  `DELETE /api/me/sessions/:id` · `POST /api/me/sessions/others` → `{ signedOut }`.
+- `GET /api/me` also returns `me` (who is signed in: owner or member, and the role) and `entitlements`
+  (`{ plan, features, list }`: what the plan includes, from `src/billing/entitlements.ts`).
+
+## Plans, leasing, calendar, books and documents (`src/api/owner-more.ts`)
+
+Every plan has everything in the plan below it. What each plan unlocks is enforced on the server, not just hidden:
+`allows(owner, feature)` in `src/billing/entitlements.ts`. Essentials gets the in-house AI on the routine model and
+tenant questions outside a workflow become a **draft** to-do the owner sends; Autopilot adds text and email automation,
+the high-end model and state leases; Autopilot Pro adds voice calls, the best model, the Landlord Forms Pack and
+24/7 support. Off Pro, a call is told to text instead (911 first for emergencies).
+
+- `GET /api/leasing` → `{ homes, stages, people, note }`: homes not occupied, and everyone from first question to lease
+  sent (prospects, tours, applications, leases out for signature). No scores or rankings.
+- `GET /api/calendar?month=YYYY-MM` → `{ month, events: [{ date, time?, title, kind, tab? }] }`: tours, rent due, lease
+  ends, repair start-by deadlines, to-dos and the setup call, in the owner's time zone.
+- `GET /api/books` → `{ months (last 6: income, expenses), entries (latest 100), categories }`.
+  `POST /api/expenses` `{ memo, amount (dollars), category, propertyId, date? }` → 201.
+- `GET /api/documents` → `{ docs: [{ id, title, group, summary, included, plan, planName }], homes, tenants, plan }`.
+- `GET /api/documents/:doc?tenantId=|propertyId=` → `{ id, title, state, html }`, or **403** `{ error, plan, planName }`
+  when the plan doesn't include it (the document never leaves the server).
+- `GET /api/documents/:doc/page?tenantId=|propertyId=`: the same document as its own page (no scripts, CSP
+  `default-src 'none'`, framed only by this site). The app shows it in a frame; owners print it or save it as a PDF.
+- The library (`src/leases/state-docs.ts`, rules in `src/leases/state-rules.json`, built by
+  `scripts/state-library/build_state_rules.py`): 10 documents for all 50 states and DC. Autopilot opens the lease,
+  month-to-month agreement, disclosures addendum and lead-paint form; Pro opens all 10.
+
 ## Railway variables this reads (names only)
 
 **api** service: `PUBLIC_URL` (link URLs, `Secure` cookie, same-site check), `ADMIN_API_TOKEN` (admin sign-in links),
@@ -204,15 +247,15 @@ Nothing is required. After deploy:
 
 - Sign-in limits are counted in memory per server instance (like the other limits); move to Redis if there is more than one instance.
 - Sessions and links live in the JSON store's kv. With Postgres, add `sessions` and `login_links` tables (hash as the key).
-- No two-step sign-in yet, and signup doesn't verify the email address. The after-checkout link is only handed out
-  for brand-new accounts; anything with data gets its link by email.
+- Signup doesn't verify the email address. The after-checkout link is only handed out for brand-new accounts;
+  anything with data gets its link by email.
 - `/app/*` deep links aren't routed yet (the UI engineer adds them). `safeNext` already allows `next=/app/...`.
 - Login pages have a strict CSP (`script-src 'none'`); `apps/owner/index.html` is served without it so the app can use its own scripts.
 - `GET /api/tasks`, `/api/charges`, `/api/approvals`, `/api/work-orders` default to everything (as before); the app should pass `?status=open` (or `pending`).
 - "Rent received" now de-duplicates on what was already recorded (`owner_<charge>_<paid>_<amount>`), not the
   millisecond, so a double tap counts once and a later payment always counts.
 
-## Tests (`tests/owner-api.test.ts`, 12)
+## Tests (`tests/owner-api.test.ts`, 20)
 
 Passwords and safe redirects · checkout → setup link → password → session → `/api/me` (with Calendly) · Stripe
 check when the webhook is late, and email-only links for accounts with data · sign in, same error for unknown email,
@@ -220,4 +263,6 @@ per-email and per-IP limits, cross-site sign-in refused · sign out one device o
 header and Origin/Referer, bearer still works · another owner's records are 404 everywhere · decisions with data
 (renewal dollars → cents, deposit deductions, bad data 400) · setup checklist closing itself · rent received in
 dollars, repairs with vendor names, to-dos, homes, former tenants, profile · message threads, owner replies, STOP
-respected · admin link and forgot password (1-hour links, same answer for every email).
+respected · admin link and forgot password (1-hour links, same answer for every email). · authenticator codes (RFC 6238 vectors, each code once) · two-step sign-in · team roles and removal
+· devices · plan contents in `/api/me` · leasing, calendar and books · documents filled in and locked by plan ·
+documents as printable pages.

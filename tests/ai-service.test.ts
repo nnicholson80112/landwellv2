@@ -48,6 +48,7 @@ test('phone line: Twilio voice turns get spoken replies', async () => {
   const svc = createServices({ store, clock: new SystemClock(), env: {} });
   install(svc);
   const s = seed(store, {});
+  store.update('owners', s.owner.id, { plan: 'pro' }); // voice AI answers calls on Autopilot Pro
   const server = createApp(svc).listen(0);
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const form = (o: Record<string, string>) => ({ method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(o) });

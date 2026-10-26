@@ -47,6 +47,8 @@ export interface AIInput {
   brandName: string;
   /** Which owner's account this is for, so AI use can be capped per account. */
   ownerId?: string;
+  /** The owner's plan, which picks the models (src/ai/route.ts, modelsForTier). Missing = autopilot. */
+  tier?: 'essentials' | 'autopilot' | 'pro';
 }
 
 export interface AIEntities {

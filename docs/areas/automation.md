@@ -41,11 +41,12 @@ They often need each other: a new kind of tenant message usually needs a guardra
       the run or text the wrong person (part of the code review, live-testing.md). The app can't delete
       tenants or leases. It blocks removing a home or vendor with open work, but a listed home or a vendor
       who already said no can still be removed.
-- [ ] **Fix before launch: removing a vendor mid-repair books the wrong vendor.** `src/workflows/maintenance.ts`
+- [x] **Fixed on `kh/owner-dashboard` (f249425): removing a vendor mid-repair booked the wrong vendor.** `src/workflows/maintenance.ts`
       rebuilds `candidates` from the store outside a step. If the owner removes vendor 1 (who said no or
       didn't answer) while vendor 2 is being asked, vendor 2's YES books vendor 3. Vendor 3 then gets the
       tenant's name and phone, and the tenant is told vendor 3 is coming (checked locally on 5449d87). Keep
       each vendor at its recorded place in the list (skip a removed one, don't filter it out) and add a test.
+      Done: each vendor is snapshotted in its own step (`vendor-at-<i>`), and `tests/workflows-polish.test.ts` covers it.
 - [ ] "When is the plumber coming?" after a job is booked escalates to Sonnet (costs ~0.85¢ instead
       of 0.02¢). Optional: keep status questions on Haiku.
 - [ ] After Twilio is live: one full real month with the founding client (the MVP test in HANDOFF

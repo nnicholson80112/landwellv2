@@ -13,11 +13,18 @@
 //    must send "X-KeyHelm: 1", and Origin/Referer (when present) must be this site.
 //    Bearer-token API calls (kv "tokens", OWNER_API_TOKEN) work as before.
 //  - Login limits per IP and per email (RL_LOGIN_IP_PER_HOUR, RL_LOGIN_EMAIL_PER_HOUR).
+//  - Two-step sign-in (optional, per person): after the password, a 6-digit code from an
+//    authenticator app (totp.ts). The password step hands out a 10-minute ticket (kv "mfa",
+//    hashed, 5 tries) that the code step trades for a session.
+//  - Team members (kv "members"): people the owner invites to their account, each with their own
+//    email, password and two-step sign-in. "approver" can do the day-to-day work and answer
+//    decisions but not billing, the team or the rules; "viewer" sees everything and changes nothing.
 
 import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 import type { Services } from '../services.ts';
 import type { Owner } from '../domain/types.ts';
+import { verifyTotp } from './totp.ts';
 import { RateLimiter } from './guard.ts';
 
 const MIN = 60_000, HOUR = 60 * MIN, DAY = 24 * HOUR;
@@ -78,8 +85,44 @@ export function withoutSecrets(o: Owner): Omit<Owner, 'passwordHash'>;
 export function withoutSecrets(o: Owner | undefined): Omit<Owner, 'passwordHash'> | undefined;
 export function withoutSecrets(o: Owner | undefined): Omit<Owner, 'passwordHash'> | undefined {
   if (!o) return undefined;
-  const { passwordHash: _h, ...rest } = o;
+  const { passwordHash: _h, totpSecret: _t, totpPending: _p, totpLastStep: _l, ...rest } = o;
   return rest;
+}
+
+/* ---------------- team members ---------------- */
+
+export type Role = 'approver' | 'viewer';
+export const ROLE_NAMES: Record<Role, string> = { approver: 'Can approve', viewer: 'View only' };
+
+export interface Member {
+  id: string; ownerId: string; name: string; email: string; role: Role;
+  status: 'invited' | 'active'; createdAt: string;
+  passwordHash?: string; passwordSetAt?: string; lastLoginAt?: string;
+  totpSecret?: string; totpEnabledAt?: string; totpLastStep?: number; totpPending?: string;
+}
+
+export const membersOf = (svc: Services, ownerId: string) => svc.store.kvList<Member>('members').filter((m) => m.ownerId === ownerId).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+export const getMember = (svc: Services, id: string | undefined) => (id ? svc.store.kvGet<Member>('members', id) : undefined);
+export const memberByEmail = (svc: Services, email: string) => svc.store.kvList<Member>('members').find((m) => m.email.toLowerCase() === email.trim().toLowerCase());
+export function saveMember(svc: Services, m: Member): Member { svc.store.kvSet('members', m.id, m); svc.store.flush(); return m; }
+export function memberView(m: Member) {
+  return { id: m.id, name: m.name, email: m.email, role: m.role, roleName: ROLE_NAMES[m.role], status: m.status, createdAt: m.createdAt, lastLoginAt: m.lastLoginAt ?? null, twoStep: !!m.totpSecret };
+}
+
+/** The person signing in: the owner, or one of their team members. Both have the same sign-in fields. */
+export type Person = { kind: 'owner'; ownerId: string; rec: Owner } | { kind: 'member'; ownerId: string; rec: Member };
+
+/**
+ * What a team member's role can't do, as a plain sentence, or undefined when it's allowed.
+ * Everyone can manage their own password, two-step sign-in and devices.
+ */
+export function roleProblem(role: Role | undefined, method: string, path: string): string | undefined {
+  if (!role) return undefined; // the owner
+  if (/^\/api\/me\/(password|two-step|sessions)/.test(path)) return undefined;
+  if (method === 'GET' || method === 'HEAD') return undefined;
+  if (role === 'viewer') return "You have view-only access, so you can't make changes. Ask the account owner.";
+  if (/^\/api\/(billing|team|rules)\b/.test(path) || (method === 'PATCH' && path === '/api/me')) return 'Only the account owner can change billing, the team, the rules or the account details.';
+  return undefined;
 }
 
 /* ---------------- tokens ---------------- */
@@ -89,8 +132,8 @@ const newToken = () => randomBytes(32).toString('base64url');
 const nowMs = (svc: Services) => svc.clock.now().getTime();
 const iso = (ms: number) => new Date(ms).toISOString();
 
-export interface SessionRec { id: string; ownerId: string; createdAt: string; expiresAt: string; lastSeenAt: string; ip?: string; ua?: string }
-export interface LinkRec { id: string; ownerId: string; purpose: 'setup' | 'reset'; via: 'checkout' | 'admin' | 'forgot'; createdAt: string; expiresAt: string }
+export interface SessionRec { id: string; ownerId: string; memberId?: string; createdAt: string; expiresAt: string; lastSeenAt: string; ip?: string; ua?: string }
+export interface LinkRec { id: string; ownerId: string; memberId?: string; purpose: 'setup' | 'reset' | 'invite'; via: 'checkout' | 'admin' | 'forgot' | 'owner'; createdAt: string; expiresAt: string }
 
 /* ---------------- cookies ---------------- */
 
@@ -116,11 +159,11 @@ export function clearedCookie(svc: Services): string {
 /* ---------------- sessions ---------------- */
 
 /** Start a session. Returns the raw token (goes only into the cookie) and the Set-Cookie value. */
-export function createSession(svc: Services, ownerId: string, meta: { ip?: string; ua?: string } = {}): { token: string; cookie: string; session: SessionRec } {
+export function createSession(svc: Services, ownerId: string, meta: { ip?: string; ua?: string; memberId?: string } = {}): { token: string; cookie: string; session: SessionRec } {
   const token = newToken();
   const t = nowMs(svc);
   pruneExpired(svc, 'sessions');
-  const session: SessionRec = { id: sha(token), ownerId, createdAt: iso(t), expiresAt: iso(t + SESSION_TTL_MS), lastSeenAt: iso(t), ip: meta.ip, ua: meta.ua?.slice(0, 200) };
+  const session: SessionRec = { id: sha(token), ownerId, memberId: meta.memberId, createdAt: iso(t), expiresAt: iso(t + SESSION_TTL_MS), lastSeenAt: iso(t), ip: meta.ip, ua: meta.ua?.slice(0, 200) };
   svc.store.kvSet('sessions', session.id, session);
   svc.store.flush();
   return { token, cookie: sessionCookie(svc, token), session };
@@ -132,7 +175,8 @@ export function currentSession(req: IncomingMessage, svc: Services): { session: 
   if (!token) return undefined;
   const s = svc.store.kvGet<SessionRec>('sessions', sha(token));
   const t = nowMs(svc);
-  if (!s || Date.parse(s.expiresAt) <= t || !svc.store.get('owners', s.ownerId)) {
+  const memberGone = !!s?.memberId && getMember(svc, s.memberId)?.ownerId !== s.ownerId;
+  if (!s || Date.parse(s.expiresAt) <= t || !svc.store.get('owners', s.ownerId) || memberGone) {
     if (s) svc.store.kvDelete('sessions', s.id);
     return 'invalid';
   }
@@ -150,29 +194,41 @@ export function revokeSession(svc: Services, token: string): void {
   svc.store.flush();
 }
 
-/** Sign the owner out everywhere (password changed, or "sign out of all devices"). */
-export function revokeAllSessions(svc: Services, ownerId: string, exceptId?: string): number {
+/**
+ * Sign out everywhere (password changed, or "sign out of all devices"). Without `person`, every
+ * session on the account (owner and team); with it, only that person's ({ memberId: null } = the owner).
+ */
+export function revokeAllSessions(svc: Services, ownerId: string, exceptId?: string, person?: { memberId: string | null }): number {
   let n = 0;
   for (const s of svc.store.kvList<SessionRec>('sessions')) {
-    if (s.ownerId === ownerId && s.id !== exceptId) { svc.store.kvDelete('sessions', s.id); n++; }
+    const theirs = !person || (s.memberId ?? null) === person.memberId;
+    if (s.ownerId === ownerId && s.id !== exceptId && theirs) { svc.store.kvDelete('sessions', s.id); n++; }
   }
   svc.store.flush();
   return n;
 }
 
-function pruneExpired(svc: Services, ns: 'sessions' | 'loginLinks') {
+/** The sessions of one person on the account, newest first (the "where you're signed in" list). */
+export function sessionsOf(svc: Services, ownerId: string, memberId: string | null): SessionRec[] {
+  const t = nowMs(svc);
+  return svc.store.kvList<SessionRec>('sessions')
+    .filter((s) => s.ownerId === ownerId && (s.memberId ?? null) === memberId && Date.parse(s.expiresAt) > t)
+    .sort((a, b) => b.lastSeenAt.localeCompare(a.lastSeenAt));
+}
+
+function pruneExpired(svc: Services, ns: 'sessions' | 'loginLinks' | 'mfa') {
   const t = nowMs(svc);
   for (const r of svc.store.kvList<{ id: string; expiresAt: string }>(ns)) if (Date.parse(r.expiresAt) <= t) svc.store.kvDelete(ns, r.id);
 }
 
 /* ---------------- one-time links ---------------- */
 
-export function issueLoginLink(svc: Services, ownerId: string, o: { purpose: LinkRec['purpose']; via: LinkRec['via']; ttlMs?: number }): { token: string; path: string; url: string; expiresAt: string } {
+export function issueLoginLink(svc: Services, ownerId: string, o: { purpose: LinkRec['purpose']; via: LinkRec['via']; ttlMs?: number; memberId?: string }): { token: string; path: string; url: string; expiresAt: string } {
   pruneExpired(svc, 'loginLinks');
-  revokeLoginLinks(svc, ownerId);
+  revokeLoginLinks(svc, ownerId, o.memberId ?? null);
   const token = newToken();
   const t = nowMs(svc);
-  const rec: LinkRec = { id: sha(token), ownerId, purpose: o.purpose, via: o.via, createdAt: iso(t), expiresAt: iso(t + (o.ttlMs ?? LINK_TTL_MS)) };
+  const rec: LinkRec = { id: sha(token), ownerId, memberId: o.memberId, purpose: o.purpose, via: o.via, createdAt: iso(t), expiresAt: iso(t + (o.ttlMs ?? LINK_TTL_MS)) };
   svc.store.kvSet('loginLinks', rec.id, rec);
   svc.store.flush();
   const path = `/login/link/${token}`;
@@ -184,6 +240,7 @@ export function peekLoginLink(svc: Services, token: string): LinkRec | undefined
   if (!/^[A-Za-z0-9_-]{20,100}$/.test(token)) return undefined;
   const rec = svc.store.kvGet<LinkRec>('loginLinks', sha(token));
   if (!rec || Date.parse(rec.expiresAt) <= nowMs(svc) || !svc.store.get('owners', rec.ownerId)) return undefined;
+  if (rec.memberId && getMember(svc, rec.memberId)?.ownerId !== rec.ownerId) return undefined; // removed from the team
   return rec;
 }
 
@@ -194,8 +251,54 @@ export function consumeLoginLink(svc: Services, token: string): LinkRec | undefi
   return rec;
 }
 
-export function revokeLoginLinks(svc: Services, ownerId: string): void {
-  for (const r of svc.store.kvList<LinkRec>('loginLinks')) if (r.ownerId === ownerId) svc.store.kvDelete('loginLinks', r.id);
+/** Cancel unused links: the owner's own (memberId null), one member's, or (undefined) every link on the account. */
+export function revokeLoginLinks(svc: Services, ownerId: string, memberId?: string | null): void {
+  for (const r of svc.store.kvList<LinkRec>('loginLinks')) {
+    if (r.ownerId === ownerId && (memberId === undefined || (r.memberId ?? null) === memberId)) svc.store.kvDelete('loginLinks', r.id);
+  }
+}
+
+/* ---------------- two-step sign-in ---------------- */
+
+export const MFA_TTL_MS = 10 * MIN;
+export const MFA_TRIES = 5;
+export interface MfaTicket { id: string; ownerId: string; memberId?: string; next: string; tries: number; expiresAt: string }
+
+/** After the password: a short-lived ticket the code step trades for a session. */
+export function issueMfaTicket(svc: Services, who: { ownerId: string; memberId?: string }, next: string): string {
+  pruneExpired(svc, 'mfa');
+  const token = newToken();
+  svc.store.kvSet('mfa', sha(token), { id: sha(token), ownerId: who.ownerId, memberId: who.memberId, next, tries: 0, expiresAt: iso(nowMs(svc) + MFA_TTL_MS) } satisfies MfaTicket);
+  svc.store.flush();
+  return token;
+}
+
+export const peekMfaTicket = (svc: Services, token: unknown): MfaTicket | undefined => {
+  if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{20,100}$/.test(token)) return undefined;
+  const t = svc.store.kvGet<MfaTicket>('mfa', sha(token));
+  return t && Date.parse(t.expiresAt) > nowMs(svc) ? t : undefined;
+};
+
+/**
+ * Check a code against a ticket. 'ok' uses the ticket up and records the code's step on the person;
+ * 'wrong' counts a try (the fifth wrong try ends the ticket); 'expired' means start over.
+ */
+export function redeemMfaTicket(svc: Services, token: unknown, code: unknown): { result: 'ok'; ticket: MfaTicket } | { result: 'wrong' | 'expired' } {
+  const t = peekMfaTicket(svc, token);
+  if (!t) return { result: 'expired' };
+  const person = t.memberId ? getMember(svc, t.memberId) : svc.store.get('owners', t.ownerId);
+  const step = person && verifyTotp(person.totpSecret, code, nowMs(svc), person.totpLastStep);
+  if (step === undefined || !person) {
+    const tries = t.tries + 1;
+    if (tries >= MFA_TRIES) svc.store.kvDelete('mfa', t.id); else svc.store.kvSet('mfa', t.id, { ...t, tries });
+    svc.store.flush();
+    return { result: tries >= MFA_TRIES ? 'expired' : 'wrong' };
+  }
+  if (t.memberId) saveMember(svc, { ...(person as Member), totpLastStep: step });
+  else svc.store.update('owners', t.ownerId, { totpLastStep: step });
+  svc.store.kvDelete('mfa', t.id);
+  svc.store.flush();
+  return { result: 'ok', ticket: t };
 }
 
 /* ---------------- CSRF ---------------- */
@@ -219,7 +322,7 @@ export function csrfProblem(req: IncomingMessage, svc: Services): string | undef
 }
 
 export type AuthResult =
-  | { ownerId: string; via: 'bearer' | 'session'; sessionId?: string; setCookie?: string }
+  | { ownerId: string; via: 'bearer' | 'session'; sessionId?: string; setCookie?: string; memberId?: string; role?: Role }
   | { status: 401 | 403; error: string; /** counts toward the failed sign-in limit */ guess: boolean; setCookie?: string };
 
 /** Cookie sign-in for the owner API (server.ts ownerOf falls back to this when there's no bearer token). */
@@ -229,7 +332,8 @@ export function sessionAuth(req: IncomingMessage, svc: Services): AuthResult {
   if (cur === 'invalid') return { status: 401, error: 'Your session ended. Please sign in again.', guess: true, setCookie: clearedCookie(svc) };
   const problem = csrfProblem(req, svc);
   if (problem) return { status: 403, error: problem, guess: false };
-  return { ownerId: cur.session.ownerId, via: 'session', sessionId: cur.session.id, setCookie: cur.refreshCookie };
+  const member = getMember(svc, cur.session.memberId);
+  return { ownerId: cur.session.ownerId, via: 'session', sessionId: cur.session.id, setCookie: cur.refreshCookie, memberId: member?.id, role: member?.role };
 }
 
 /* ---------------- login limits ---------------- */
