@@ -19,7 +19,10 @@ live site. Railway's dashboard and logs are Nate's clicks.
 - [x] CI on every push (`.github/workflows/ci.yml`): `npm ci`, tests (with a Postgres 16 service so the
       Postgres tests run), typecheck, demo with 0 failed.
 - [x] Live check after every push to `main` (`.github/workflows/live-check.yml`): waits up to 15 minutes
-      for `/health` to show that exact commit, then checks the public pages.
+      for `/health` to show that exact commit, then up to 5 more minutes for `/health/ai` to show the ai
+      service up on it too, then checks the public pages. The ai service has a volume, so Railway stops the
+      old container before starting the new one: texts in that gap (80 seconds on Oct 26) get the
+      fallback rules.
 - [x] Postgres store with no dependencies (`src/store/pg.ts`, `pg-store.ts`), used when `DATABASE_URL`
       is set; imports the JSON file once on first boot.
 - [x] Daily JSON backups, admin alerts to Nate, shared-number routing, `/api/admin/status`.

@@ -13,7 +13,7 @@
 //
 // Endpoints
 //   POST /respond   AIInput  → AIResult   (contract: docs/AI-PLUGIN.md)
-//   GET  /health
+//   GET  /health   { ok, commit }, no token needed
 //   GET  /stats     counts by intent/provider, handoff rate, average latency, AI spend
 //
 // Env
@@ -138,7 +138,8 @@ export function aiServer(ai: KeyHelmAI, opts: { token: string; perMin?: number }
   const perMin = new RateLimiter({ capacity: opts.perMin || 600, perMs: 60_000 });
   const server = createServer(async (req, res) => {
     const send = (code: number, data: unknown) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(data)); };
-    if (req.url === '/health') return send(200, { ok: true });
+    // Which commit is live (Railway sets this), so the Live check can wait for this service after a deploy.
+    if (req.url === '/health') return send(200, { ok: true, commit: (process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT ?? 'unknown').slice(0, 7) });
     if (!safeEqual(String(req.headers.authorization ?? ''), `Bearer ${opts.token}`)) return send(401, { error: 'unauthorized' });
     if (req.method === 'GET' && req.url === '/stats') return send(200, ai.statsSnapshot());
     if (req.method !== 'POST' || req.url !== '/respond') return send(404, { error: 'not found' });

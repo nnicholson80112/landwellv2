@@ -77,7 +77,7 @@ Website **Get started** → `POST /api/public/signup` → Stripe Checkout → we
 | Thing | Where | State |
 | --- | --- | --- |
 | Code | GitHub `nnicholson80112/landwellv2` (public), branch `main` | Pushing to `main` deploys both Railway services in about a minute. |
-| Checks | GitHub Actions | **CI** (tests, typecheck, demo, Postgres tests) on every push. **Live check** after every push to `main`: waits for Railway to deploy that exact commit, checks the live pages, then talks to the front desk by call and by text and requires the AI service (not the fallback rules) to answer the texts; it prints which Claude model answered. Conversations run only while texts go to the outbox (Twilio not connected), so no real texts go out. Run it by hand any time: Actions → Live check → Run workflow. |
+| Checks | GitHub Actions | **CI** (tests, typecheck, demo, Postgres tests) on every push. **Live check** after every push to `main`: waits for Railway to deploy that exact commit to the api and then to the ai service (`/health/ai`; the ai service restarts on its own and can be down for a minute or two after the api is back), checks the live pages, then talks to the front desk by call and by text and requires the AI service (not the fallback rules) to answer the texts; it prints which Claude model answered. Conversations run only while texts go to the outbox (Twilio not connected), so no real texts go out. Run it by hand any time: Actions → Live check → Run workflow. |
 | App (api service) | Railway → `https://api-production-66895.up.railway.app` | Online. `/health` shows the live commit, data version, storage and AI mode. |
 | AI service (ai) | Railway, private only, `http://ai.railway.internal:8788` | Online; Claude answering (live check Oct 19: 10/10). |
 | Storage | Railway volume `/data` (`/data/landwell.json`, daily backups in `/data/backups`) | JSON file today. Postgres code is ready: add the database (go-live step 2). The pre-KeyHelm test data was set aside on Oct 19 (`dataVersion: 2`). |
@@ -207,7 +207,7 @@ Owner **Nate** (`DEMO_OWNER_PHONE`, Autopilot). Home **7610 S Rosemary Cir, Cent
 **AI in `/play`:** open `/play` → paste `OWNER_API_TOKEN` → Connect → choose who's texting → send. Good test messages: "The toilet won't stop running" (Lisa) · "Is the Aspen Court place available? Do you allow dogs?" (prospect) · "Are there good schools nearby?" (neutral answer) · "I smell gas" (911) · "Water is pouring out from under the dishwasher" (no 911) · "We'd like to renew".
 **Live check:** runs by itself after every deploy. By hand: GitHub → Actions → **Live check** → **Run workflow**. Or `node scripts/live-check.mjs https://api-production-66895.up.railway.app --conversations`. Off Autopilot Pro, calls are pointed to texting (emergencies still get safety steps); texts always go through the AI.
 **Billing:** website **Get started** → card `4242 4242 4242 4242`, any future date and CVC → set password → `/app`.
-**Health:** `/health` (public) and `/api/admin/status` (admin token).
+**Health:** `/health` (public), `/health/ai` (public: is the AI service up, and on which commit) and `/api/admin/status` (admin token).
 
 ---
 

@@ -1,6 +1,7 @@
 // Checks the live app from the outside. No dependencies.
 //   node scripts/live-check.mjs https://your-app.up.railway.app [--expect-commit abc1234] [--wait 720] [--conversations]
-// --expect-commit / --wait : poll /health until that commit is live (proves the deploy happened)
+// --expect-commit / --wait : poll /health until that commit is live (proves the deploy happened), then
+//                            /health/ai until the AI service is up on it too (up to 5 more minutes)
 // --conversations          : also talk to the front desk by call and by text, like a tenant and a prospect
 //                            would (only while texts are mocked, so no real texts go out)
 
@@ -31,6 +32,23 @@ for (;;) {
 console.log('health:', JSON.stringify(health));
 ok('health', health?.ok === true);
 if (want) ok(`deployed commit ${want}`, health?.commit === want, `live is ${health?.commit}`);
+
+// 1b. Is the AI service up, on that commit too? It restarts on its own after a deploy, often after the api is
+// back, and a text sent in that gap gets the fallback rules. Wait up to 5 more minutes for it.
+if (/^http/.test(String(health?.ai))) {
+  let ai;
+  const ready = () => ai.up === true && (!want || !ai.commit || ai.commit === 'unknown' || ai.commit === want);
+  const aiDeadline = Math.max(deadline, Date.now() + 300_000);
+  for (;;) {
+    try { const r = await get('/health/ai'); ai = r.status === 200 ? JSON.parse(r.text) : { status: r.status }; } catch { ai = { up: false }; }
+    if (ready() || ai.status === 404 || Date.now() > aiDeadline) break;
+    console.log(`waiting for the AI service${want ? ` on ${want}` : ''} (${ai.up ? `live: ${ai.commit}` : 'down'})`);
+    await sleep(10_000);
+  }
+  console.log('AI service:', JSON.stringify(ai));
+  if (ai.status === 404) console.log('this deploy has no /health/ai yet; not waiting for the AI service');
+  else ok(`AI service up${want ? ` on ${want}` : ''}`, ready(), ai.up ? `live is ${ai.commit ?? 'unknown'}` : 'not answering');
+}
 
 // 2. Public pages.
 for (const [path, must] of [['/', health?.brand ?? ''], ['/privacy', 'Privacy'], ['/terms', 'Terms'], ['/sms', 'Reply <b>STOP</b>'], ['/play', '<html']]) {
@@ -84,7 +102,8 @@ if (flag('--conversations')) {
         const r = await text(from, body);
         if (r.model) models.add(r.model);
         const byAi = !ai || Boolean(r.model);
-        const detail = r.status === 403 ? 'webhook is signature-protected' : !byAi ? `answered by ${r.provider ?? 'nothing'}, not the AI service` : (r.model ?? '');
+        const by = /^http:/.test(r.provider ?? '') ? `the AI service answered without a Claude model (${r.provider})` : `answered by ${r.provider ?? 'nothing'}, not the AI service`;
+        const detail = r.status === 403 ? 'webhook is signature-protected' : !byAi ? by : (r.model ?? '');
         ok(name, r.status === 200 && byAi && check(r.reply), detail);
       } catch (e) { ok(name, false, String(e)); }
     };

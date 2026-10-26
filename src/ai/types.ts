@@ -105,7 +105,15 @@ export interface AICall {
   costUsd?: number; // undefined when the model is not in the price table
 }
 
+/** A separate AI service's own health check: is it answering, and which commit is it running. */
+export interface AIServiceHealth {
+  up: boolean;
+  commit?: string;
+}
+
 export interface CommunicationAI {
   name: string;
   respond(input: AIInput): Promise<AIResult>;
+  /** Only when the AI runs as its own service (AI_PROVIDER=http). */
+  health?(): Promise<AIServiceHealth>;
 }

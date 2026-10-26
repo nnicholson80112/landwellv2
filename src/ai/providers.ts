@@ -1,4 +1,4 @@
-import type { AICall, AIInput, AIResult, CommunicationAI, Intent } from './types.ts';
+import type { AICall, AIInput, AIResult, AIServiceHealth, CommunicationAI, Intent } from './types.ts';
 import { INTENTS, RESULT_SCHEMA, SYSTEM_PROMPT, parseJson, systemPrompt, userPrompt } from './prompt.ts';
 import { RuleBasedAI } from './rules.ts';
 import { callFromResponse, promptTokens, sumCalls, usageFrom } from './cost.ts';
@@ -361,6 +361,16 @@ export class HttpAI implements CommunicationAI {
     const data = await postJson(this.url, this.token ? { authorization: `Bearer ${this.token}` } : {}, input, this.timeoutMs);
     return normalize(data, `http:${new URL(this.url).host}`, input);
   }
+  /** The service's /health (no token needed): down, or up and on which commit. */
+  async health(timeoutMs = 3_000): Promise<AIServiceHealth> {
+    try {
+      const r = await fetch(new URL('/health', this.url), { signal: AbortSignal.timeout(timeoutMs) });
+      const data = await r.json().catch(() => ({}));
+      return { up: r.ok && data?.ok === true, ...(shortId(data?.commit) ? { commit: data.commit } : {}) };
+    } catch {
+      return { up: false };
+    }
+  }
 }
 
 /** Wraps any provider: if it errors or times out, the rule-based AI answers instead. */
@@ -369,9 +379,11 @@ export class ResilientAI implements CommunicationAI {
   private primary: CommunicationAI;
   private fallback = new RuleBasedAI();
   onError?: (err: unknown) => void;
+  health?: () => Promise<AIServiceHealth>;
   constructor(primary: CommunicationAI) {
     this.primary = primary;
     this.name = primary instanceof RuleBasedAI ? 'rules' : `${primary.name} (rules fallback)`;
+    if (primary.health) this.health = () => primary.health!();
   }
   async respond(input: AIInput): Promise<AIResult> {
     if (this.primary instanceof RuleBasedAI) return this.primary.respond(input);
@@ -400,9 +412,11 @@ export class BudgetAI implements CommunicationAI {
   private counts = new Map<string, number>();
   private all = 0;
   onLimit?: (what: string) => void;
+  health?: () => Promise<AIServiceHealth>;
   constructor(inner: CommunicationAI, opts: { perOwnerPerDay: number; totalPerDay: number }) {
     this.inner = inner;
     this.name = inner.name;
+    if (inner.health) this.health = () => inner.health!();
     this.perOwner = opts.perOwnerPerDay;
     this.total = opts.totalPerDay;
   }

@@ -92,6 +92,16 @@ route('GET', '/health', (_q, res, svc) => json(res, 200, {
   startedAt: STARTED,
 }));
 
+// Is the AI service answering, and on which commit? It restarts on its own after a deploy (its volume means a
+// short gap), so the Live check waits on this before texting. The service is asked at most once per 5 seconds.
+const aiLooks = new WeakMap<object, { at: number; look: Promise<{ up: boolean; commit?: string }> }>();
+route('GET', '/health/ai', async (_q, res, svc) => {
+  if (!svc.ai.health) return json(res, 200, { ai: svc.ai.name, up: null });
+  let l = aiLooks.get(svc.ai);
+  if (!l || Date.now() - l.at > 5_000) aiLooks.set(svc.ai, (l = { at: Date.now(), look: svc.ai.health() }));
+  json(res, 200, { ai: svc.ai.name, ...(await l.look) });
+});
+
 /* Pages and files that are the same for everyone are built once and served from memory (see guard.ts). */
 const STATIC = new StaticCache();
 const DAY_S = 86_400, YEAR_S = 31_536_000;

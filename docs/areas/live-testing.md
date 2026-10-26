@@ -8,7 +8,8 @@ Goal of this area: answer "can we sell it tomorrow?" with evidence, not hope.
 
 ## Goals
 
-- [x] `scripts/live-check.mjs`: `/health` (commit, data version), public pages (`/`, `/privacy`,
+- [x] `scripts/live-check.mjs`: `/health` (commit, data version), `/health/ai` (the AI service is up on
+      the same commit; it waits for it after a deploy), public pages (`/`, `/privacy`,
       `/terms`, `/sms`, `/play`) and, with `--conversations`, five front-desk conversations through the
       phone-line webhook (prospect asks about 88 Aspen Ct and dogs, a schools question gets a neutral
       answer, a running toilet, gas → 911, flooding → urgent but no 911).
