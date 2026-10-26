@@ -4,7 +4,7 @@ import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
-import { KeyHelmAI } from '../src/ai-service/server.ts';
+import { KeyHelmAI, aiServer } from '../src/ai-service/server.ts';
 import type { CommunicationAI, AIInput } from '../src/ai/types.ts';
 import { MemoryStore } from '../src/store/store.ts';
 import { SystemClock } from '../src/engine/clock.ts';
@@ -64,5 +64,28 @@ test('phone line: Twilio voice turns get spoken replies', async () => {
     assert.equal(s.windowCo.name, 'GlassHouse Exteriors');
   } finally {
     server.close();
+  }
+});
+
+test('AI service health: the app reports whether the AI service is up and on which commit, for the Live check', async () => {
+  const before = process.env.GIT_COMMIT;
+  process.env.GIT_COMMIT = 'abc1234def';
+  const listen = (s: ReturnType<typeof createApp>) => `http://127.0.0.1:${(s.listen(0).address() as AddressInfo).port}`;
+  const appWith = (env: Record<string, string>) => createApp(createServices({ store: new MemoryStore(), clock: new SystemClock(), env }));
+  const ai = aiServer(new KeyHelmAI({ chain: [] }), { token: 'svc-token' });
+  const gone = aiServer(new KeyHelmAI({ chain: [] }), { token: 'svc-token' });
+  const aiBase = listen(ai), goneBase = listen(gone);
+  await new Promise((r) => gone.close(r)); // nothing answers there now, like the ai service mid-restart
+  const up = appWith({ AI_PROVIDER: 'http', AI_HTTP_URL: `${aiBase}/respond`, AI_HTTP_TOKEN: 'svc-token' });
+  const down = appWith({ AI_PROVIDER: 'http', AI_HTTP_URL: `${goneBase}/respond`, AI_HTTP_TOKEN: 'svc-token' });
+  const rules = appWith({});
+  try {
+    assert.deepEqual(await (await fetch(`${aiBase}/health`)).json(), { ok: true, commit: 'abc1234' }, 'no token needed');
+    assert.deepEqual(await (await fetch(`${listen(up)}/health/ai`)).json(), { ai: 'http (rules fallback)', up: true, commit: 'abc1234' });
+    assert.deepEqual(await (await fetch(`${listen(down)}/health/ai`)).json(), { ai: 'http (rules fallback)', up: false }, 'down, without the internal address');
+    assert.deepEqual(await (await fetch(`${listen(rules)}/health/ai`)).json(), { ai: 'rules', up: null });
+  } finally {
+    if (before === undefined) delete process.env.GIT_COMMIT; else process.env.GIT_COMMIT = before;
+    for (const s of [ai, up, down, rules]) s.close();
   }
 });
