@@ -106,8 +106,8 @@ Data refreshes after every action, when the tab comes back after a minute away, 
   cached for a day / a week, served from memory with ETags. The app file is read again when it changes on disk.
 - **Look**: KeyHelm terracotta `#C8502D` on cream `#FFF6EC`, slate text and side menu `#1E2B2F`, amber `#E8A33D`
   highlights, mint `#0E9F6E` for success; a matching dark mode. The sign-in, policy and lease-signing pages match.
-- **Fonts**: Montagu Slab (headings) and Figtree from this site's `/fonts`. Until `apps/site/fonts/montagu-slab-latin.woff2`
-  (Google Fonts, OFL) is added, headings fall back to Georgia; the server serves the file as soon as it exists.
+- **Fonts**: Montagu Slab (headings, variable weight 500 to 700, latin subset from Google Fonts, OFL in
+  `apps/site/fonts/OFL-MontaguSlab.txt`) and Figtree, both from this site's `/fonts`. Georgia while the file loads.
 
 ## Small edits to shared files
 

@@ -119,7 +119,8 @@ Website **Get started** → `POST /api/public/signup` → Stripe Checkout → we
 TypeScript on **Node 22.6+**, run with `--experimental-strip-types`. **No runtime dependencies** (Node built-ins only).
 
 ```
-npm test              # all tests (Postgres tests start a throwaway local cluster when the binaries exist, else skip)
+npm test              # all tests (Postgres tests start a throwaway local cluster when the binaries exist, else skip;
+                      # found in Homebrew, /Library/PostgreSQL/<v>/bin, Postgres.app, or PG_BIN)
 npm run demo          # every workflow on sample data with a simulated month (0 failed)
 npm start             # API + website on http://localhost:8787 (token: dev-token locally)
 npm run ai            # AI service on :8788 (needs AI_SERVICE_TOKEN)
@@ -187,7 +188,8 @@ Owner **Nate** (`DEMO_OWNER_PHONE`, Autopilot). Home **7610 S Rosemary Cir, Cent
    step 9) and check `AI_MODEL_COMPLEX` on **ai** is Sonnet.
 2. **Rotate the tokens** `OWNER_API_TOKEN`, `ADMIN_API_TOKEN` and `AI_HTTP_TOKEN` on **api**, and set `AI_SERVICE_TOKEN`
    on **ai** to the same value as `AI_HTTP_TOKEN`. Nate does this in Railway.
-3. **Railway trial is almost used up.** Upgrade the plan before it runs out.
+3. **Railway trial is almost used up, and it can't add Postgres.** Adding the database on Oct 25 failed with "Free plan
+   resource provision limit exceeded". Upgrade the plan, then do go-live step 2.
 4. **The pre-launch code review never finished** (session usage limit). Rerun it: `docs/areas/live-testing.md`.
 5. **Twilio and Postmark aren't connected,** so tenants can't text or email yet (replies only appear in `/play`). Go-live steps 5–6. Twilio 10DLC review takes weeks; toll-free verification is the faster start.
 6. **Stripe is in test mode.** Go-live step 7 once the account is activated.
@@ -196,7 +198,6 @@ Owner **Nate** (`DEMO_OWNER_PHONE`, Autopilot). Home **7610 S Rosemary Cir, Cent
 9. **The repo is public.** Fine while there are no secrets in git; move to a private repo when convenient.
 10. **Demo owner shares Nate's phone** (see go-live step 8).
 11. **Early-cancellation charge for 12-month agreements** is invoiced by hand in Stripe (not automated).
-12. **Montagu Slab font file isn't in the repo yet** (`apps/site/fonts/montagu-slab-latin.woff2`); headings use Georgia until it's added.
 
 ---
 

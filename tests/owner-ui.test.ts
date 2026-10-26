@@ -129,14 +129,14 @@ test('the app page is self-contained: no outside URLs, no CDN, no HTML string si
   assert.doesNotMatch(page, /[\u2014\u2013]/, 'no em or en dashes');
   assert.doesNotMatch(page, /gradient|border-radius:\s*(999|[3-9]\d)px/i, 'no gradients, no pill shapes');
   assert.match(page, /@font-face\{font-family:'Montagu Slab'[^}]*url\(\/fonts\/montagu-slab-latin\.woff2\)/);
-  assert.match(page, /--display:'Montagu Slab',Georgia/, 'Georgia until the slab font file is added');
+  assert.match(page, /--display:'Montagu Slab',Georgia/, 'Georgia while the font file loads');
   assert.match(page, /@font-face\{font-family:'Figtree'[^}]*url\(\/fonts\/figtree-latin\.woff2\)/);
   for (const color of ['#FFF6EC', '#1E2B2F', '#C8502D', '#E8A33D', '#0E9F6E']) assert.ok(page.includes(color), `brand color ${color}`);
   assert.doesNotThrow(() => new Script(script(page), { filename: 'apps/owner/index.html' }), 'the inline script is valid JavaScript');
 
   const t = boot();
   try {
-    for (const font of ['/fonts/figtree-latin.woff2', '/favicon.svg']) {
+    for (const font of ['/fonts/montagu-slab-latin.woff2', '/fonts/figtree-latin.woff2', '/fonts/OFL-MontaguSlab.txt', '/favicon.svg']) {
       const r = await t.get(font);
       assert.equal(r.status, 200, `${font} is served by this site`);
     }

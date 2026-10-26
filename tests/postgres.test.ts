@@ -61,8 +61,11 @@ const PW = { kh_scram: 'sc@ram:pa/ss #1', kh_md5: 'md5-secret', kh_clear: 'clear
 function findBinDir(): string | null {
   const dirs: string[] = [];
   if (process.env.PG_BIN) dirs.push(process.env.PG_BIN);
-  else if (existsSync('/usr/lib/postgresql')) {
-    for (const v of readdirSync('/usr/lib/postgresql').sort((a, b) => Number(b) - Number(a))) dirs.push(`/usr/lib/postgresql/${v}/bin`);
+  else {
+    // Debian/Ubuntu packages, the macOS EDB installer and Postgres.app: newest version first.
+    for (const [root, sub] of [['/usr/lib/postgresql', 'bin'], ['/Library/PostgreSQL', 'bin'], ['/Applications/Postgres.app/Contents/Versions', 'bin']]) {
+      if (existsSync(root)) for (const v of readdirSync(root).filter((x) => /^\d+$/.test(x)).sort((a, b) => Number(b) - Number(a))) dirs.push(`${root}/${v}/${sub}`);
+    }
   }
   if (!process.env.PG_BIN) dirs.push('/usr/local/pgsql/bin', '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin');
   return dirs.find((d) => existsSync(join(d, 'initdb')) && existsSync(join(d, 'pg_ctl'))) ?? null;
