@@ -54,15 +54,21 @@ if (flag('--conversations')) {
       console.log(`\n  ${from === tenant ? 'TENANT' : 'PROSPECT'}: ${speech}\n  REPLY:  ${reply}`);
       return { status: r.status, reply };
     };
-    const t = async (name, from, speech, check) => {
-      try { const r = await say(from, speech); ok(name, r.status === 200 && check(r.reply), r.status === 403 ? 'webhook is signature-protected' : ''); }
-      catch (e) { ok(name, false, String(e)); }
+    // Calls are part of Autopilot Pro. Off Pro, a non-emergency call is pointed to texting (911 first), which is right;
+    // an emergency must still get its safety steps on every plan.
+    const toText = (r) => /handled by text on this number/i.test(r) && /911/.test(r);
+    const t = async (name, from, speech, check, { emergency = false } = {}) => {
+      try {
+        const r = await say(from, speech);
+        const texting = !emergency && toText(r.reply);
+        ok(name, r.status === 200 && (texting || check(r.reply)), r.status === 403 ? 'webhook is signature-protected' : texting ? 'not on Autopilot Pro: pointed to texting' : '');
+      } catch (e) { ok(name, false, String(e)); }
     };
     await t('prospect: availability + pets answered with facts', prospect, 'Is the Aspen Court place available? Do you allow dogs?', (r) => /\$|available/i.test(r) && !/passed it/i.test(r));
     await t('prospect: schools question deflected neutrally', prospect, 'Are there good schools nearby?', (r) => !/\bgood school|great school|top.rated/i.test(r));
     await t('tenant: repair gets a helpful answer', tenant, "The toilet won't stop running", (r) => r.length > 20);
-    await t('tenant: gas smell says leave + 911', tenant, 'I smell gas in the kitchen', (r) => /911/.test(r) && /leave|outside/i.test(r));
-    await t('tenant: flooding gets shut-off help, no 911', tenant, 'Water is pouring out from under the dishwasher', (r) => /shut|valve|water/i.test(r) && !/911/.test(r));
+    await t('tenant: gas smell says leave + 911', tenant, 'I smell gas in the kitchen', (r) => /911/.test(r) && /leave|outside/i.test(r), { emergency: true });
+    await t('tenant: flooding gets shut-off help, no 911', tenant, 'Water is pouring out from under the dishwasher', (r) => /shut|valve|water/i.test(r) && !/911/.test(r), { emergency: true });
   }
 }
 

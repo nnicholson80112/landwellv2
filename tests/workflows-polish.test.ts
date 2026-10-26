@@ -486,3 +486,24 @@ test('calls are answered on Autopilot Pro; other plans point the caller to texti
   store.update('owners', s.owner.id, { plan: 'pro' });
   assert.doesNotMatch(await call('When is rent due?'), /text it anytime/);
 });
+
+test('an emergency call gets safety steps and emergency dispatch on every plan', async () => {
+  const { store, svc, s } = setup();
+  const call = async (body: string) => {
+    svc.engine.emit('message.received', { from: s.tenant.phone, channel: 'voice', body, ownerId: s.owner.id, providerMessageId: String(Math.random()) });
+    await svc.engine.drain();
+    return store.list('messages', (m) => m.direction === 'out' && m.to === s.tenant.phone && m.channel === 'voice').pop()?.body ?? '';
+  };
+  for (const plan of ['essentials', 'autopilot'] as const) {
+    store.update('owners', s.owner.id, { plan });
+    const before = store.list('workOrders', (w) => w.urgency === 'emergency').length;
+    const gas = await call('I smell gas in the kitchen');
+    assert.match(gas, /leave the home/i, `${plan}: told to leave`);
+    assert.match(gas, /911/, `${plan}: told to call 911`);
+    assert.doesNotMatch(gas, /text it anytime/, `${plan}: not turned away`);
+    assert.ok(store.list('workOrders', (w) => w.urgency === 'emergency').length > before, `${plan}: emergency repair started`);
+    const water = await call('Water is pouring out from under the dishwasher');
+    assert.match(water, /shut-off|valve/i, `${plan}: told how to stop the water`);
+    assert.doesNotMatch(water, /911/, `${plan}: no 911 for a leak`);
+  }
+});

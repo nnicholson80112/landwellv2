@@ -100,7 +100,8 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
     const tier = planOf(owner);
 
     // Voice AI answers calls on Autopilot Pro. Other plans point the caller to texting, 911 first.
-    if (m.channel === 'voice' && !allows(owner, 'voice')) {
+    // An emergency is never turned away: it gets the same safety steps and emergency dispatch as a text, on every plan.
+    if (m.channel === 'voice' && !allows(owner, 'voice') && !precheck(m.body).emergency) {
       await reply(`Thanks for calling. ${ownerFirst}'s homes are handled by text on this number, so please text it anytime, day or night. If anyone is in danger, hang up and call 911.`);
       await ctx.log('message.voice-off', `A call from ${m.from} was pointed to texting (calls are part of Autopilot Pro).`);
       return { voice: 'not_on_plan' };

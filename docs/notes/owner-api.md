@@ -211,7 +211,8 @@ Every plan has everything in the plan below it. What each plan unlocks is enforc
 `allows(owner, feature)` in `src/billing/entitlements.ts`. Essentials gets the in-house AI on the routine model and
 tenant questions outside a workflow become a **draft** to-do the owner sends; Autopilot adds text and email automation,
 the high-end model and state leases; Autopilot Pro adds voice calls, the best model, the Landlord Forms Pack and
-24/7 support. Off Pro, a call is told to text instead (911 first for emergencies).
+24/7 support. Off Pro, a call is told to text instead (911 first), except an emergency (gas, fire, flooding...),
+which gets the same safety steps and emergency dispatch as a text on every plan.
 
 - `GET /api/leasing` → `{ homes, stages, people, note }`: homes not occupied, and everyone from first question to lease
   sent (prospects, tours, applications, leases out for signature). No scores or rankings.
