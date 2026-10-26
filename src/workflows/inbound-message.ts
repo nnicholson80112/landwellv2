@@ -384,7 +384,7 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
 
     if (text) await reply(text);
     if (handoff) await routeToOwner(ctx, ownerId, `${tenant ? tenant.name : 'A prospect'} (${m.from})`, m.body, reason ?? 'Needs a person.', fyi);
-    await ctx.log('message.answered', `${role} → ${ai.intent} (${ai.provider})${handoff ? ' · routed to owner' : ''}`, { actor: 'ai', data: { from: m.from, intent: ai.intent } });
+    await ctx.log('message.answered', `${role} → ${ai.intent} (${ai.provider})${handoff ? ' · routed to owner' : ''}`, { actor: 'ai', data: { from: m.from, intent: ai.intent, provider: ai.provider, model: ai.model ?? null } });
     return { intent: ai.intent, handoff };
   },
 };

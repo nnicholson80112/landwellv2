@@ -192,7 +192,17 @@ route('POST', '/webhooks/twilio/sms', async (req, res, svc) => {
   const b = req.body as Record<string, string>;
   const media = Array.from({ length: Math.min(10, Number(b.NumMedia ?? 0)) }, (_x, i) => b[`MediaUrl${i}`]).filter(Boolean);
   if (senderBlocked(b.From)) { res.writeHead(200, { 'content-type': 'text/xml' }); res.end('<Response></Response>'); return; }
+  // The Live check (scripts/live-check.mjs) sends X-KeyHelm-Check: 1 to read the front desk's answer and which model
+  // wrote it. Only while texts go nowhere but the outbox (Twilio not connected), like the call webhook's spoken replies.
+  const checking = req.headers['x-keyhelm-check'] === '1' && svc.adapters.messaging.name === 'outbox';
+  const since = svc.clock.now().toISOString();
   svc.engine.emit('message.received', { from: b.From, to: b.To, channel: 'sms', body: b.Body ?? '', media, ownerId: ownerForLine(svc, b.To), providerMessageId: b.MessageSid });
+  if (checking) {
+    await svc.engine.drain();
+    const replies = svc.store.list('messages', (m) => m.direction === 'out' && m.threadKey === addressKey(b.From) && m.channel === 'sms' && m.at >= since).map((m) => m.body);
+    const answered = svc.store.list('audit', (a) => a.action === 'message.answered' && a.at >= since && a.data?.from === b.From).pop();
+    return json(res, 200, { replies, provider: answered?.data?.provider ?? null, model: answered?.data?.model ?? null });
+  }
   res.writeHead(200, { 'content-type': 'text/xml' });
   res.end('<Response></Response>'); // replies go out through the API, not TwiML
   void svc.engine.drain();

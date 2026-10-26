@@ -91,3 +91,39 @@ test('owner and vendor can share one phone (owner runs the vendor company)', asy
   assert.equal(store.get('workOrders', wo.id)!.status, 'paid');
   assert.equal(s.home.rent, 275_000);
 });
+
+test('text webhook check mode: the Live check reads the answer, only while texts go to the outbox', async () => {
+  const store = new MemoryStore();
+  const svc = createServices({ store, clock: new SystemClock(), env: {} });
+  install(svc);
+  const s = seed(store, {});
+  const server = createApp(svc).listen(0);
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const text = (from: string, body: string, check = true) => fetch(`${base}/webhooks/twilio/sms`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', ...(check ? { 'x-keyhelm-check': '1' } : {}) },
+    body: new URLSearchParams({ From: from, To: s.owner.lineNumber ?? '', Body: body, MessageSid: 'SM' + Math.random() }),
+  });
+  try {
+    const r = await text('+13035550100', 'Is the Aspen Court place available? Do you allow dogs?');
+    assert.match(r.headers.get('content-type') ?? '', /json/);
+    const out = await r.json();
+    assert.ok(out.replies.length >= 1 && out.replies.join(' ').length > 20, 'the front desk answer comes back');
+    assert.ok(typeof out.provider === 'string' && out.provider.length > 0, 'and who answered');
+    assert.equal(out.model, null, 'no paid model here (the rules answer in tests)');
+
+    const gas = await (await text(s.tenant.phone!, 'I smell gas in the kitchen')).json();
+    assert.match(gas.replies.join(' '), /leave the home/i);
+
+    const plain = await text('+13035550101', 'Hi, is the Aspen Court home still for rent?', false);
+    assert.match(plain.headers.get('content-type') ?? '', /xml/, 'without the header: the usual empty TwiML');
+
+    (svc.adapters.messaging as { name: string }).name = 'twilio'; // real texting: the header does nothing
+    const real = await text('+13035550102', 'Is the Aspen Court place available?');
+    assert.match(real.headers.get('content-type') ?? '', /xml/);
+    assert.equal(await real.text(), '<Response></Response>');
+  } finally {
+    await svc.engine.drain();
+    server.close();
+  }
+});

@@ -1,8 +1,8 @@
 // Checks the live app from the outside. No dependencies.
 //   node scripts/live-check.mjs https://your-app.up.railway.app [--expect-commit abc1234] [--wait 720] [--conversations]
 // --expect-commit / --wait : poll /health until that commit is live (proves the deploy happened)
-// --conversations          : also talk to the front desk through the phone-line webhook, like a tenant
-//                            and a prospect would (only while texts are mocked, so no real texts go out)
+// --conversations          : also talk to the front desk by call and by text, like a tenant and a prospect
+//                            would (only while texts are mocked, so no real texts go out)
 
 const args = process.argv.slice(2);
 const base = (args.find((a) => a.startsWith('http')) ?? process.env.LIVE_URL ?? '').replace(/\/$/, '');
@@ -64,11 +64,36 @@ if (flag('--conversations')) {
         ok(name, r.status === 200 && (texting || check(r.reply)), r.status === 403 ? 'webhook is signature-protected' : texting ? 'not on Autopilot Pro: pointed to texting' : '');
       } catch (e) { ok(name, false, String(e)); }
     };
-    await t('prospect: availability + pets answered with facts', prospect, 'Is the Aspen Court place available? Do you allow dogs?', (r) => /\$|available/i.test(r) && !/passed it/i.test(r));
-    await t('prospect: schools question deflected neutrally', prospect, 'Are there good schools nearby?', (r) => !/\bgood school|great school|top.rated/i.test(r));
-    await t('tenant: repair gets a helpful answer', tenant, "The toilet won't stop running", (r) => r.length > 20);
-    await t('tenant: gas smell says leave + 911', tenant, 'I smell gas in the kitchen', (r) => /911/.test(r) && /leave|outside/i.test(r), { emergency: true });
-    await t('tenant: flooding gets shut-off help, no 911', tenant, 'Water is pouring out from under the dishwasher', (r) => /shut|valve|water/i.test(r) && !/911/.test(r), { emergency: true });
+    await t('call: a question is answered on Pro, or pointed to texting', prospect, 'Is the Aspen Court place available? Do you allow dogs?', (r) => /\$|available/i.test(r) && !/passed it/i.test(r));
+    await t('call: gas smell says leave + 911', tenant, 'I smell gas in the kitchen', (r) => /911/.test(r) && /leave|outside/i.test(r), { emergency: true });
+    await t('call: flooding gets shut-off help, no 911', tenant, 'Water is pouring out from under the dishwasher', (r) => /shut|valve|water/i.test(r) && !/911/.test(r), { emergency: true });
+
+    // Texts go through the AI service on every plan. X-KeyHelm-Check: 1 returns the replies and the model that wrote
+    // them (only while texts go to the outbox), so this also shows the AI answered and not the fallback rules.
+    const text = async (from, body) => {
+      const form = new URLSearchParams({ From: from, To: line, Body: body, MessageSid: 'SM' + Date.now() + Math.floor(Math.random() * 1e6) });
+      const r = await fetch(base + '/webhooks/twilio/sms', { method: 'POST', body: form, headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-keyhelm-check': '1' }, signal: AbortSignal.timeout(60_000) });
+      const data = /json/.test(r.headers.get('content-type') ?? '') ? await r.json() : {};
+      const reply = (data.replies ?? []).join(' / ');
+      console.log(`\n  ${from === tenant ? 'TENANT' : 'PROSPECT'} TEXT: ${body}\n  REPLY:  ${reply || '(none)'}${data.model ? `  [${data.model}]` : data.provider ? `  [${data.provider}]` : ''}`);
+      return { status: r.status, reply, model: data.model, provider: data.provider };
+    };
+    const models = new Set();
+    const tx = async (name, from, body, check, { ai = false } = {}) => {
+      try {
+        const r = await text(from, body);
+        if (r.model) models.add(r.model);
+        const byAi = !ai || Boolean(r.model);
+        const detail = r.status === 403 ? 'webhook is signature-protected' : !byAi ? `answered by ${r.provider ?? 'nothing'}, not the AI service` : (r.model ?? '');
+        ok(name, r.status === 200 && byAi && check(r.reply), detail);
+      } catch (e) { ok(name, false, String(e)); }
+    };
+    await tx('text: prospect availability + pets answered with facts', prospect, 'Is the Aspen Court place available? Do you allow dogs?', (r) => /\$|available/i.test(r) && !/passed it/i.test(r), { ai: true });
+    await tx('text: schools question deflected neutrally', prospect, 'Are there good schools nearby?', (r) => r.length > 20 && !/\bgood school|great school|top.rated/i.test(r));
+    await tx('text: repair gets a helpful answer', tenant, "The toilet won't stop running", (r) => r.length > 20, { ai: true });
+    await tx('text: gas smell says leave + 911', tenant, 'I smell gas in the kitchen', (r) => /911/.test(r) && /leave|outside/i.test(r));
+    await tx('text: flooding gets shut-off help, no 911', tenant, 'Water is pouring out from under the dishwasher', (r) => /shut|valve|water/i.test(r) && !/911/.test(r));
+    ok('AI service answered texts', models.size > 0, models.size ? `models: ${[...models].join(', ')}` : 'no AI model answered');
   }
 }
 
