@@ -311,10 +311,12 @@ export function summaryLine(input: AIInput, r: AIResult, ms: number): string {
 
 /** Claude from Railway Variables: ANTHROPIC_API_KEY (and ANTHROPIC_WORKSPACE_ID for a key not scoped to a workspace) plus the optional AI_MODEL_* / AI_EFFORT_* settings. */
 export function claudeFromEnv(env: Record<string, string | undefined>, log: ((line: string) => void) | undefined = (l) => console.log(l)): ClaudeRouter | undefined {
-  if (!env.ANTHROPIC_API_KEY) return undefined;
+  // Trim: a key pasted with a trailing space or newline is rejected as "invalid x-api-key".
+  const apiKey = env.ANTHROPIC_API_KEY?.trim().replace(/^["']|["']$/g, '');
+  if (!apiKey) return undefined;
   const cfg = modelConfig(env);
   for (const w of cfg.warnings) log?.(`[ai] ${w}`);
-  return new ClaudeRouter({ apiKey: env.ANTHROPIC_API_KEY, workspaceId: env.ANTHROPIC_WORKSPACE_ID?.trim(), routineModel: cfg.routine, complexModel: cfg.complex, bestModel: cfg.best, effortRoutine: cfg.effortRoutine, effortComplex: cfg.effortComplex, log });
+  return new ClaudeRouter({ apiKey, workspaceId: env.ANTHROPIC_WORKSPACE_ID?.trim(), routineModel: cfg.routine, complexModel: cfg.complex, bestModel: cfg.best, effortRoutine: cfg.effortRoutine, effortComplex: cfg.effortComplex, log });
 }
 
 /**

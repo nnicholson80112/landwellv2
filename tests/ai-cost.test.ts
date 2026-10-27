@@ -202,6 +202,8 @@ test('request: ANTHROPIC_WORKSPACE_ID adds the workspace header (needed for keys
     assert.equal(f.seen[0].headers['anthropic-workspace-id'], 'wrkspc_1');
     await claudeFromEnv({ ANTHROPIC_API_KEY: 'k' }, () => {})!.respond(input('The kitchen sink is leaking'));
     assert.equal('anthropic-workspace-id' in f.seen.at(-1)!.headers, false, 'no variable, no header');
+    await claudeFromEnv({ ANTHROPIC_API_KEY: ' "sk-test"\n' }, () => {})!.respond(input('The kitchen sink is leaking'));
+    assert.equal(f.seen.at(-1)!.headers['x-api-key'], 'sk-test', 'spaces, a newline and quotes from pasting are dropped');
   } finally {
     f.restore();
   }
