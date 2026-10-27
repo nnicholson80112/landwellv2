@@ -195,6 +195,18 @@ test('request: effort comes from AI_EFFORT_*; older models only get what they su
   assert.equal(claudeFromEnv({}), undefined, 'no key, no Claude');
 });
 
+test('request: ANTHROPIC_WORKSPACE_ID adds the workspace header (needed for keys not scoped to a workspace)', async () => {
+  const f = fakeFetch((req) => claudeSays(req.body.model, LEAK));
+  try {
+    await claudeFromEnv({ ANTHROPIC_API_KEY: 'k', ANTHROPIC_WORKSPACE_ID: ' wrkspc_1 ' }, () => {})!.respond(input('The kitchen sink is leaking'));
+    assert.equal(f.seen[0].headers['anthropic-workspace-id'], 'wrkspc_1');
+    await claudeFromEnv({ ANTHROPIC_API_KEY: 'k' }, () => {})!.respond(input('The kitchen sink is leaking'));
+    assert.equal('anthropic-workspace-id' in f.seen.at(-1)!.headers, false, 'no variable, no header');
+  } finally {
+    f.restore();
+  }
+});
+
 test('caching: the system prompt bytes are identical for different owners, people, channels and histories', async () => {
   const f = fakeFetch((req) => claudeSays(req.body.model, { ...RENT, intent: req.body.messages[0].content.includes('vendor') ? 'vendor_update' : 'rent_question' }));
   try {

@@ -135,6 +135,7 @@ costs 0.02¢ extra; on Sonnet about 0.4¢.
 
 Read by `claudeFromEnv` / `modelConfig`:
 - `ANTHROPIC_API_KEY` (required for Claude, as before)
+- `ANTHROPIC_WORKSPACE_ID` (optional): sent as the `anthropic-workspace-id` header. Only needed when the key isn't scoped to a workspace.
 - `AI_MODEL_ROUTINE` (default `claude-haiku-5-5`)
 - `AI_MODEL_COMPLEX` (default `ANTHROPIC_MODEL`, else `claude-sonnet-5-5`)
 - `ANTHROPIC_MODEL` (now optional; only used as the complex model when `AI_MODEL_COMPLEX` is empty)
