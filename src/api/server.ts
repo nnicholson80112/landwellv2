@@ -140,8 +140,9 @@ route('GET', '/apply/:propertyId', (req, res, svc) => {
   const p = svc.store.get('properties', req.params.propertyId);
   if (!p || !['listed', 'vacant'].includes(p.status)) return html(res, 404, page('Not available', '<h1>This home is not taking applications</h1>'));
   html(res, 200, page(`Apply: ${p.address}`, `<h1>Apply for ${esc(p.address)}</h1><p class="muted">${p.beds} bed · ${p.baths} bath · ${money(p.rent)}/month all-in. Every applicant is reviewed against the same written criteria, in the order received. After you submit, you'll get a link to complete screening with our screening partner.</p>
-<form class="card" method="post" action="/api/public/apply/${p.id}"><label for="n">Full name</label><input id="n" name="name" required autocomplete="name"><label for="e">Email</label><input id="e" name="email" type="email" required autocomplete="email"><label for="ph">Mobile phone</label><input id="ph" name="phone" required autocomplete="tel">
-<label class="check"><input type="checkbox" name="agree" value="yes" required><span>I agree to be contacted by text and email about this application and the home. Message frequency varies. Msg and data rates may apply. Reply STOP to opt out. See the <a href="/privacy">Privacy policy</a>.</span></label>
+<form class="card" method="post" action="/api/public/apply/${p.id}"><label for="n">Full name</label><input id="n" name="name" required autocomplete="name"><label for="e">Email</label><input id="e" name="email" type="email" required autocomplete="email"><label for="ph">Mobile phone (optional)</label><input id="ph" name="phone" type="tel" autocomplete="tel">
+<p class="muted">We'll email you about your application and the home. See the <a href="/privacy">Privacy policy</a>.</p>
+<label class="check"><input type="checkbox" name="sms" value="yes"><span>Optional: text me from ${esc(BRAND.name)} about this application and the home (screening link, decision, lease and showing updates). Not required to apply. Message frequency varies. Msg and data rates may apply. Reply HELP for help or STOP to opt out. <a href="/terms">Terms</a> · <a href="/privacy">Privacy policy</a> · <a href="/sms">How texts work</a></span></label>
 <button>Submit application</button><p class="muted">Equal Housing Opportunity.</p></form>`));
 });
 
@@ -149,12 +150,13 @@ route('POST', '/api/public/apply/:propertyId', async (req, res, svc) => {
   const p = svc.store.get('properties', req.params.propertyId);
   if (!p) return json(res, 404, { error: 'not found' });
   const b = req.body;
-  if (!b.name || !(b.email || b.phone)) return json(res, 400, { error: 'name and email or phone required' });
-  if (b.agree !== 'yes' && b.agree !== true) return json(res, 400, { error: 'Please agree to be contacted about your application.' });
-  const app = svc.store.insert('applications', { ownerId: p.ownerId, propertyId: p.id, applicantName: String(b.name).slice(0, 120), email: b.email, phone: b.phone, submittedAt: svc.clock.now().toISOString(), status: 'submitted' });
+  // Texting is optional and separate (carrier rules): unchecked means email only, so email is required then.
+  const sms = (b.sms === 'yes' || b.sms === true) && !!b.phone;
+  if (!b.name || !(b.email || sms)) return json(res, 400, { error: b.phone ? 'Please add your email, or tick the box to get texts.' : 'Please add your name and email.' });
+  const app = svc.store.insert('applications', { ownerId: p.ownerId, propertyId: p.id, applicantName: String(b.name).slice(0, 120), email: b.email || undefined, phone: b.phone || undefined, smsConsent: sms, submittedAt: svc.clock.now().toISOString(), status: 'submitted' });
   svc.engine.emit('application.submitted', { applicationId: app.id });
   await svc.engine.drain();
-  if ((req.headers['content-type'] ?? '').includes('form')) return html(res, 200, page('Application received', `<h1>Thanks, ${esc(app.applicantName.split(' ')[0])}!</h1><p>Check your texts and email for the screening link.</p>`));
+  if ((req.headers['content-type'] ?? '').includes('form')) return html(res, 200, page('Application received', `<h1>Thanks, ${esc(app.applicantName.split(' ')[0])}!</h1><p>Check your ${app.smsConsent ? 'texts and ' : ''}email for the screening link.</p>`));
   json(res, 201, { applicationId: app.id });
 });
 

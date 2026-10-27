@@ -53,7 +53,8 @@ export const application: WorkflowDef<Services, { applicationId: string }> = {
     ctx.setOwner(app.ownerId);
     const prop = store.get('properties', app.propertyId)!;
     const rules = store.get('rules', app.ownerId)!;
-    const to = contactOf({ phone: app.phone, email: app.email });
+    // Applicants who left the texting box unchecked hear back by email only.
+    const to = contactOf({ phone: app.smsConsent === false ? undefined : app.phone, email: app.email });
     const tell = async (label: string, body: string) => { if (to) await send(ctx, { label, ownerId: app.ownerId, ...to, body }); };
     const position = store.list('applications', (a) => a.propertyId === app.propertyId && a.submittedAt <= app.submittedAt && a.status !== 'withdrawn').length;
 
@@ -88,7 +89,7 @@ export const application: WorkflowDef<Services, { applicationId: string }> = {
       await ctx.step('approved', () => store.update('applications', applicationId, { status: 'approved', decision: 'approved' }));
       await tell('approved', `Good news: your application for ${prop.address} was approved! Your lease is being prepared and will arrive for e-signature shortly.`);
       const start = (a.data.startDate as string) ?? addDays(ctx.svc.clock.now().toISOString().slice(0, 10), 14);
-      await ctx.emit('lease.requested', { ownerId: app.ownerId, propertyId: prop.id, applicationId, tenantName: app.applicantName, tenantEmail: app.email, tenantPhone: app.phone, startDate: start, months: Number(a.data.months ?? 12), rent: prop.rent, deposit: prop.deposit });
+      await ctx.emit('lease.requested', { ownerId: app.ownerId, propertyId: prop.id, applicationId, tenantName: app.applicantName, tenantEmail: app.email, tenantPhone: app.phone, tenantPrefersEmail: app.smsConsent === false, startDate: start, months: Number(a.data.months ?? 12), rent: prop.rent, deposit: prop.deposit });
       return { status: 'approved' };
     }
     if (a?.decision === 'deny') {
@@ -113,6 +114,8 @@ export interface LeaseRequest {
   tenantName?: string;
   tenantEmail?: string;
   tenantPhone?: string;
+  /** The applicant didn't agree to texts: the new tenant record prefers email. */
+  tenantPrefersEmail?: boolean;
   startDate: string;
   months: number;
   rent: number;
@@ -143,7 +146,7 @@ export const leaseFlow: WorkflowDef<Services, LeaseRequest> = {
 
     // Tenant records (new lease → create them as "future").
     const tenantIds: string[] = req.tenantIds ?? (await ctx.step('tenant', () => [
-      store.insert('tenants', { ownerId: req.ownerId, propertyId: prop.id, name: req.tenantName ?? 'Tenant', email: req.tenantEmail, phone: req.tenantPhone, preferredChannel: req.tenantPhone ? 'sms' : 'email', autopay: false, status: 'future' }).id,
+      store.insert('tenants', { ownerId: req.ownerId, propertyId: prop.id, name: req.tenantName ?? 'Tenant', email: req.tenantEmail, phone: req.tenantPhone, preferredChannel: req.tenantPhone && !req.tenantPrefersEmail ? 'sms' : 'email', autopay: false, status: 'future' }).id,
     ]));
     const tenants = tenantIds.map((id) => store.get('tenants', id)!);
 

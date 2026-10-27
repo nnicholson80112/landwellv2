@@ -31,6 +31,49 @@ change a text in the workflows, `tests/site.test.ts` fails until the samples her
 
 ---
 
+## Toll-free route (chosen Oct 27): number + toll-free verification
+
+Nate chose a toll-free number over 10DLC. Twilio's rules as of Oct 2026
+([onboarding guide](https://help.twilio.com/articles/13264118705051)):
+- An unverified toll-free number can't text in the US at all (blocked, error 30032, still billed). Calls work right away.
+- The EIN is required and the legal name must match IRS records exactly.
+- Since Sep 15, 2026 the form has separate Privacy Policy and Terms URL fields (missing = rejected, error 30493).
+- Texting consent must be optional, unchecked and separate. The owner signup box on keyhelm.app and the apply
+  form (fixed Oct 27) both are.
+- The privacy policy must say opt-in data and consent are never shared with third parties (keyhelm.app/privacy does).
+
+Twilio Console → **Phone Numbers** → **Manage** → **Buy a number** → Country US, **Type: Toll-free**, Capabilities SMS + Voice.
+Then **Messaging** → **Regulatory compliance** → **Toll-free verifications** → **Create** (or the number's page → "Verify").
+
+| Field | Enter |
+| --- | --- |
+| Legal business name | `KeyHelm LLC` (exactly as on the IRS letter). DBA: `KeyHelm` |
+| Business registration number | The 9-digit EIN, type "EIN", country US |
+| Business website | `https://www.keyhelm.app` |
+| Business address | The address on the IRS EIN letter |
+| Business contact | Nate: name, `@keyhelm.app` email, mobile. A company-domain email reviews better than Gmail |
+| Notification email | Nate's email (Twilio sends the result here) |
+| Privacy Policy URL | `https://www.keyhelm.app/privacy` |
+| Terms and Conditions URL | `https://www.keyhelm.app/terms` |
+| Estimated monthly volume | `1,000` |
+| Use case | **Account Notifications** |
+| Opt-in type | **Web Form** |
+| Opt-in URL / image | `https://www.keyhelm.app/sms` (explains every opt-in path) |
+| Sample message | Sample 1 (the tenant welcome) from the list in section 2 |
+
+**Use case summary (paste):**
+```
+KeyHelm LLC sells property management software to small landlords in Colorado. KeyHelm sends KeyHelm-branded texts about a landlord's rental homes: rent due reminders, repair scheduling and status updates, showing times, lease, renewal and move-out notices to tenants, applicants and vendors, plus account alerts (repair approvals, rent questions) to the landlord. It also replies to people who text the number first. No marketing or promotional messages. Program details: https://www.keyhelm.app/sms
+```
+
+**Additional details (paste):**
+```
+Opt-in paths, all described at https://www.keyhelm.app/sms: (1) Landlords: optional, unchecked texting box on the signup form at https://www.keyhelm.app (Get started), not required to buy. (2) Applicants: optional, unchecked texting box on the rental application; unchecked means email only. (3) Tenants and vendors: the landlord adds their number only with their agreement (Terms section 5); the first text names KeyHelm, explains the program and says Reply STOP to opt out. (4) People who text the number first get replies to what they asked. Every program text names KeyHelm. HELP and STOP are answered automatically.
+```
+Keyword replies: use the HELP, STOP and START texts in section 2 (Twilio Console → the number's Messaging Service → Opt-Out Management).
+
+---
+
 ## 1. Brand registration (Twilio Console, Messaging, Regulatory Compliance / A2P 10DLC)
 
 Twilio first asks for a business profile (Trust Hub), then the A2P brand. Menu names move around in Twilio's
@@ -73,7 +116,7 @@ KeyHelm LLC makes property management software for small landlords in Colorado. 
 
 ### Message flow / call to action (paste)
 ```
-People opt in four ways, all described at https://<domain>/sms. (1) Tenants: the landlord (our customer) adds the tenant's mobile number in KeyHelm when setting up the tenancy. Our Terms (https://<domain>/terms, section 5) only allow numbers of people who agreed to get texts from the landlord about the rental. The first text is a welcome that names KeyHelm, explains the program and ends with "Reply STOP to opt out of texts." (2) Prospects, applicants and tenants who text first: they text the landlord's KeyHelm number and get replies about what they asked. Applicants also check a required consent box on the rental application form (https://<domain>/apply/<home id>) agreeing to texts and email about their application. (3) Vendors: the landlord adds the vendors they hire, with their agreement, to receive job requests. (4) Landlords: on https://<domain>/ (Get started), the signup form has an optional, unchecked checkbox: "Text me KeyHelm account alerts, like repair approvals and tenant updates. Optional, not required to buy. Message frequency varies. Msg and data rates may apply. Reply HELP for help or STOP to opt out." It is not required to buy; landlords who leave it unchecked get email instead. Privacy policy: https://<domain>/privacy. Terms: https://<domain>/terms.
+People opt in four ways, all described at https://<domain>/sms. (1) Tenants: the landlord (our customer) adds the tenant's mobile number in KeyHelm when setting up the tenancy. Our Terms (https://<domain>/terms, section 5) only allow numbers of people who agreed to get texts from the landlord about the rental. The first text is a welcome that names KeyHelm, explains the program and ends with "Reply STOP to opt out of texts." (2) Prospects, applicants and tenants who text first: they text the landlord's KeyHelm number and get replies about what they asked. Applicants can tick an optional, unchecked texting box on the rental application form (https://<domain>/apply/<home id>); it is not required to apply, and applicants who leave it unchecked get email only. (3) Vendors: the landlord adds the vendors they hire, with their agreement, to receive job requests. (4) Landlords: on https://<domain>/ (Get started), the signup form has an optional, unchecked checkbox: "Text me KeyHelm account alerts, like repair approvals and tenant updates. Optional, not required to buy. Message frequency varies. Msg and data rates may apply. Reply HELP for help or STOP to opt out." It is not required to buy; landlords who leave it unchecked get email instead. Privacy policy: https://<domain>/privacy. Terms: https://<domain>/terms.
 ```
 (About 1,330 characters with a short domain.) For the "opt-in proof" upload, if Twilio asks for one: a
 screenshot of the signup window (open `https://<domain>/`, click **Get started**) and of the `/sms` page.
@@ -128,7 +171,7 @@ Live app today: `https://api-production-66895.up.railway.app` (swap in your doma
 | Terms with SMS terms: program, frequency, rates, HELP, STOP, carriers not liable | `/terms`, section 5 "Text messaging" | Done once deployed |
 | A page describing the program, opt-in, frequency, rates, HELP/STOP, support and samples | `/sms` (also linked from every footer) | Done once deployed |
 | Opt-in on a form: consent words next to an unchecked, optional box | `/` then **Get started** (signup window) | Done |
-| Applicant consent | `/apply/<home id>` (any listed home) | Exists (required box, see risks) |
+| Applicant consent | `/apply/<home id>` (any listed home) | Done: optional, unchecked texting box with KeyHelm, frequency, rates, HELP/STOP and Terms, Privacy and /sms links |
 | Contact details | Footer email on every page; "Support" on `/sms` | Set `BUSINESS_EMAIL` first |
 | No placeholder or unfinished text | `/terms`, `/refunds` | **To do**: bracketed 12-month, liability and dispute notes |
 | Website domain matches the brand | Custom domain | **To do**: connect the domain |
@@ -146,9 +189,7 @@ Live app today: `https://api-production-66895.up.railway.app` (swap in your doma
   require landlords to have it and the welcome text explains the program and how to stop. If a reviewer pushes
   back, the stronger option is a welcome text that asks the tenant to reply START before anything else is sent
   (a code change in `src/workflows/tenancy.ts`).
-- **Applicant consent box is required.** The application form's "texts and email" box must be ticked to apply.
-  Some reviewers prefer texting consent to be optional. If flagged, split it into a required email box and an
-  optional texting box (in `src/api/server.ts`, `/apply/:propertyId`).
+- **Applicant consent box** (fixed Oct 27): texting is now an optional, separate box; unchecked means email only.
 - **HELP gets two answers.** Twilio sends the HELP reply above, and the app's front desk also treats "HELP" as a
   normal message and may answer it. Add `help` / `info` to `textingKeyword` so the front desk stays quiet.
 - **Sample 5 has a line break** in the real text. Twilio's sample boxes accept it; the version above is on one

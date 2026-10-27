@@ -33,12 +33,9 @@ attorney step (ignore the "Attorney" items in `docs/LAUNCH-CHECKLIST.md`). Don't
       `/sms`, `/privacy` and `/terms` pages, or (b) the partner's site copies the exact texting wording.
       The opt-in words must match word for word everywhere: they come from `OWNER_SMS_OPT_IN` and the
       helpers in `src/api/legal.ts`, so copy them from the live pages, never retype them.
-- [ ] **Applicant consent box on `/apply/<home id>`** (the form is in `src/api/server.ts`). The Twilio
-      message flow sends reviewers there. Today the box is required, the words don't name KeyHelm, there is
-      no "Reply HELP for help", and it links only to Privacy. Before the Twilio submission: name KeyHelm, add
-      HELP, link `/terms` and `/sms`, and let Nate decide whether texting gets its own optional box
-      (`docs/notes/twilio-a2p.md` section 4). The form only opens for a listed or vacant home, so keep a
-      screenshot ready for reviewers once demo data is off.
+- [x] **Applicant consent box on `/apply/<home id>`** (Oct 27): texting is a separate, optional, unchecked box that names
+      KeyHelm, gives frequency, rates, HELP and STOP, and links `/terms`, `/privacy` and `/sms`. Unchecked = email only.
+      The form only opens for a listed or vacant home, so keep one listed while Twilio reviews.
 - [ ] Phone-width and dark-mode check of every page after the deploy (390px and 1280px).
 - [ ] Real screenshots or a short product video for the hero once the owner app is live (no fake data
       presented as real; label samples "Sample data").
