@@ -126,6 +126,8 @@ export class AnthropicAI implements CommunicationAI {
   readonly model: string;
   readonly effort: Effort;
   private apiKey: string;
+  /** Only needed for a key that isn't scoped to a workspace (Anthropic then asks for this header). */
+  private workspaceId?: string;
   private timeoutMs: number;
   private maxTokens: number;
   private url: string;
@@ -133,8 +135,9 @@ export class AnthropicAI implements CommunicationAI {
   private off = new Set<Feature>();
   log?: (line: string) => void;
 
-  constructor(opts: { apiKey: string; model: string; effort?: Effort; timeoutMs?: number; maxTokens?: number; url?: string; log?: (line: string) => void }) {
+  constructor(opts: { apiKey: string; workspaceId?: string; model: string; effort?: Effort; timeoutMs?: number; maxTokens?: number; url?: string; log?: (line: string) => void }) {
     this.apiKey = opts.apiKey;
+    this.workspaceId = opts.workspaceId || undefined;
     this.model = opts.model;
     this.effort = opts.effort ?? 'low';
     this.timeoutMs = opts.timeoutMs ?? 25_000;
@@ -165,7 +168,7 @@ export class AnthropicAI implements CommunicationAI {
   }
 
   requestHeaders(): Record<string, string> {
-    return { 'x-api-key': this.apiKey, 'anthropic-version': '2023-06-01', ...(this.uses('fallbacks') ? { 'anthropic-beta': FALLBACK_BETA } : {}) };
+    return { 'x-api-key': this.apiKey, 'anthropic-version': '2023-06-01', ...(this.workspaceId ? { 'anthropic-workspace-id': this.workspaceId } : {}), ...(this.uses('fallbacks') ? { 'anthropic-beta': FALLBACK_BETA } : {}) };
   }
 
   /** Which of our optional request features a 400 complains about, if any. */
@@ -240,14 +243,14 @@ export class ClaudeRouter implements CommunicationAI {
   log?: (line: string) => void;
 
   constructor(opts: {
-    apiKey: string; routineModel: string; complexModel: string; bestModel?: string; effortRoutine?: Effort; effortComplex?: Effort;
+    apiKey: string; workspaceId?: string; routineModel: string; complexModel: string; bestModel?: string; effortRoutine?: Effort; effortComplex?: Effort;
     routineTimeoutMs?: number; complexTimeoutMs?: number; budgetMs?: number; escalateBelow?: number; url?: string; log?: (line: string) => void;
   }) {
     this.log = opts.log;
     const log = (l: string) => this.log?.(l);
-    this.routine = new AnthropicAI({ apiKey: opts.apiKey, model: opts.routineModel, effort: opts.effortRoutine, url: opts.url, log });
-    this.complex = new AnthropicAI({ apiKey: opts.apiKey, model: opts.complexModel, effort: opts.effortComplex, url: opts.url, log });
-    this.best = new AnthropicAI({ apiKey: opts.apiKey, model: opts.bestModel ?? DEFAULT_BEST_MODEL, effort: opts.effortComplex, url: opts.url, log });
+    this.routine = new AnthropicAI({ apiKey: opts.apiKey, workspaceId: opts.workspaceId, model: opts.routineModel, effort: opts.effortRoutine, url: opts.url, log });
+    this.complex = new AnthropicAI({ apiKey: opts.apiKey, workspaceId: opts.workspaceId, model: opts.complexModel, effort: opts.effortComplex, url: opts.url, log });
+    this.best = new AnthropicAI({ apiKey: opts.apiKey, workspaceId: opts.workspaceId, model: opts.bestModel ?? DEFAULT_BEST_MODEL, effort: opts.effortComplex, url: opts.url, log });
     this.routineTimeoutMs = opts.routineTimeoutMs ?? 12_000;
     this.complexTimeoutMs = opts.complexTimeoutMs ?? 20_000;
     this.budgetMs = opts.budgetMs ?? 26_000;
@@ -306,12 +309,14 @@ export function summaryLine(input: AIInput, r: AIResult, ms: number): string {
   return `[ai] ${input.senderRole} → ${r.intent} (${r.confidence.toFixed(2)}) by ${r.model ?? r.provider} [${r.route ?? 'single'}: ${r.routeReason ?? '-'}] · ${r.calls?.length ?? 0} call(s) · ${cost}${cache} · ${ms} ms`;
 }
 
-/** Claude from Railway Variables: ANTHROPIC_API_KEY plus the optional AI_MODEL_* / AI_EFFORT_* settings. */
+/** Claude from Railway Variables: ANTHROPIC_API_KEY (and ANTHROPIC_WORKSPACE_ID for a key not scoped to a workspace) plus the optional AI_MODEL_* / AI_EFFORT_* settings. */
 export function claudeFromEnv(env: Record<string, string | undefined>, log: ((line: string) => void) | undefined = (l) => console.log(l)): ClaudeRouter | undefined {
-  if (!env.ANTHROPIC_API_KEY) return undefined;
+  // Trim: a key pasted with a trailing space or newline is rejected as "invalid x-api-key".
+  const apiKey = env.ANTHROPIC_API_KEY?.trim().replace(/^["']|["']$/g, '');
+  if (!apiKey) return undefined;
   const cfg = modelConfig(env);
   for (const w of cfg.warnings) log?.(`[ai] ${w}`);
-  return new ClaudeRouter({ apiKey: env.ANTHROPIC_API_KEY, routineModel: cfg.routine, complexModel: cfg.complex, bestModel: cfg.best, effortRoutine: cfg.effortRoutine, effortComplex: cfg.effortComplex, log });
+  return new ClaudeRouter({ apiKey, workspaceId: env.ANTHROPIC_WORKSPACE_ID?.trim(), routineModel: cfg.routine, complexModel: cfg.complex, bestModel: cfg.best, effortRoutine: cfg.effortRoutine, effortComplex: cfg.effortComplex, log });
 }
 
 /**
