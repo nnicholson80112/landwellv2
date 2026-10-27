@@ -83,7 +83,7 @@ These are word for word what the app sends (names and addresses made up). Same f
 
 1. `Hi Jordan! Your landlord now uses KeyHelm for 603 Spruce Dr. Text this number anytime for repairs (send a photo) or questions. You'll keep paying rent to your landlord the same way; we'll just send you a reminder before it's due. Reply STOP to opt out of texts.`
 2. `Hi Jordan, a heads-up: rent of $1,950 for 603 Spruce Dr is due Sun, Nov 1. Please pay your landlord the way you normally do.`
-3. `Your repair is booked with Front Range Plumbing (Tue 9-11). If you need to reach them: +17205550133. Text me here if anything changes.`
+3. `Your repair is booked with Front Range Plumbing (Tue 9-11). If you need to reach them: 720-555-0133. Text me here if anything changes.`
 4. `You're booked for Sat, Oct 17, 12:00 PM at 88 Aspen Ct. Your door code arrives 15 minutes before.`
 5. `KeyHelm: Repair $180: 603 Spruce Dr. Front Range Plumbing can do "Kitchen faucet dripping" Tue 9-11 for $180. Your limit is $150. Reply YES K8F (Approve) or NO K8F (Decline).`
 

@@ -25,6 +25,23 @@ export class FakeClock implements Clock {
   }
 }
 
+/**
+ * The sandbox's clock (npm run sandbox): real time plus an offset the Test lab can push forward,
+ * so rent day or a lease end can be reached in minutes. Never used by the live server.
+ */
+export class OffsetClock implements Clock {
+  offsetMs: number;
+  constructor(offsetMs = 0) {
+    this.offsetMs = offsetMs;
+  }
+  now(): Date {
+    return new Date(Date.now() + this.offsetMs);
+  }
+  advance(ms: number): void {
+    this.offsetMs += ms;
+  }
+}
+
 export const MIN = 60_000;
 export const HOUR = 60 * MIN;
 export const DAY = 24 * HOUR;

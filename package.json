@@ -13,6 +13,7 @@
     "test": "node --experimental-strip-types --no-warnings --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
     "build:site": "node scripts/build-site.mjs",
+    "sandbox": "node --experimental-strip-types --no-warnings src/sim/sandbox.ts",
     "ai": "node --experimental-strip-types --no-warnings src/ai-service/server.ts",
     "build:review": "node scripts/build-review.mjs"
   },

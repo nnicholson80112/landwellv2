@@ -276,7 +276,7 @@ test('vendor "not available" moves on to the next vendor; the tenant hears who i
   await text(s.plumber.phone!, 'Sorry, not available this week');
   assert.match(lastTo('+17205550155'), /New job for Nate's rental/);
   await text('+17205550155', 'Yes, 2pm tomorrow $120');
-  assert.match(lastTo(s.tenant.phone!), /booked with Second Plumbing \(2pm tomorrow\)\. If you need to reach them: \+17205550155/);
+  assert.match(lastTo(s.tenant.phone!), /booked with Second Plumbing \(2pm tomorrow\)\. If you need to reach them: 720-555-0155\./);
 });
 
 test('the same problem texted twice joins the open repair; a later photo is forwarded to the vendor', async () => {

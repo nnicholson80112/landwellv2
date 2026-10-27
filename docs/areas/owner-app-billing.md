@@ -42,10 +42,9 @@ The customer walks one path, so test it as one path: website **Get started** →
 - [ ] Archive the old "Landwell" products and prices in the Stripe sandbox, but only after the new build is live.
       The code Railway runs today (`9292002`) still finds its 12-month and Autopilot Plus prices by their
       `landwell_*` lookup keys, so archiving them now breaks those checkouts on the live site.
-- [ ] Small bugs seen in screenshots (Oct 21, `scripts/check-owner-app.mjs`): a to-do shows an internal
-      charge id (`chg_8c2b28fb...`) to the owner; to-do titles show the phone in double parentheses
-      ("Reply to Lisa Chen ((720) 555-0111)"); on a computer the left menu's white background stops partway
-      down the page; the vendor phone inside tenant texts is unformatted (`+17209305782`).
+- [x] Small bugs seen in screenshots (Oct 21): a to-do showed an internal charge id; to-do titles showed the phone
+      in double parentheses; the left menu's background stopped partway down (gone since the Oct 25 restyle); phones
+      inside tenant and vendor texts were unformatted. Fixed Oct 27.
 - [ ] Owner app gaps: PDF/Word lease upload (plain text only today), delete a lease, a "Publish listing"
       button, an `apple-touch-icon` PNG, two-step sign-in, email verification at signup.
 

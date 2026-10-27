@@ -21,6 +21,11 @@ export function normalizePhone(p: string): string {
   if (d.length === 11 && d.startsWith('1')) return '+' + d;
   return d;
 }
+/** A phone as people write it in a text: "+17209305782" → "720-930-5782". Anything else is left as is. */
+export function phoneForText(p: string): string {
+  const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(p.trim());
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : p;
+}
 export const addressKey = (a: string): string => (a.includes('@') ? a.trim().toLowerCase() : normalizePhone(a));
 
 export type Party =

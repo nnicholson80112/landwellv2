@@ -7,7 +7,7 @@ import type { Services } from '../services.ts';
 import type { Urgency, Vendor, WorkOrder } from '../domain/types.ts';
 import { CO } from '../config/colorado.ts';
 import { HOUR, MIN, DAY } from '../engine/clock.ts';
-import { firstName, jobLine, money, propertyName, quietUntil, tellOwner, tellTenant, tellVendor, type C } from './lib.ts';
+import { firstName, jobLine, money, phoneForText, propertyName, quietUntil, tellOwner, tellTenant, tellVendor, type C } from './lib.ts';
 
 export interface RepairInput {
   ownerId: string;
@@ -157,8 +157,8 @@ export const maintenance: WorkflowDef<Services, RepairInput> = {
 
     // 5. Book it.
     await upd({ status: 'scheduled', scheduledFor: window ?? 'time to be confirmed by vendor' }, 'scheduled');
-    await tellVendor(ctx, 'confirm', vendor, `Confirmed: ${jobLine(wo.summary)} at ${address}${window ? `, ${window}` : ''}.${tenant ? ` Resident: ${tenant.name}${tenant.phone ? ` ${tenant.phone}` : ''}.` : ''} Text "DONE $amount" when finished.`);
-    if (tenant) await tellTenant(ctx, 'tenant-scheduled', tenant, `Your repair is booked with ${vendor.name}${window ? ` (${window})` : ''}.${vendor.phone ? ` If you need to reach them: ${vendor.phone}.` : ''} Text me here if anything changes.`);
+    await tellVendor(ctx, 'confirm', vendor, `Confirmed: ${jobLine(wo.summary)} at ${address}${window ? `, ${window}` : ''}.${tenant ? ` Resident: ${tenant.name}${tenant.phone ? `, ${phoneForText(tenant.phone)}` : ''}.` : ''} Text "DONE $amount" when finished.`);
+    if (tenant) await tellTenant(ctx, 'tenant-scheduled', tenant, `Your repair is booked with ${vendor.name}${window ? ` (${window})` : ''}.${vendor.phone ? ` If you need to reach them: ${phoneForText(vendor.phone)}.` : ''} Text me here if anything changes.`);
     await ctx.log('repair.scheduled', `${vendor.name} booked${window ? ` for ${window}` : ''}${quote !== undefined ? ` at ${money(quote)}` : ''}.`);
 
     // 6. Wait for "done" (nudge after 7 days, give up waiting after 14).

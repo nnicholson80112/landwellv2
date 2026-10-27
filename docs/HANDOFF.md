@@ -124,6 +124,8 @@ npm test              # all tests (Postgres tests start a throwaway local cluste
 npm run demo          # every workflow on sample data with a simulated month (0 failed)
 npm start             # API + website on http://localhost:8787 (token: dev-token locally)
 npm run ai            # AI service on :8788 (needs AI_SERVICE_TOKEN)
+npm run sandbox       # local sandbox on :8787 with the Test lab (/app/lab): text as anyone, jump the clock, see the outbox, reset.
+                      # Own data file (data/sandbox.json); sign-in saved in data/sandbox.env. Never sends real texts. -- --reset starts over.
 npm run typecheck     # tsc --noEmit (run `npm install` once for the dev types)
 npm run build:site    # apps/site/site.body.html → apps/site/index.html
 npm run build:review  # rebuilds apps/review/review.html from a fresh demo run
@@ -204,6 +206,7 @@ Owner **Nate** (`DEMO_OWNER_PHONE`, Autopilot). Home **7610 S Rosemary Cir, Cent
 ## 9. How to test
 
 **Owner app:** sign in (go-live step 1) and click through each tab. Decisions can be answered in the app or by text (`YES K4P`). To see what each plan shows, change the owner's plan in Stripe (or the data) and reload: locked documents show a lock card, and Settings → Your plan lists ✓ and ✕.
+**Test lab (try every workflow in minutes):** run `npm run sandbox`, open `http://localhost:8787/app`, sign in with `nate@example.com` and the password in `data/sandbox.env`, then **Test lab** in the menu. It walks through 10 things (a repair, rent day, late rent, an application, a lease signing, a showing, a renewal, a move-out, the Monday report, STOP/START). Time jumps only exist in the sandbox; the live server answers 404 to `/api/lab`.
 **AI in `/play`:** open `/play` → paste `OWNER_API_TOKEN` → Connect → choose who's texting → send. Good test messages: "The toilet won't stop running" (Lisa) · "Is the Aspen Court place available? Do you allow dogs?" (prospect) · "Are there good schools nearby?" (neutral answer) · "I smell gas" (911) · "Water is pouring out from under the dishwasher" (no 911) · "We'd like to renew".
 **Live check:** runs by itself after every deploy. By hand: GitHub → Actions → **Live check** → **Run workflow**. Or `node scripts/live-check.mjs https://api-production-66895.up.railway.app --conversations`. Off Autopilot Pro, calls are pointed to texting (emergencies still get safety steps); texts always go through the AI.
 **Billing:** website **Get started** → card `4242 4242 4242 4242`, any future date and CVC → set password → `/app`.
