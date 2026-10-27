@@ -145,6 +145,11 @@ const APP_FILES = new StaticCache();
 const APP_STATIC: [path: string, file: string, type: string, maxAge: number][] = [
   ['/app/manifest.webmanifest', 'manifest.webmanifest', 'application/manifest+json', 86_400],
   ['/app/icon.svg', 'icon.svg', 'image/svg+xml', 7 * 86_400],
+  ['/app/icon-192.png', 'icon-192.png', 'image/png', 7 * 86_400],
+  ['/app/icon-512.png', 'icon-512.png', 'image/png', 7 * 86_400],
+  // iPhones use this for "Add to Home Screen" (they ignore SVG icons); also asked for at the root.
+  ['/app/apple-touch-icon.png', 'apple-touch-icon.png', 'image/png', 7 * 86_400],
+  ['/apple-touch-icon.png', 'apple-touch-icon.png', 'image/png', 7 * 86_400],
 ];
 function loadAppFiles(): void {
   for (const [path, file, type, maxAge] of APP_STATIC) {

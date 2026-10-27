@@ -8,7 +8,7 @@ import { MIN_PASSWORD } from './auth.ts';
 
 export const esc = (s: string) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-const LOGO = '<svg viewBox="0 0 34 34" width="30" height="30" aria-hidden="true"><rect width="34" height="34" rx="8" fill="#C8502D"/><circle cx="24.5" cy="10" r="4" fill="#E8A33D"/><path d="M8 18.5 15.5 11.5 23 18.5M10.5 16.5V25h10v-8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const LOGO = '<svg viewBox="0 0 150 150" width="30" height="30" aria-hidden="true"><rect width="150" height="150" rx="34" fill="#C8502D"/><polygon points="75,34 118,70 118,118 32,118 32,70" fill="#FFF6EC" stroke="#FFF6EC" stroke-width="8" stroke-linejoin="round"/><circle cx="75" cy="86" r="11" fill="#1E2B2F"/><polygon points="69,92 81,92 85,112 65,112" fill="#1E2B2F"/></svg>';
 
 const CSS = `
 @font-face{font-family:'Montagu Slab';font-weight:500 700;font-display:swap;src:url(/fonts/montagu-slab-latin.woff2) format('woff2')}
@@ -46,7 +46,7 @@ footer nav{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 16px;margi
 /** One branded page. `head` is extra markup for <head> (for example a refresh). */
 export function ownerPage(title: string, inner: string, o: { head?: string } = {}): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)} | ${esc(BRAND.name)}</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><meta name="robots" content="noindex">${o.head ?? ''}
+<title>${esc(title)} | ${esc(BRAND.name)}</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/app/apple-touch-icon.png"><meta name="robots" content="noindex">${o.head ?? ''}
 <style>${CSS}</style></head><body>
 <header><a class="logo" href="/">${LOGO}${esc(BRAND.name)}</a></header>
 <main>${inner}</main>

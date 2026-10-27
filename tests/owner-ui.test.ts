@@ -249,8 +249,16 @@ test('install manifest and icon: public, cached, and the manifest points at the 
     for (const icon of m.icons) {
       const i = await t.get(icon.src);
       assert.equal(i.status, 200, icon.src);
-      assert.equal(i.headers.get('content-type'), 'image/svg+xml');
-      assert.match(await i.text(), /<svg[^>]*viewBox="0 0 512 512"[\s\S]*#C8502D/);
+      assert.equal(i.headers.get('content-type'), icon.type, icon.src);
+      if (icon.type === 'image/svg+xml') assert.match(await i.text(), /<svg[^>]*viewBox="0 0 512 512"[\s\S]*#C8502D/);
+      else assert.deepEqual([...new Uint8Array(await i.arrayBuffer()).slice(0, 4)], [0x89, 0x50, 0x4e, 0x47], `${icon.src} is a PNG`);
+    }
+    // iPhones ignore SVG icons for "Add to Home Screen": the page links a PNG, also served at the root.
+    assert.match(page, /<link rel="apple-touch-icon" href="\/app\/apple-touch-icon\.png">/);
+    for (const u of ['/app/apple-touch-icon.png', '/apple-touch-icon.png']) {
+      const i = await t.get(u);
+      assert.equal(i.status, 200, u);
+      assert.equal(i.headers.get('content-type'), 'image/png', u);
     }
     assert.equal((await fetch(t.base + '/app/manifest.webmanifest', { headers: { 'if-none-match': etag } })).status, 304, 'browsers can revalidate cheaply');
     // The start page and every shortcut open the app (signed out: sign in first).
