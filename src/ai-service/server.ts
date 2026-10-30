@@ -32,7 +32,7 @@ import { createServer, type Server } from 'node:http';
 import { appendFileSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AICall, AIInput, AIResult, CommunicationAI } from '../ai/types.ts';
-import { AIError, BudgetAI, ClaudeRouter, OpenAICompatAI, claudeFromEnv, normalize } from '../ai/providers.ts';
+import { AIError, BudgetAI, ClaudeRouter, OpenAICompatAI, claudeFromEnv, normalize, warmUpClaude } from '../ai/providers.ts';
 import { CostMeter, sumCalls } from '../ai/cost.ts';
 import { RateLimiter, safeEqual, tooMany } from '../api/guard.ts';
 import { RuleBasedAI } from '../ai/rules.ts';
@@ -133,12 +133,14 @@ export function costSummaryLine(s: ReturnType<KeyHelmAI['statsSnapshot']>): stri
 }
 
 /** The HTTP side of the service. Every route but /health needs the bearer token. */
-export function aiServer(ai: KeyHelmAI, opts: { token: string; perMin?: number }): Server {
+export function aiServer(ai: KeyHelmAI, opts: { token: string; perMin?: number; warming?: () => boolean }): Server {
   // Burst guard: at most AI_PER_MIN model requests a minute across the whole service.
   const perMin = new RateLimiter({ capacity: opts.perMin || 600, perMs: 60_000 });
   const server = createServer(async (req, res) => {
     const send = (code: number, data: unknown) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(data)); };
     // Which commit is live (Railway sets this), so the Live check can wait for this service after a deploy.
+    // While warming up it reports unhealthy, so Railway and the Live check wait for it (at most warmUpClaude's maxMs).
+    if (req.url === '/health' && opts.warming?.()) return send(503, { ok: false, warming: true });
     if (req.url === '/health') return send(200, { ok: true, commit: (process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT ?? 'unknown').slice(0, 7) });
     if (!safeEqual(String(req.headers.authorization ?? ''), `Bearer ${opts.token}`)) return send(401, { error: 'unauthorized' });
     if (req.method === 'GET' && req.url === '/stats') return send(200, ai.statsSnapshot());
@@ -180,7 +182,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   let reported = 0;
   setInterval(() => { if (ai.stats.requests > reported) { reported = ai.stats.requests; log(costSummaryLine(ai.statsSnapshot())); } }, 3_600_000).unref();
 
-  const server = aiServer(ai, { token, perMin: Number(env.AI_PER_MIN) || 600 });
+  let warming = models.some((m) => m instanceof ClaudeRouter);
+  if (warming) void warmUpClaude({ log }).finally(() => { warming = false; });
+  const server = aiServer(ai, { token, perMin: Number(env.AI_PER_MIN) || 600, warming: () => warming });
   const names = models.map((m) => (m instanceof ClaudeRouter ? `claude: ${m.describe()}` : m.name));
   server.listen(Number(env.PORT ?? 8788), () => console.log(`KeyHelm AI service on :${env.PORT ?? 8788} (models: ${[...names, 'rules'].join(' → ')})`));
   // Railway sends SIGTERM when a new deploy replaces this one; exit cleanly so it isn't marked Crashed.

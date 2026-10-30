@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 import type { AIInput, Intent } from '../src/ai/types.ts';
 import { RESULT_SCHEMA, SYSTEM_PROMPT, userPrompt } from '../src/ai/prompt.ts';
-import { AnthropicAI, ClaudeRouter, FALLBACK_BETA, HttpAI, ResilientAI, claudeFromEnv, normalize } from '../src/ai/providers.ts';
+import { AnthropicAI, ClaudeRouter, FALLBACK_BETA, HttpAI, ResilientAI, claudeFromEnv, normalize, warmUpClaude } from '../src/ai/providers.ts';
 import { REPAIR_CHAT_FACT, chooseRoute, escalationReason, looksLikeRepair, modelConfig } from '../src/ai/route.ts';
 import { CostMeter, callFromResponse, costUsd, priceOf, sumCalls } from '../src/ai/cost.ts';
 import { KeyHelmAI, aiServer, costSummaryLine } from '../src/ai-service/server.ts';
@@ -206,6 +206,61 @@ test('request: ANTHROPIC_WORKSPACE_ID adds the workspace header (needed for keys
     assert.equal(f.seen.at(-1)!.headers['x-api-key'], 'sk-test', 'spaces, a newline and quotes from pasting are dropped');
   } finally {
     f.restore();
+  }
+});
+
+test('timeout: the first call hangs, one retry answers; two hangs fall through; other errors are not retried', async () => {
+  const quick = () => router({ routineTimeoutMs: 40, complexTimeoutMs: 40, budgetMs: 5_000 });
+  const hangFirst = fakeFetch((req, n) => (n === 1 ? 'hang' : claudeSays(req.body.model, RENT)));
+  try {
+    const r = await quick().respond(input('When is rent due?'));
+    assert.equal(r.intent, 'rent_question');
+    assert.equal(hangFirst.seen.length, 2);
+  } finally {
+    hangFirst.restore();
+  }
+  const hangAll = fakeFetch(() => 'hang');
+  try {
+    await assert.rejects(quick().respond(input('When is rent due?')), /timed out/);
+    assert.equal(hangAll.seen.length, 2, 'only one retry');
+  } finally {
+    hangAll.restore();
+  }
+  const broken = fakeFetch(() => new Response('nope', { status: 500 }));
+  try {
+    await assert.rejects(quick().respond(input('When is rent due?')));
+    assert.equal(broken.seen.length, 1, 'a 500 is not retried here');
+  } finally {
+    broken.restore();
+  }
+});
+
+test('warm-up: any answer counts, it keeps trying, and it gives up instead of blocking start-up', async () => {
+  const real = globalThis.fetch;
+  try {
+    const lines: string[] = [];
+    let calls = 0;
+    globalThis.fetch = (async () => { if (++calls < 3) throw new Error('no route'); return new Response('', { status: 404 }); }) as typeof fetch;
+    assert.equal(await warmUpClaude({ gapMs: 1, log: (l) => lines.push(l) }), true);
+    assert.equal(calls, 3);
+    assert.match(lines.join('\n'), /reached Anthropic in \d+ ms \(try 3\)/);
+    globalThis.fetch = (async () => { throw new Error('no route'); }) as typeof fetch;
+    assert.equal(await warmUpClaude({ maxMs: 30, gapMs: 5 }), false);
+  } finally {
+    globalThis.fetch = real;
+  }
+});
+
+test('health: unhealthy while warming up, then healthy', async () => {
+  let warming = true;
+  const server = aiServer(new KeyHelmAI({ chain: [], log: () => {} }), { token: 't', warming: () => warming }).listen(0);
+  try {
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/health`;
+    assert.equal((await fetch(url)).status, 503);
+    warming = false;
+    assert.equal((await fetch(url)).status, 200);
+  } finally {
+    server.close();
   }
 });
 
