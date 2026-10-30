@@ -264,6 +264,8 @@ export interface Application {
   phone?: string;
   email?: string;
   submittedAt: ISO;
+  /** Ticked the optional texting box on the apply form. false = email only; undefined = applied before the box was optional. */
+  smsConsent?: boolean;
   screeningUrl?: string;
   report?: ScreeningReport;
   decision?: 'approved' | 'denied';

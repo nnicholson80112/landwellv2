@@ -121,7 +121,7 @@ export function smsProgram(): string {
 <h3>Tenants</h3>
 <p>The landlord adds you to ${n} with the mobile number you gave them for your tenancy. Our <a href="/terms">Terms</a> only allow landlords to add people who agreed to get texts from them about the rental. Your first text is a welcome message that names ${n}, says what we text about and tells you how to stop (see the first sample below).</p>
 <h3>Anyone who texts first: prospects, applicants and tenants</h3>
-<p>When you text a landlord's ${n} number, for example about a home for rent or a repair, we reply to your message and follow up on what you asked, like tour times. Applicants also check a box on the rental application agreeing to texts and email about their application. We only text you about other homes if you reply YES when we offer.</p>
+<p>When you text a landlord's ${n} number, for example about a home for rent or a repair, we reply to your message and follow up on what you asked, like tour times. Applicants can tick an optional box on the rental application to get texts about their application; it is not required to apply, and applicants who leave it unchecked hear back by email. We only text you about other homes if you reply YES when we offer.</p>
 <h3>Vendors</h3>
 <p>The landlord adds the vendors and staff they hire, with their agreement, to receive job requests by text.</p>
 <h3>Landlords (${n} customers)</h3>
