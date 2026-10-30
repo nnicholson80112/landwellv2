@@ -133,7 +133,7 @@ These are word for word what the app sends (names and addresses made up). Same f
 ### Other campaign questions
 | Question | Answer | Why |
 | --- | --- | --- |
-| Messages include embedded links? | **Yes** | Showing ID checks, lease signing, application and screening links |
+| Messages include embedded links? | **Yes** | Showing ID checks, lease signing, application and screening links, and a tenant's private home page |
 | Messages include phone numbers? | **Yes** | Repair updates give the tenant the vendor's number |
 | Age-gated content? | No | |
 | Direct lending or loan arrangement? | No | KeyHelm never handles money |

@@ -131,6 +131,14 @@ export interface Property {
   status: 'occupied' | 'vacant' | 'listed' | 'turnover';
   lock?: { kind: 'smart' | 'lockbox' | 'none'; deviceId?: string; lockboxCode?: string };
   facts: Record<string, string>; // per-home facts: parking, laundry, utilities
+  homeGuide?: HomeGuide; // for the people living there only, never for prospects
+}
+
+export interface HomeGuide {
+  welcome?: string;
+  contacts?: Record<string, string>; // HOA office, utility companies...
+  rules?: string;
+  tips?: Record<string, string>; // where the water shut-off is, filter size...
 }
 
 export interface Tenant {

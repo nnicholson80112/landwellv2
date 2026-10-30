@@ -15,6 +15,7 @@
 // Run: npm start   (reads .env from the environment; see .env.example)
 
 import { registerMoreRoutes } from './owner-more.ts';
+import { myHomeLease, myHomePage, myHomeTenant } from './my-home.ts';
 import { allows } from '../billing/entitlements.ts';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
@@ -117,7 +118,7 @@ export function loadStatic() {
   }
   STATIC.put('/favicon.svg', FAVICON, 'image/svg+xml', DAY_S * 7);
   STATIC.put('/favicon.ico', FAVICON, 'image/svg+xml', DAY_S * 7);
-  STATIC.put('/robots.txt', 'User-agent: *\nDisallow: /api/\nDisallow: /play\nDisallow: /admin\nDisallow: /sign/\nDisallow: /offer/\n', 'text/plain; charset=utf-8', DAY_S);
+  STATIC.put('/robots.txt', 'User-agent: *\nDisallow: /api/\nDisallow: /play\nDisallow: /admin\nDisallow: /sign/\nDisallow: /my-home/\nDisallow: /offer/\n', 'text/plain; charset=utf-8', DAY_S);
   for (const font of ['montagu-slab-latin.woff2', 'bricolage-grotesque-latin.woff2', 'figtree-latin.woff2']) {
     const p = join(ROOT, 'apps/site/fonts', font);
     if (existsSync(p)) STATIC.put(`/fonts/${font}`, readFileSync(p), 'font/woff2', YEAR_S);
@@ -179,6 +180,27 @@ route('POST', '/sign/:token', async (req, res, svc) => {
   svc.engine.emit('document.signed', { refId: r.refId, role: r.signer.role, name: r.signer.name, envelopeId: r.envelopeId });
   await svc.engine.drain();
   html(res, 200, page('Signed', `<h1>Thank you, ${esc(signed.signedName!.split(' ')[0])}!</h1><p>Your signature is recorded. A copy is available from your landlord.</p>`));
+});
+
+/** My Home is reached by a private link: keep it out of caches, search engines and other sites' logs. */
+const privatePage = (res: ServerResponse, code: number, body: string) => {
+  res.writeHead(code, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer', 'x-robots-tag': 'noindex' });
+  res.end(body);
+};
+const noMyHome = () => page('Not found', "<h1>This link isn't working</h1><p>Ask your landlord for a new one.</p>");
+
+route('GET', '/my-home/:token', (req, res, svc) => {
+  const t = myHomeTenant(svc.store, req.params.token);
+  if (!t) return privatePage(res, 404, noMyHome());
+  const v = myHomePage(svc, t, req.params.token);
+  privatePage(res, 200, page(v.title, v.inner));
+});
+
+route('GET', '/my-home/:token/lease', (req, res, svc) => {
+  const t = myHomeTenant(svc.store, req.params.token);
+  const v = t && myHomeLease(svc, t, req.params.token);
+  if (!v) return privatePage(res, 404, noMyHome());
+  privatePage(res, 200, page(v.title, v.inner));
 });
 
 /* ======================= WEBHOOKS ======================= */

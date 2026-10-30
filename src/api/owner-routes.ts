@@ -29,6 +29,7 @@ import { CO } from '../config/colorado.ts';
 import { prepareTemplate } from '../leases/template.ts';
 import { termLabel } from '../billing/offers.ts';
 import { addressKey, firstName, money, optedOut } from '../workflows/lib.ts';
+import { myHomeUrl } from './my-home.ts';
 import { RateLimiter, StaticCache, clientIp, safeEqual } from './guard.ts';
 import {
   LINK_TTL_MS, LOGIN_LIMIT, MAX_PASSWORD, RESET_TTL_MS, clearedCookie, consumeLoginLink, createSession, currentSession, emailConfigured,
@@ -39,7 +40,7 @@ import { newTotpSecret, otpauthUri, verifyTotp } from './totp.ts';
 import { entitlementsOf } from '../billing/entitlements.ts';
 import {
   Invalid, approvalView, body, bool, calendlyUrlFor, checkDecision, checklist, conflict, contactFor, defaultRules, dollars, email, ensureRules, fail,
-  facts, int, isObj, links, notFound, oneOf, phone, planId, planName, rooms, rulesPatch, rulesSaved, stepOfTask, syncSetupTasks, text,
+  facts, homeGuide, int, isObj, links, notFound, oneOf, phone, planId, planName, rooms, rulesPatch, rulesSaved, stepOfTask, syncSetupTasks, text,
   threadMessages, threads, trades, ymd,
 } from './owner-data.ts';
 import {
@@ -732,6 +733,7 @@ export function registerOwnerRoutes(kit: OwnerKit) {
       }
     }
     if ('facts' in b) p.facts = facts(b.facts, { field: 'facts', label: 'home details' }) ?? {};
+    if ('homeGuide' in b) p.homeGuide = homeGuide(b.homeGuide);
     return p;
   };
   const sameHome = (a: Pick<Property, 'address' | 'zip'>, b: Pick<Property, 'address' | 'zip'>) => a.address.trim().toLowerCase().replace(/\s+/g, ' ') === b.address.trim().toLowerCase().replace(/\s+/g, ' ') && a.zip.slice(0, 5) === b.zip.slice(0, 5);
@@ -852,6 +854,16 @@ export function registerOwnerRoutes(kit: OwnerKit) {
     const next = svc.store.update('tenants', cur.id, { ...p, preferredChannel: merged.preferredChannel });
     svc.engine.audit({ ownerId, actor: 'owner', action: 'tenant.updated', detail: `Tenant updated: ${next.name} (${Object.keys(p).join(', ')}).` });
     json(res, 200, tenantView(svc, next));
+  });
+
+  // The tenant's private My Home link. { fresh: true } replaces it and turns the old one off.
+  r('POST', '/api/tenants/:id/my-home', (req, res, svc, ownerId) => {
+    const t = ownedBy(svc.store.get('tenants', req.params.id), ownerId);
+    if (t.status === 'former') fail('This tenant has moved out, so they no longer have a My Home page.');
+    const fresh = bool(body(req.body).fresh, { field: 'fresh', label: 'fresh' }) ?? false;
+    const url = myHomeUrl(svc.store, t.id, svc.cfg.publicUrl, fresh);
+    if (fresh) svc.engine.audit({ ownerId, actor: 'owner', action: 'tenant.my_home_reset', detail: `New My Home link made for ${t.name}. The old one no longer works.` });
+    json(res, 200, { url });
   });
 
   r('POST', '/api/tenants/:id/former', (req, res, svc, ownerId) => {

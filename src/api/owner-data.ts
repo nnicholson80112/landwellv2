@@ -4,7 +4,7 @@
 
 import type { Services } from '../services.ts';
 import type { Store } from '../store/store.ts';
-import type { Approval, Message, Owner, OwnerRules, ScreeningCriterion } from '../domain/types.ts';
+import type { Approval, HomeGuide, Message, Owner, OwnerRules, ScreeningCriterion } from '../domain/types.ts';
 import { checkAdCopy } from '../ai/guardrails.ts';
 import { optionLabel } from '../workflows/owner.ts';
 import { addressKey, identify, normalizePhone, optedOut } from '../workflows/lib.ts';
@@ -149,6 +149,22 @@ export function facts(v: unknown, o: Opt): Record<string, string> | undefined {
     if (value) out[key] = fairHousing(value, { field: o.field, label: `"${key}"` })!;
   }
   return out;
+}
+
+/** The home guide tenants see on My Home. Every part is optional; an empty guide is fine. */
+export function homeGuide(v: unknown): HomeGuide {
+  if (v === null || v === undefined) return {};
+  if (!isObj(v)) fail('The home guide should have a welcome note, contacts, rules and tips.', 'homeGuide');
+  const g = v as Record<string, unknown>;
+  const note = (k: 'welcome' | 'rules', label: string) => fairHousing(text(g[k], { field: k, label, max: 2000, multiline: true }), { field: k, label }) || undefined;
+  const welcome = note('welcome', 'the welcome note');
+  const rules = note('rules', 'the house rules');
+  const contacts = facts(g.contacts, { field: 'contacts', label: 'contacts' });
+  const tips = facts(g.tips, { field: 'tips', label: 'good to know' });
+  return {
+    ...(welcome ? { welcome } : {}), ...(rules ? { rules } : {}),
+    ...(contacts && Object.keys(contacts).length ? { contacts } : {}), ...(tips && Object.keys(tips).length ? { tips } : {}),
+  };
 }
 
 /** Https links to photos. */
