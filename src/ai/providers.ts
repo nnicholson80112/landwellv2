@@ -269,7 +269,16 @@ export class ClaudeRouter implements CommunicationAI {
     const timeout = (m: AnthropicAI) => (m === this.routine ? this.routineTimeoutMs : this.complexTimeoutMs);
     const first = pick.route === 'complex' ? high : low;
     // A failure here throws (with any billed call attached) and the caller falls back to rules.
-    const a = await first.ask(input, timeout(first));
+    // One retry after a timeout, if time is left: the first calls after a deploy can hang, then the next one answers in seconds.
+    let a: ClaudeAnswer;
+    try {
+      a = await first.ask(input, timeout(first));
+    } catch (e) {
+      const left = this.budgetMs - (Date.now() - t0);
+      if (!(e instanceof AIError) || e.kind !== 'timeout' || left < MIN_ESCALATION_MS) throw e;
+      this.log?.(`[ai] ${first.model} timed out; trying once more with ${Math.round(left / 1000)}s left`);
+      a = await first.ask(input, Math.min(timeout(first), left));
+    }
     const calls = [a.call];
     let result = normalize(a.raw, `anthropic:${a.call.model}`, input);
     let model = a.call.model;
@@ -299,6 +308,32 @@ export class ClaudeRouter implements CommunicationAI {
     this.log?.(summaryLine(input, out, Date.now() - t0));
     return out;
   }
+}
+
+/**
+ * Reach Anthropic once before taking traffic (a plain GET with no key: no model call, no cost), so
+ * a fresh container's slow first connection isn't paid for by a tenant's text. Gives up after
+ * `maxMs` and starts anyway: answering with the rules beats not starting. Returns true if it got through.
+ */
+export async function warmUpClaude(o: { url?: string; maxMs?: number; tryMs?: number; gapMs?: number; log?: (line: string) => void } = {}): Promise<boolean> {
+  const t0 = Date.now();
+  const maxMs = o.maxMs ?? 45_000;
+  const tryMs = o.tryMs ?? 8_000;
+  for (let tries = 1; ; tries++) {
+    const left = maxMs - (Date.now() - t0);
+    if (left <= 0) break;
+    try {
+      // Any answer counts, even a 404: it means the connection works.
+      await fetch(o.url ?? 'https://api.anthropic.com/', { signal: AbortSignal.timeout(Math.min(tryMs, left)) });
+      o.log?.(`[ai] reached Anthropic in ${Date.now() - t0} ms (try ${tries})`);
+      return true;
+    } catch (e) {
+      o.log?.(`[ai] warm-up try ${tries} failed after ${Date.now() - t0} ms: ${errText(e).slice(0, 120)}`);
+      await new Promise((r) => setTimeout(r, Math.min(o.gapMs ?? 2_000, Math.max(0, maxMs - (Date.now() - t0)))));
+    }
+  }
+  o.log?.(`[ai] couldn't reach Anthropic within ${maxMs} ms; starting anyway`);
+  return false;
 }
 
 /** One log line per message: who answered, why, what it cost. */
