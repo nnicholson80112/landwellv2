@@ -29,7 +29,8 @@ import { verifyStripeSignature, verifyTwilioSignature } from '../adapters/live.t
 import { registerBillingRoutes } from './billing-routes.ts';
 import { startStripeSetup } from '../billing/catalog.ts';
 import { registerOwnerRoutes } from './owner-routes.ts';
-import { roleProblem, sessionAuth, withoutSecrets, type AuthResult, type Role } from './auth.ts';
+import { createSession, roleProblem, sessionAuth, withoutSecrets, type AuthResult, type Role } from './auth.ts';
+import { LabError } from '../sim/lab.ts';
 import type { SignRequest } from '../adapters/esign-native.ts';
 import { addressKey, money } from '../workflows/lib.ts';
 import { seed } from '../sim/seed.ts';
@@ -383,6 +384,41 @@ route('POST', '/api/dev/event', async (req, res, svc) => {
   svc.engine.emit(req.body.event, req.body.payload ?? {});
   await svc.engine.drain();
   json(res, 200, { ok: true });
+}, true);
+
+/* Test lab (only the local sandbox, npm run sandbox, has svc.lab; the live server answers 404). See src/sim/lab.ts. */
+const LAB_WHO = ['tenant', 'prospect', 'new_prospect', 'vendor', 'owner'];
+const LAB_JUMPS = ['1h', '1d', '1w', 'rent', 'monday', 'renewal', 'lease_end'];
+async function labDo(res: ServerResponse, fn: () => Promise<unknown> | unknown) {
+  try {
+    json(res, 200, { ok: true, result: (await fn()) ?? null });
+  } catch (e) {
+    json(res, e instanceof LabError ? e.status : 500, { error: (e as Error).message });
+  }
+}
+route('GET', '/api/lab', (req, res, svc) => (svc.lab ? json(res, 200, svc.lab.status(req.params.ownerId)) : json(res, 404, { error: 'not found' })), true);
+route('POST', '/api/lab/text', (req, res, svc) => {
+  if (!svc.lab) return json(res, 404, { error: 'not found' });
+  const body = typeof req.body.body === 'string' ? req.body.body.trim().slice(0, 1000) : '';
+  const photo = req.body.photo === true;
+  if (!LAB_WHO.includes(req.body.who) || (!body && !photo)) return json(res, 400, { error: 'Pick who is texting and type a message.' });
+  return labDo(res, () => svc.lab!.text(req.params.ownerId, req.body.who, body, photo));
+}, true);
+route('POST', '/api/lab/jump', (req, res, svc) => {
+  if (!svc.lab) return json(res, 404, { error: 'not found' });
+  if (!LAB_JUMPS.includes(req.body.to)) return json(res, 400, { error: 'Unknown jump.' });
+  return labDo(res, () => svc.lab!.jump(req.params.ownerId, req.body.to));
+}, true);
+route('POST', '/api/lab/screening', (req, res, svc) => (svc.lab ? labDo(res, () => svc.lab!.screening(req.params.ownerId)) : json(res, 404, { error: 'not found' })), true);
+route('POST', '/api/lab/id-check', (req, res, svc) => (svc.lab ? labDo(res, () => svc.lab!.idCheck(req.params.ownerId)) : json(res, 404, { error: 'not found' })), true);
+route('POST', '/api/lab/reset', (_req, res, svc) => {
+  if (!svc.lab) return json(res, 404, { error: 'not found' });
+  // The demo owner gets a new id, so sign the browser in again as them.
+  return labDo(res, () => {
+    svc.lab!.reset();
+    const owner = svc.store.list('owners')[0];
+    if (owner) res.setHeader('set-cookie', createSession(svc, owner.id).cookie);
+  });
 }, true);
 
 route('GET', '/play', (_req, res) => {

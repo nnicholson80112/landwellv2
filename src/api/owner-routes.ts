@@ -107,7 +107,7 @@ function signIn(req: Req, res: ServerResponse, svc: Services, ownerId: string, m
 
 const APP_DIR = join(ROOT, 'apps/owner');
 /** The app's screens. /app/<tab> and /app/messages/<key> open the same page on that screen. */
-export const APP_TABS = ['today', 'rent', 'repairs', 'messages', 'leasing', 'homes', 'calendar', 'documents', 'books', 'settings'] as const;
+export const APP_TABS = ['today', 'rent', 'repairs', 'messages', 'leasing', 'homes', 'calendar', 'documents', 'books', 'settings', 'lab'] as const;
 let appCache: { mtimeMs: number; html: string } | undefined;
 
 /** apps/owner/index.html from memory (read again when the file changes), or undefined when it doesn't exist. */
@@ -514,7 +514,7 @@ export function registerOwnerRoutes(kit: OwnerKit) {
   r('GET', '/api/me', (req, res, svc, ownerId) => {
     if (syncSetupTasks(svc, ownerId)) svc.store.flush();
     const o = svc.store.get('owners', ownerId) ?? notFound();
-    json(res, 200, { ...meView(svc, o, req.auth?.via ?? 'bearer'), me: meWho(svc, o, req.auth), entitlements: entitlementsOf(o) });
+    json(res, 200, { ...meView(svc, o, req.auth?.via ?? 'bearer'), me: meWho(svc, o, req.auth), entitlements: entitlementsOf(o), ...(svc.lab ? { lab: true } : {}) });
   });
 
   r('PATCH', '/api/me', async (req, res, svc, ownerId) => {

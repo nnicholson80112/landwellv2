@@ -60,6 +60,13 @@ export class MemoryStore implements Store {
     }
   }
 
+  /** Forget everything (the sandbox's "Reset demo data"). Saved on the next flush. */
+  clear(): void {
+    this.tables = {};
+    this.kv = {};
+    this.dirty = true;
+  }
+
   /** Called after every change; PgStore overrides it to know what to write. */
   protected changed(_kind: 'row' | 'kv', _group: string, _key: string, _removed: boolean): void {}
 

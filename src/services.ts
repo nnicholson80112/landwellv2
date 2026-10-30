@@ -29,6 +29,8 @@ export interface Services {
   outbox?: OutboxMessaging; // present when messaging is mocked
   cfg: Config;
   brand: typeof BRAND;
+  /** Only in the local sandbox (npm run sandbox): the Test lab's time jumps and reset. Never set on the live server. */
+  lab?: import('./sim/lab.ts').Lab;
 }
 
 export function pickAI(env: Record<string, string | undefined>): CommunicationAI {

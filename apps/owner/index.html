@@ -284,6 +284,13 @@ dialog.sheet::backdrop{background:rgba(30,43,47,.5)}
 .tile h4{font:700 16px var(--body);text-transform:none;letter-spacing:0;color:var(--ink)}
 .tile.needs{box-shadow:inset 3px 0 0 var(--sun)}
 .small{font-size:14px}
+.lab-steps{list-style:none;margin:0;padding:0;display:grid;gap:12px;counter-reset:lab}
+.lab-steps>li{counter-increment:lab}
+.lab-steps h3{margin:0 0 6px}
+.lab-steps h3::before{content:counter(lab) ". ";color:var(--muted)}
+.lab-steps .toolbar{margin-top:10px}
+.btn.lab-act{white-space:normal;text-align:left;height:auto}
+.lab-body{white-space:pre-wrap;overflow-wrap:anywhere;margin:4px 0 0}
 
 /* ---------- calendar ---------- */
 .cal-bar{align-items:center;gap:8px}
@@ -368,6 +375,7 @@ blockquote.draft{margin:0;padding:10px 14px;border-left:3px solid var(--sun);bac
     <li class="extra"><a href="/app/documents" data-nav data-tab="documents"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v18h12V7zM14 3v4h4M9 12h6M9 16h6"/></svg><span class="label">Documents</span><span class="count" hidden></span></a></li>
     <li class="extra"><a href="/app/books" data-nav data-tab="books"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21a2 2 0 0 1 2-2h13v2H6"/></svg><span class="label">Books</span><span class="count" hidden></span></a></li>
     <li class="extra"><a href="/app/settings" data-nav data-tab="settings"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M15 4.5v5M4 17h3M11 17h9M9 14.5v5"/></svg><span class="label">Settings</span><span class="count" hidden></span></a></li>
+    <li class="extra" id="lab-nav" hidden><a href="/app/lab" data-nav data-tab="lab"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 3.5h5M10.5 3.5v6L5 19a1.5 1.5 0 0 0 1.3 2.2h11.4A1.5 1.5 0 0 0 19 19l-5.5-9.5v-6M7.5 15h9"/></svg><span class="label">Test lab</span><span class="count" hidden></span></a></li>
     <li class="more-li"><button type="button" id="more-btn" class="more-btn" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg><span class="label">More</span></button></li>
   </ul>
 </nav>
@@ -388,6 +396,7 @@ blockquote.draft{margin:0;padding:10px 14px;border-left:3px solid var(--sun);bac
   <section id="view-documents" class="view" data-view="documents" aria-labelledby="page-title" hidden></section>
   <section id="view-books" class="view" data-view="books" aria-labelledby="page-title" hidden></section>
   <section id="view-settings" class="view" data-view="settings" aria-labelledby="page-title" hidden></section>
+  <section id="view-lab" class="view" data-view="lab" aria-labelledby="page-title" hidden></section>
 </main>
 
 <div class="toasts"><div id="toasts" role="status" aria-live="polite"></div><div id="alerts" role="alert" aria-live="assertive"></div></div>
@@ -459,7 +468,8 @@ const humanize = (f) => cap(String(f || '').replace(/_/g, ' '));
 const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || '';
 /** People by first name ("Lisa"); businesses by their whole name ("Mile High Handyman"). */
 const callName = (name, role) => (role === 'vendor' ? String(name || '') : firstName(name));
-const prettyPhones = (s) => String(s || '').replace(/\+1\d{10}\b/g, (p) => phoneText(p));
+// "Lisa Chen (+17205550111)" reads "Lisa Chen at (720) 555-0111", not "((720) 555-0111)".
+const prettyPhones = (s) => String(s || '').replace(/ ?\((\+1\d{10})\)/g, (_, p) => ` at ${phoneText(p)}`).replace(/\+1\d{10}\b/g, (p) => phoneText(p));
 const oneLine = (s, n = 110) => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1).trimEnd() + '...' : t; };
 
 /** Cents to "$1,234" (or "$1,234.50"). */
@@ -727,9 +737,9 @@ sheet.addEventListener('close', () => {
 /* =====================================================================
    Screens and navigation
    ===================================================================== */
-const TABS = ['today', 'rent', 'repairs', 'messages', 'leasing', 'homes', 'calendar', 'documents', 'books', 'settings'];
-const TITLE = { today: 'Today', rent: 'Rent', repairs: 'Repairs', messages: 'Messages', leasing: 'Leasing', homes: 'Homes', calendar: 'Calendar', documents: 'Documents', books: 'Books', settings: 'Settings' };
-const LOADING = { today: 'Loading what needs you...', rent: 'Loading rent...', repairs: 'Loading repairs...', messages: 'Loading messages...', leasing: 'Loading leasing...', homes: 'Loading your homes...', calendar: 'Loading your calendar...', documents: 'Loading documents...', books: 'Loading your books...', settings: 'Loading settings...' };
+const TABS = ['today', 'rent', 'repairs', 'messages', 'leasing', 'homes', 'calendar', 'documents', 'books', 'settings', 'lab'];
+const TITLE = { today: 'Today', rent: 'Rent', repairs: 'Repairs', messages: 'Messages', leasing: 'Leasing', homes: 'Homes', calendar: 'Calendar', documents: 'Documents', books: 'Books', settings: 'Settings', lab: 'Test lab' };
+const LOADING = { today: 'Loading what needs you...', rent: 'Loading rent...', repairs: 'Loading repairs...', messages: 'Loading messages...', leasing: 'Loading leasing...', homes: 'Loading your homes...', calendar: 'Loading your calendar...', documents: 'Loading documents...', books: 'Loading your books...', settings: 'Loading settings...', lab: 'Loading the test lab...' };
 /** Phones show four tabs and "More"; the rest open from a sheet. */
 const MORE_TABS = ['leasing', 'homes', 'calendar', 'documents', 'books', 'settings'];
 const pathFor = (tab, item) => (tab === 'today' ? '/app' : '/app/' + tab) + (item ? '/' + encodeURIComponent(item) : '');
@@ -796,6 +806,8 @@ async function badges() {
     const [me, threads, charges] = await Promise.all([get('/api/me'), get('/api/messages/threads'), get('/api/charges?status=open')]);
     if (!S.rules) S.rules = await get('/api/rules');
     S.me = me; S.threads = threads; S.openCharges = charges;
+    // The Test lab only exists on the local sandbox (npm run sandbox).
+    if (me.lab && $('#lab-nav').hidden) { $('#lab-nav').hidden = false; MORE_TABS.push('lab'); }
     setBadge('today', me.counts.pendingApprovals + me.counts.openTasks, 'need you');
     setBadge('rent', charges.filter(isLate).length, 'late');
     setBadge('messages', threads.filter((t) => t.needsReply).length, 'waiting for a reply');
@@ -1963,7 +1975,105 @@ function securitySection() {
     h('h3', { class: 'sub-h' }, "Where you're signed in"), devBox);
 }
 
-const VIEWS = { today: viewToday, rent: viewRent, repairs: viewRepairs, messages: viewMessages, leasing: viewLeasing, homes: viewHomes, calendar: viewCalendar, documents: viewDocuments, books: viewBooks, settings: viewSettings };
+/* =====================================================================
+   TEST LAB (only on the local sandbox, npm run sandbox): text as anyone,
+   jump the clock ahead, see every text that would have gone out.
+   ===================================================================== */
+const LAB_WHO = { tenant: 'Lisa (tenant)', prospect: 'Prospect', new_prospect: 'A new prospect', vendor: 'Vendor', owner: 'You (owner)' };
+/** Try these 10 things: one per workflow. Each action is a text, a jump, or a lab helper. */
+const LAB_STEPS = [
+  { title: 'A repair', what: 'Lisa reports a torn screen. KeyHelm asks for a photo, texts your window vendor, and books it.', acts: [
+    { who: 'tenant', body: 'The window screen in the back bedroom is torn.' }, { who: 'tenant', body: 'Here you go', photo: true },
+    { who: 'vendor', body: 'YES Wed 10-12 $120' }, { who: 'vendor', body: 'DONE $120' }], then: 'Then open Repairs and Books.' },
+  { title: 'Rent day', what: 'Lisa gets a friendly reminder on the due date.', acts: [{ jump: 'rent' }] },
+  { title: 'Late rent', what: "After the grace period you're asked “Did rent arrive?”. Answer No on Today, then jump a day for the late fee choice.", acts: [{ jump: '1w' }, { jump: '1d' }] },
+  { title: 'An application', what: 'Fill in the apply form as a made-up applicant, then send the sample screening report. Your decision shows on Today.', acts: [{ apply: true }, { screening: true }] },
+  { title: 'A lease signing', what: 'Approve the applicant on Today with a start date. The signing link is in “What was sent” below: open it and sign as the tenant, then as you.', acts: [] },
+  { title: 'A showing', what: 'A new prospect asks for a tour, passes the ID check, then picks a time.', acts: [
+    { who: 'new_prospect', body: 'Is 88 Aspen Ct still available? Can I tour it this weekend?' }, { idCheck: true }, { who: 'prospect', body: '1' }] },
+  { title: 'A renewal', what: "Answer the renewal question on Today (offer the same rent), then Lisa says yes.", acts: [{ jump: 'renewal' }, { who: 'tenant', body: "Yes, we'd like to renew." }] },
+  { title: 'A move-out', what: 'Lisa gives notice. Jump to the lease end for the deposit steps on Today.', acts: [{ who: 'tenant', body: "I'm moving out when my lease ends." }, { jump: 'lease_end' }] },
+  { title: 'The Monday report', what: 'Your weekly summary goes out Monday morning.', acts: [{ jump: 'monday' }] },
+  { title: 'STOP and START', what: 'Lisa opts out of texts, then back in.', acts: [{ who: 'tenant', body: 'STOP' }, { who: 'tenant', body: 'START' }] },
+];
+const LAB_LINK = /(https?:\/\/[^\s]+)/g;
+function labBody(text) {
+  // Links back into this sandbox (signing pages, apply forms) open in a new tab.
+  return text.split(LAB_LINK).map((part, i) => (i % 2 && /^http:\/\/(localhost|127\.0\.0\.1)[:/]/.test(part) ? h('a', { href: part, target: '_blank', rel: 'noopener' }, part) : part));
+}
+async function labRun(b, label, fn) {
+  try {
+    const r = await busy(b, label, fn);
+    const n = r && typeof r.result === 'number' ? r.result : null;
+    toast(n === null ? 'Done.' : n ? `Done. ${n} ${n === 1 ? 'text' : 'texts'} went out.` : 'Done. Nothing was sent.');
+    refresh();
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function viewLab(el, stale) {
+  const d = await get('/api/lab');
+  if (stale()) return;
+  const when = (iso, o = {}) => new Date(iso).toLocaleString('en-US', { timeZone: d.tz, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', ...o });
+  const ahead = d.aheadMs > 60_000 ? `${Math.floor(d.aheadMs / 86_400_000)} days, ${Math.floor((d.aheadMs % 86_400_000) / 3_600_000)} hours ahead of real time` : 'Real time';
+  const jumpBtn = (k, cls = 'ghost') => {
+    const j = d.jumps[k];
+    const b = btn(j.label, () => labRun(b, 'Jumping...', () => post('/api/lab/jump', { to: k })), cls, { disabled: !j.at, title: j.at ? when(j.at) : j.why });
+    return b;
+  };
+  const textBtn = (a) => {
+    const person = d.people.find((p) => p.who === a.who);
+    const name = a.who === 'new_prospect' ? 'a new prospect' : a.who === 'vendor' && person ? person.name : LAB_WHO[a.who];
+    const b = btn(`Text as ${name}: “${a.body}”${a.photo ? ' + photo' : ''}`, () => labRun(b, 'Sending...', () => post('/api/lab/text', a)), 'ghost lab-act');
+    return b;
+  };
+  const stepAct = (a) => {
+    if (a.jump) { const b = jumpBtn(a.jump); b.textContent = `Jump: ${d.jumps[a.jump].label}`; return b; }
+    if (a.who) return textBtn(a);
+    if (a.apply) return d.applyUrl ? h('a', { class: 'btn ghost', href: d.applyUrl, target: '_blank', rel: 'noopener' }, `Open the apply form for ${d.vacantAddress}`) : null;
+    if (a.screening) { const b = btn('Send the sample screening report', () => labRun(b, 'Sending...', () => post('/api/lab/screening'))); return b; }
+    if (a.idCheck) { const b = btn('Pass the ID check', () => labRun(b, 'Checking...', () => post('/api/lab/id-check'))); return b; }
+    return null;
+  };
+
+  // Text as anyone
+  const who = field({ label: 'Who is texting?', name: 'who', type: 'select', options: Object.entries(LAB_WHO), value: 'tenant' });
+  const form = h('form', { class: 'form', novalidate: true }, who,
+    field({ label: 'Message', name: 'body', type: 'textarea', maxlength: 1000, placeholder: 'The toilet won’t stop running' }),
+    h('label', { class: 'check' }, h('input', { type: 'checkbox', name: 'photo' }), ' Include a photo'),
+    actions('Send text', false));
+  onSubmit(form, async () => {
+    const r = await post('/api/lab/text', { who: val(form, 'who'), body: val(form, 'body'), photo: form.elements.photo.checked });
+    toast(r.result ? `Sent. ${r.result} ${r.result === 1 ? 'reply' : 'replies'} went out.` : 'Sent. Nothing went out.');
+    refresh();
+  }, 'Sending...');
+
+  const resetBtn = btn('Reset demo data', () => {
+    if (!confirm('Start over? Every change in the sandbox is wiped and the clock goes back to now.')) return;
+    labRun(resetBtn, 'Resetting...', () => post('/api/lab/reset'));
+  }, 'ghost');
+
+  fill(el,
+    h('p', { class: 'lead' }, 'Try every workflow in minutes. This is your local sandbox: texts and emails go nowhere, and nothing here touches the live app.'),
+    section('Clock', null, h('div', { class: 'card' },
+      h('p', null, h('strong', null, when(d.now, { year: 'numeric' }))),
+      h('p', { class: 'muted small' }, ahead),
+      h('p', null, h('strong', null, 'Jump ahead')),
+      h('div', { class: 'toolbar' }, ['1h', '1d', '1w', 'rent', 'monday', 'renewal', 'lease_end'].map((k) => jumpBtn(k))),
+      Object.values(d.jumps).filter((j) => !j.at).map((j) => h('p', { class: 'muted small' }, `${j.label}: ${j.why}.`)))),
+    section('Try these 10 things', null, h('ol', { class: 'lab-steps' }, LAB_STEPS.map((st) => h('li', { class: 'card' },
+      h('h3', null, st.title), h('p', null, st.what),
+      st.acts.length ? h('div', { class: 'toolbar' }, st.acts.map(stepAct)) : null,
+      st.then ? h('p', { class: 'muted small' }, st.then) : null)))),
+    section('Text as anyone', null, h('div', { class: 'card' }, form,
+      h('p', { class: 'muted small' }, 'Numbers: ', d.people.map((p, i) => [i ? ' · ' : '', `${p.name} ${p.phone}`])))),
+    section('What was sent', null, d.sent.length ? h('ul', { class: 'list card' }, d.sent.map((m) => h('li', null,
+      h('p', { class: 'small muted' }, when(m.at), ' · to ', h('strong', null, m.toName), m.channel === 'sms' ? '' : ` (${m.channel})`),
+      h('p', { class: 'lab-body' }, labBody(m.body))))) : empty('Nothing yet. Send a text or jump ahead.')),
+    section('Still waiting', null, d.waiting.length ? h('ul', { class: 'list card' }, d.waiting.map((w) => h('li', null, h('strong', null, cap(w.workflow.replace(/[-_]/g, ' '))), ': ', w.waitingFor)))
+      : empty('Nothing is waiting.')),
+    section('Start over', null, h('div', { class: 'card' }, h('p', null, 'Wipe the sandbox and load the demo data again.'), resetBtn)));
+}
+
+const VIEWS = { today: viewToday, rent: viewRent, repairs: viewRepairs, messages: viewMessages, leasing: viewLeasing, homes: viewHomes, calendar: viewCalendar, documents: viewDocuments, books: viewBooks, settings: viewSettings, lab: viewLab };
 
 /* =====================================================================
    Start: offline banner, fresh data when you come back, first screen

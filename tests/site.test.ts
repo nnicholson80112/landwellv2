@@ -220,7 +220,7 @@ test('sample texts are what the workflows really send', async () => {
   const shapes: [string, RegExp][] = [
     ['welcome', new RegExp(`^Hi [A-Z][a-z]+! Your landlord now uses ${b} for .+\\. Text this number anytime for repairs \\(send a photo\\) or questions\\. You'll keep paying rent to your landlord the same way; we'll just send you a reminder before it's due\\. Reply STOP to opt out of texts\\.$`)],
     ['rent reminder', /^Hi [A-Z][a-z]+, a heads-up: rent of \$[\d,]+ for .+ is due [A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}\. .+$/],
-    ['repair update', /^Your repair is booked with .+ \(.+\)\. If you need to reach them: \+\d{11}\. Text me here if anything changes\.$/],
+    ['repair update', /^Your repair is booked with .+ \(.+\)\. If you need to reach them: \d{3}-\d{3}-\d{4}\. Text me here if anything changes\.$/],
     ['showing', /^You're booked for [A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2} [AP]M at .+\. Your door code arrives 15 minutes before\.$/],
     ['owner alert', new RegExp(`^${b}: Repair \\$[\\d,]+: .+\\. .+ can do ".+" .+ for \\$[\\d,]+\\. Your limit is \\$[\\d,]+\\.\\nReply YES [A-Z2-9]{3} \\(Approve\\) or NO [A-Z2-9]{3} \\(Decline\\)\\.$`)],
   ];
