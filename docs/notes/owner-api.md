@@ -135,6 +135,11 @@ integer **cents**. **Dates**: `YYYY-MM-DD`; timestamps ISO UTC. **Lists** defaul
   the lease is marked ended (rent reminders stop) and an occupied home becomes `turnover`.
 - `POST /api/tenants/:id/my-home` `{ fresh? }` → `{ url }`, the tenant's private My Home link. `fresh: true` replaces it and turns the old one off. Former tenants get a 400, and their old link stops working.
 
+### Condition reports
+- `GET /api/condition-reports?propertyId=` · `GET /:id` · `POST` `{ propertyId, kind: "move_in"|"move_out", rooms? }` · `PATCH /:id` `{ rooms }` (not sent yet) · `DELETE /:id` (not sent yet).
+- `POST /:id/rooms/:room` `{ condition, note }` · `POST /:id/rooms/:room/photos` `{ data }` (base64 JPEG) · `DELETE /:id/rooms/:room/photos/:name` · `GET /:id/photos/:name`.
+- `POST /:id/send` · `POST /:id/finish` `{ name, withoutTenant? }`. Tenants use the same steps under `/my-home/:token/condition/:id`.
+
 ### Vendors
 - `GET /api/vendors` → `[Vendor]`
 - `POST /api/vendors` `{ name, trades?: ["plumbing", ...], phone?, email?, emergency?=false, preferred?=true }` → 201 (phone or email needed; no two vendors with one phone).

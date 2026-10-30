@@ -5,14 +5,14 @@ import { maintenance } from './maintenance.ts';
 import { rentCycle, paymentReceived, lateRent } from './rent.ts';
 import { application, leaseFlow } from './leasing.ts';
 import { showing, listing } from './showings-listings.ts';
-import { renewalSweep, renewal, moveOut, tenantWelcome } from './tenancy.ts';
+import { renewalSweep, renewal, moveOut, tenantWelcome, conditionNotice } from './tenancy.ts';
 import { weeklyReport, onboarding, approvalReminders, notifyOwnerOfApproval } from './owner.ts';
 import { approvalAlert, runFailedAlert } from '../ops/alerts.ts';
 import { installOps, track } from '../ops/index.ts';
 
 export const ALL_WORKFLOWS: WorkflowDef<Services, any>[] = [
   inboundMessage, maintenance, rentCycle, paymentReceived, lateRent, application, leaseFlow,
-  showing, listing, renewalSweep, renewal, moveOut, tenantWelcome, weeklyReport, onboarding, approvalReminders,
+  showing, listing, renewalSweep, renewal, moveOut, tenantWelcome, weeklyReport, onboarding, approvalReminders, conditionNotice,
 ];
 
 /**

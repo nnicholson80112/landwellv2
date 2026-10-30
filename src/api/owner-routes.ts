@@ -22,7 +22,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Req, Handler } from './server.ts';
 import type { Services } from '../services.ts';
-import type { Charge, Lease, Owner, Property, Tenant, Vendor, WorkOrder } from '../domain/types.ts';
+import type { Charge, ConditionReport, Lease, Owner, Property, Tenant, Vendor, WorkOrder } from '../domain/types.ts';
 import { BUSINESS } from '../config/business.ts';
 import { BRAND } from '../config/brand.ts';
 import { CO } from '../config/colorado.ts';
@@ -30,6 +30,7 @@ import { prepareTemplate } from '../leases/template.ts';
 import { termLabel } from '../billing/offers.ts';
 import { addressKey, firstName, money, optedOut } from '../workflows/lib.ts';
 import { myHomeUrl } from './my-home.ts';
+import { REPORT_NAME, activeTenants, addPhoto, defaultRooms, lastMoveIn, readPhoto, removePhoto, removePhotos, roomsFrom, saveEntry } from './condition.ts';
 import { RateLimiter, StaticCache, clientIp, safeEqual } from './guard.ts';
 import {
   LINK_TTL_MS, LOGIN_LIMIT, MAX_PASSWORD, RESET_TTL_MS, clearedCookie, consumeLoginLink, createSession, currentSession, emailConfigured,
@@ -275,7 +276,7 @@ function propertyView(svc: Services, p: Property) {
   return {
     ...p, tenants: tenants.map((t) => ({ id: t.id, name: t.name, status: t.status })),
     lease: lease ? { id: lease.id, startDate: lease.startDate, endDate: lease.endDate, rent: lease.rent, deposit: lease.deposit, tenantIds: lease.tenantIds } : null,
-    canDelete: !busy && !tenants.length,
+    canDelete: !busy && !tenants.length && !svc.store.find('conditionReports', (r) => r.propertyId === p.id),
   };
 }
 
@@ -767,6 +768,7 @@ export function registerOwnerRoutes(kit: OwnerKit) {
     if (svc.store.find('applications', (a) => a.propertyId === p.id && ['submitted', 'screening', 'ready_for_owner'].includes(a.status))) conflict('This home has applications in progress. Decide on them first.');
     if (svc.store.find('showings', (x) => x.propertyId === p.id && ['requested', 'confirmed'].includes(x.status))) conflict('This home has showings booked. Cancel them first.');
     if (svc.store.find('workOrders', (w) => w.propertyId === p.id && !CLOSED_WO.includes(w.status))) conflict('This home has an open repair. Remove it after the repair is finished.');
+    if (svc.store.find('conditionReports', (r) => r.propertyId === p.id)) conflict('This home has condition reports, so it stays on file.');
     if (p.status === 'listed') await svc.adapters.listings.unpublish({ propertyId: p.id });
     svc.store.remove('properties', p.id);
     svc.engine.audit({ ownerId, actor: 'owner', action: 'property.removed', detail: `Home removed: ${p.address}.` });
@@ -1056,6 +1058,108 @@ export function registerOwnerRoutes(kit: OwnerKit) {
     const saved = svc.store.insert('messages', { ownerId, threadKey: addressKey(to!), direction: 'out', channel: want, to: to!, body: out, media: [], at: nowIso(svc), meta: { providerId, sentBy: 'owner' } });
     svc.engine.audit({ ownerId, actor: 'owner', action: 'message.owner_sent', detail: `You ${want === 'sms' ? 'texted' : 'emailed'} ${contact.name}.` });
     json(res, 201, { message: { id: saved.id, direction: 'out', channel: want, body: out, media: [], at: saved.at, from: null, to: saved.to, sentBy: 'owner' }, key: saved.threadKey });
+  });
+
+  /* ---------------- condition reports ---------------- */
+  const reportView = (svc: Services, r: ConditionReport) => {
+    const before = r.kind === 'move_out' ? lastMoveIn(svc, r.propertyId) : undefined;
+    return {
+      ...r, propertyAddress: svc.store.get('properties', r.propertyId)?.address ?? null,
+      tenantNames: r.tenantIds.map((id) => svc.store.get('tenants', id)?.name).filter(Boolean),
+      canSend: activeTenants(svc, r).length > 0,
+      moveIn: before ? { id: before.id, rooms: before.rooms } : null,
+    };
+  };
+  const reportOf = (svc: Services, id: string, ownerId: string) => ownedBy(svc.store.get('conditionReports', id), ownerId);
+  const stillOpen = (r: ConditionReport) => { if (r.status === 'done') conflict("This report is final, so it can't be changed."); };
+
+  r('GET', '/api/condition-reports', (req, res, svc, ownerId) => {
+    const home = req.query.get('propertyId');
+    json(res, 200, svc.store.list('conditionReports', (x) => x.ownerId === ownerId && (!home || x.propertyId === home)).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((x) => reportView(svc, x)));
+  });
+  r('GET', '/api/condition-reports/:id', (req, res, svc, ownerId) => json(res, 200, reportView(svc, reportOf(svc, req.params.id, ownerId))));
+
+  r('POST', '/api/condition-reports', (req, res, svc, ownerId) => {
+    const b = body(req.body);
+    const p = ownedBy(svc.store.get('properties', text(b.propertyId, { field: 'propertyId', label: 'the home', max: 64, required: true })!), ownerId);
+    const kind = oneOf(b.kind, ['move_in', 'move_out'] as const, { field: 'kind', label: 'the kind of report', required: true })!;
+    const tenants = svc.store.list('tenants', (t) => t.propertyId === p.id && t.ownerId === ownerId && t.status !== 'former');
+    const lease = svc.store.find('leases', (l) => l.propertyId === p.id && l.status === 'active');
+    if (kind === 'move_in' && !tenants.length) fail('Add the tenant first, so they can fill in their side.');
+    const before = kind === 'move_out' ? lastMoveIn(svc, p.id) : undefined;
+    const rooms = b.rooms !== undefined ? roomsFrom(b.rooms) : before ? roomsFrom(before.rooms.map((x) => x.name)) : defaultRooms(p);
+    const made = svc.store.insert('conditionReports', { ownerId, propertyId: p.id, leaseId: lease?.id, tenantIds: tenants.map((t) => t.id), kind, status: 'draft', rooms, createdAt: nowIso(svc) });
+    svc.engine.audit({ ownerId, actor: 'owner', action: 'condition.started', detail: `${REPORT_NAME[kind]} condition report started: ${p.address}.` });
+    json(res, 201, reportView(svc, made));
+  });
+
+  r('PATCH', '/api/condition-reports/:id', (req, res, svc, ownerId) => {
+    const cur = reportOf(svc, req.params.id, ownerId);
+    if (cur.status !== 'draft') conflict("The rooms can't change once the report has gone to the tenant.");
+    json(res, 200, reportView(svc, svc.store.update('conditionReports', cur.id, { rooms: roomsFrom(body(req.body).rooms, cur.rooms) })));
+  });
+
+  r('DELETE', '/api/condition-reports/:id', (req, res, svc, ownerId) => {
+    const cur = reportOf(svc, req.params.id, ownerId);
+    if (cur.status !== 'draft') conflict('Only a report that has not gone to the tenant can be removed.');
+    removePhotos(cur);
+    svc.store.remove('conditionReports', cur.id);
+    json(res, 200, { ok: true });
+  });
+
+  r('POST', '/api/condition-reports/:id/rooms/:room', (req, res, svc, ownerId) => {
+    const cur = reportOf(svc, req.params.id, ownerId);
+    stillOpen(cur);
+    json(res, 200, saveEntry(svc, cur, req.params.room, 'owner', body(req.body)));
+  });
+  r('POST', '/api/condition-reports/:id/rooms/:room/photos', (req, res, svc, ownerId) => {
+    const cur = reportOf(svc, req.params.id, ownerId);
+    stillOpen(cur);
+    json(res, 201, { name: addPhoto(svc, cur, req.params.room, 'owner', body(req.body).data) });
+  });
+  r('DELETE', '/api/condition-reports/:id/rooms/:room/photos/:name', (req, res, svc, ownerId) => {
+    const cur = reportOf(svc, req.params.id, ownerId);
+    stillOpen(cur);
+    removePhoto(svc, cur, req.params.room, 'owner', req.params.name);
+    json(res, 200, { ok: true });
+  });
+  r('GET', '/api/condition-reports/:id/photos/:name', (req, res, svc, ownerId) => {
+    const bytes = readPhoto(reportOf(svc, req.params.id, ownerId), req.params.name);
+    if (!bytes) notFound();
+    res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'private, no-store' });
+    res.end(bytes);
+  });
+
+  r('POST', '/api/condition-reports/:id/send', async (req, res, svc, ownerId) => {
+    const cur = reportOf(svc, req.params.id, ownerId);
+    if (cur.status !== 'draft' && cur.status !== 'with_tenant') conflict('The tenant has already finished their side.');
+    if (!activeTenants(svc, cur).length) conflict('There is no current tenant on this report. You can finish it yourself.');
+    const sends = (cur.sends ?? 0) + 1;
+    const next = svc.store.update('conditionReports', cur.id, { status: 'with_tenant', sends });
+    svc.engine.emit('condition.notice', { reportId: cur.id, what: 'sent', n: sends });
+    await svc.engine.drain();
+    svc.engine.audit({ ownerId, actor: 'owner', action: 'condition.sent', detail: `${REPORT_NAME[cur.kind]} condition report sent to the tenant.` });
+    json(res, 200, reportView(svc, next));
+  });
+
+  // The owner's sign-off makes the report final. Without the tenant's side, the report says so.
+  r('POST', '/api/condition-reports/:id/finish', async (req, res, svc, ownerId) => {
+    const cur = reportOf(svc, req.params.id, ownerId);
+    stillOpen(cur);
+    const b = body(req.body);
+    const name = text(b.name, { field: 'name', label: 'your name', max: 120, required: true })!;
+    if (!cur.tenantAck) {
+      if (activeTenants(svc, cur).length && b.withoutTenant !== true) conflict('The tenant has not finished their side yet.');
+      if (cur.rooms.some((x) => !x.owner?.condition)) fail('Rate every room first, since the tenant has not filled in their side.');
+    }
+    const next = svc.store.update('conditionReports', cur.id, { status: 'done', ownerAck: { name, at: nowIso(svc), ...(cur.tenantAck ? {} : { withoutTenant: true }) } });
+    const address = svc.store.get('properties', cur.propertyId)?.address;
+    const task = svc.store.find('tasks', (t) => t.ownerId === ownerId && t.status === 'open' && t.title === `Review the ${REPORT_NAME[cur.kind]} report: ${address}`);
+    if (task) svc.store.update('tasks', task.id, { status: 'done' });
+    svc.engine.emit('condition.notice', { reportId: cur.id, what: 'final' });
+    await svc.engine.drain();
+    svc.engine.audit({ ownerId, actor: 'owner', action: 'condition.finished', detail: `${REPORT_NAME[cur.kind]} condition report finished: ${address}.` });
+    json(res, 200, reportView(svc, next));
   });
 
   /* ---------------- activity ---------------- */

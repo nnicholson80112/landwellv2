@@ -207,6 +207,7 @@ progress::-moz-progress-bar{background:var(--mint);border-radius:6px}
 .big-num{font:800 26px var(--display);letter-spacing:-0.02em}
 .wo.urgent{border-color:var(--coral)}
 .home-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.thumbs{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.thumbs img{display:block;width:88px;height:88px;object-fit:cover;border-radius:8px}.room{border-top:1px solid var(--line);padding:14px 0}.room h3{margin:0 0 6px}
 .tenants li{padding:12px 0;border-top:1px solid var(--line)}
 .tenants li:first-child{border-top:0}
 .person{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
@@ -1268,9 +1269,9 @@ function replyForm(th, name, canText, canEmail) {
    5) HOMES: homes, tenants, vendors, lease
    ===================================================================== */
 async function viewHomes(el, stale) {
-  const [props, tenants, vendors, leases] = await Promise.all([get('/api/properties'), get('/api/tenants'), get('/api/vendors'), get('/api/lease-templates')]);
+  const [props, tenants, vendors, leases, reports] = await Promise.all([get('/api/properties'), get('/api/tenants'), get('/api/vendors'), get('/api/lease-templates'), get('/api/condition-reports')]);
   if (stale()) return;
-  Object.assign(S, { props, tenants, vendors, leases });
+  Object.assign(S, { props, tenants, vendors, leases, reports });
   const current = tenants.filter((t) => t.status !== 'former');
   const former = tenants.filter((t) => t.status === 'former');
   fill(el,
@@ -1295,7 +1296,10 @@ function homeCard(p, tenants) {
     p.homeGuide && Object.keys(p.homeGuide).length ? null : h('p', { class: 'meta' }, 'No home guide yet. Add one so tenants and KeyHelm have the answers.'),
     h('h4', null, 'Tenants'),
     tenants.length ? h('ul', { class: 'plain tenants' }, tenants.map(tenantRow)) : h('p', { class: 'meta' }, 'No tenants on file.'),
+    h('h4', null, 'Condition reports'),
+    reportList(S.reports.filter((r) => r.propertyId === p.id)),
     h('div', { class: 'row-actions' },
+      btn('Start a condition report', () => reportStart(p)),
       btn('Edit home', () => homeForm(p)),
       btn('Home guide', () => guideForm(p)),
       btn([icon('plus'), 'Add a tenant'], () => tenantForm(null, p.id)),
@@ -1373,6 +1377,116 @@ function homeForm(p) {
     refresh();
   });
   openSheet(editing ? 'Edit home' : 'Add a home', form);
+}
+const REPORT_KIND = { move_in: 'Move-in', move_out: 'Move-out' };
+const REPORT_STATUS = { draft: ['Not sent', ''], with_tenant: ['With tenant', 'warn'], with_owner: ['Ready for you', 'warn'], done: ['Final', 'ok'] };
+const CONDITION = { good: 'Good', fair: 'Fair', damaged: 'Damaged' };
+function reportList(list) {
+  if (!list.length) return h('p', { class: 'meta' }, 'None yet. Record each room with photos at move-in, so move-out and the deposit are simple.');
+  return h('ul', { class: 'plain tenants' }, list.map((r) => h('li', null,
+    h('div', { class: 'person' }, h('strong', null, `${REPORT_KIND[r.kind]} report`), tag(...REPORT_STATUS[r.status])),
+    h('p', { class: 'meta' }, `Started ${day(r.createdAt, { year: true })}`),
+    h('div', { class: 'row-actions' }, btn('Open', () => reportSheet(r.id))))));
+}
+function reportStart(p) {
+  const form = h('form', { class: 'form', novalidate: true },
+    radios({ label: 'Which report?', name: 'kind', value: p.tenants.length ? 'move_in' : 'move_out', options: [['move_in', 'Move-in', 'Your tenant fills it in by phone, then you add your side.'], ['move_out', 'Move-out', 'Uses the same rooms as the move-in report, so you can compare.']] }),
+    actions('Start report'));
+  onSubmit(form, async () => { const r = await post('/api/condition-reports', { propertyId: p.id, kind: val(form, 'kind') }); refresh(); await reportSheet(r.id); });
+  openSheet(`Condition report: ${p.address}`, form);
+}
+/** Photos leave the phone small: 1600px at most, as a JPEG. The app's security rules allow data: images, not blob: ones. */
+function shrinkPhoto(file) {
+  return new Promise((ok, no) => {
+    const fr = new FileReader();
+    fr.onerror = () => no(new Error("We couldn't read that photo."));
+    fr.onload = () => {
+      const img = new Image();
+      img.onerror = () => no(new Error("We couldn't read that photo. Please try another."));
+      img.onload = () => {
+        const s = Math.min(1, 1600 / Math.max(img.width, img.height));
+        const c = h('canvas', { width: Math.round(img.width * s), height: Math.round(img.height * s) });
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        let q = 0.8, d = c.toDataURL('image/jpeg', q);
+        while (d.length > 1800000 && q > 0.3) { q -= 0.2; d = c.toDataURL('image/jpeg', q); }
+        ok(d.split(',')[1]);
+      };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+const photoSrc = (reportId, name) => `/api/condition-reports/${id(reportId)}/photos/${id(name)}`;
+const photoRow = (reportId, names, label) => (names && names.length ? h('div', { class: 'thumbs' }, names.map((n, i) => h('a', { href: photoSrc(reportId, n), target: '_blank', rel: 'noopener' }, h('img', { src: photoSrc(reportId, n), alt: `${label} photo ${i + 1}` })))) : null);
+function entryText(label, e) {
+  if (!e || (!e.condition && !e.note && !(e.photos || []).length)) return h('p', { class: 'meta' }, `${label}: nothing entered.`);
+  return h('p', null, h('strong', null, `${label}: ${e.condition ? CONDITION[e.condition] : 'not rated'}`), e.note ? ` · ${e.note}` : '');
+}
+function ownerRoomEditor(r, room) {
+  const e = room.owner || { photos: [] };
+  const say = h('p', { class: 'help', role: 'status' });
+  const cond = field({ label: 'Your rating', name: `c-${room.id}`, type: 'select', value: e.condition || '', options: [['', 'Not rated'], ['good', 'Good'], ['fair', 'Fair'], ['damaged', 'Damaged']] });
+  const note = field({ label: 'Your note', name: `n-${room.id}`, type: 'textarea', rows: 2, value: e.note, maxlength: 1000, optional: true });
+  const save = async () => {
+    say.textContent = 'Saving...';
+    try { await post(`/api/condition-reports/${id(r.id)}/rooms/${id(room.id)}`, { condition: cond.querySelector('select').value, note: note.querySelector('textarea').value }); say.textContent = 'Saved.'; } catch (x) { say.textContent = x.message; }
+  };
+  cond.querySelector('select').addEventListener('change', save);
+  note.querySelector('textarea').addEventListener('change', save);
+  const photos = h('div', { class: 'thumbs' }, (e.photos || []).map((n) => ownerPhoto(r, room, n, say)));
+  const pick = h('input', { type: 'file', accept: 'image/*', multiple: true, 'aria-label': `Add photos of ${room.name}` });
+  pick.addEventListener('change', async () => {
+    const files = Array.from(pick.files);
+    pick.value = '';
+    for (const [i, f] of files.entries()) {
+      say.textContent = `Adding photo ${i + 1} of ${files.length}...`;
+      try { const { name } = await post(`/api/condition-reports/${id(r.id)}/rooms/${id(room.id)}/photos`, { data: await shrinkPhoto(f) }); photos.append(ownerPhoto(r, room, name, say)); say.textContent = 'Photo added.'; } catch (x) { say.textContent = x.message; return; }
+    }
+  });
+  return [cond, note, photos, pick, say];
+}
+function ownerPhoto(r, room, name, say) {
+  const box = h('div', null, h('img', { src: photoSrc(r.id, name), alt: `${room.name} photo` }),
+    btn('Remove', async () => { try { await api('DELETE', `/api/condition-reports/${id(r.id)}/rooms/${id(room.id)}/photos/${id(name)}`); box.remove(); } catch (x) { say.textContent = x.message; } }));
+  return box;
+}
+async function reportSheet(reportId) {
+  let r;
+  try { r = await get(`/api/condition-reports/${id(reportId)}`); } catch (e) { if (e.status !== 401) toast(e.message, 'error'); return; }
+  const open = r.status !== 'done';
+  const again = () => reportSheet(r.id);
+  const attempt = (fn, done) => async () => { try { await fn(); if (done) toast(done); refresh(); await again(); } catch (e) { if (e.status !== 401) toast(e.message, 'error'); } };
+  const before = (room) => { const m = r.moveIn && r.moveIn.rooms.find((x) => x.name === room.name); return m ? h('details', null, h('summary', null, 'At move-in'), entryText('Tenant', m.tenant), photoRow(r.moveIn.id, m.tenant && m.tenant.photos, 'Move-in tenant'), entryText('You', m.owner), photoRow(r.moveIn.id, m.owner && m.owner.photos, 'Move-in owner')) : null; };
+  const rooms = r.rooms.map((room) => h('div', { class: 'room' }, h('h3', null, room.name), before(room),
+    r.status === 'draft' && !room.tenant ? null : entryText('Tenant', room.tenant), photoRow(r.id, room.tenant && room.tenant.photos, `${room.name} tenant`),
+    open ? ownerRoomEditor(r, room) : [entryText('You', room.owner), photoRow(r.id, room.owner && room.owner.photos, `${room.name} owner`)]));
+
+  const roomForm = h('form', { class: 'form', novalidate: true },
+    field({ label: 'Rooms, one per line', name: 'rooms', type: 'textarea', rows: 8, value: r.rooms.map((x) => x.name).join('\n') }), actions('Save rooms', false));
+  onSubmit(roomForm, async () => { await api('PATCH', `/api/condition-reports/${id(r.id)}`, { rooms: val(roomForm, 'rooms').split('\n').map((s) => s.trim()).filter(Boolean) }); await again(); });
+
+  const signForm = h('form', { class: 'form', novalidate: true },
+    field({ label: 'Your full name', name: 'name', value: S.me && S.me.owner && S.me.owner.name, maxlength: 120 }),
+    r.tenantAck ? null : check({ label: 'Finish without the tenant', name: 'withoutTenant', help: 'The report will say the tenant did not sign it.' }),
+    actions('Finish report', false));
+  onSubmit(signForm, async () => {
+    const body = { name: val(signForm, 'name') };
+    const skip = signForm.elements.namedItem('withoutTenant');
+    if (skip && skip.checked) body.withoutTenant = true;
+    await post(`/api/condition-reports/${id(r.id)}/finish`, body);
+    toast('Report finished.');
+    refresh();
+    await again();
+  });
+
+  openSheet(`${REPORT_KIND[r.kind]} report: ${r.propertyAddress || ''}`,
+    h('div', { class: 'person' }, tag(...REPORT_STATUS[r.status])),
+    r.status === 'draft' ? h('details', null, h('summary', null, 'Change the rooms'), roomForm) : null,
+    r.canSend && (r.status === 'draft' || r.status === 'with_tenant') ? h('div', { class: 'actions' }, btn(r.status === 'draft' ? 'Send to tenant' : 'Send a reminder', attempt(() => post(`/api/condition-reports/${id(r.id)}/send`), 'Sent.'), 'primary big')) : null,
+    r.status === 'with_tenant' ? h('p', { class: 'help' }, `Waiting for ${r.tenantNames.join(' and ')}. Their answers show here once they finish.`) : null,
+    rooms,
+    open ? signForm : h('p', null, [r.tenantAck ? `Tenant: ${r.tenantAck.name}, ${day(r.tenantAck.at, { year: true })}. ` : 'The tenant did not sign this report. ', r.ownerAck ? `You: ${r.ownerAck.name}, ${day(r.ownerAck.at, { year: true })}.` : ''].join('')),
+    r.status === 'draft' ? h('div', { class: 'actions' }, btn('Remove this report', async () => { try { await api('DELETE', `/api/condition-reports/${id(r.id)}`); closeSheet(); toast('Report removed.'); refresh(); } catch (e) { if (e.status !== 401) toast(e.message, 'error'); } }, 'danger')) : null);
 }
 function guideForm(p) {
   const g = p.homeGuide || {};

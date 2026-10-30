@@ -1,6 +1,6 @@
 # Workflows
 
-Sixteen workflows run the business. Each one starts from an **event** (something
+Seventeen workflows run the business. Each one starts from an **event** (something
 happened) or a **schedule**, and can **wait**: for a reply, for the owner, or for
 a date. Waiting runs survive restarts. **Owner** marks the only steps that need a person.
 
@@ -89,6 +89,10 @@ Six-step checklist, welcome text, nudges at day 2 and day 7 until homes, lease, 
 
 ## 16. Decision reminders (`approval-reminders`) — every hour
 A decision the owner hasn't answered is re-sent once: after 2 hours for urgent and emergency repairs, after a day for everything else (not during quiet hours unless urgent). The rent check and deposit have their own follow-ups.
+
+
+## 17. Condition report notices (`condition-notice`)
+The owner sends a move-in or move-out report → tenants get a link to fill in their side from My Home. A tenant finishes → **Owner** gets a text and a to-do to review, add their side and finish it. Finished → tenants are told it's final and where their copy is. Each side's entries stay separate, and a finished report can't be changed. An owner can finish without the tenant, and the report says so. Move-out reminds the owner when a move-in report is on file.
 
 ---
 

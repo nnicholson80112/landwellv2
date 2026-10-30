@@ -11,6 +11,7 @@ import type { Services } from '../services.ts';
 import { DAY } from '../engine/clock.ts';
 import { addDays, daysBetween } from '../engine/clock.ts';
 import { CO } from '../config/colorado.ts';
+import { myHomeUrl } from '../api/my-home.ts';
 import { firstName, money, niceDate, noticeTenant, propertyName, quote, tellOwner, tellTenant } from './lib.ts';
 
 export const renewalSweep: WorkflowDef<Services, { localDate: string }> = {
@@ -142,7 +143,9 @@ export const moveOut: WorkflowDef<Services, { ownerId: string; tenantId: string;
     for (const t of tenants) await noticeTenant(ctx, `confirm:${t.id}`, t, `Got it, ${firstName(t.name)}: move-out from ${address} is ${niceDate(date, today)}${asked ? `, when your lease ends. I've asked ${firstName(store.get('owners', input.ownerId)?.name ?? 'the owner')} about ${niceDate(asked, today)} and they'll confirm` : ''}. Before then: clean, remove all belongings, and return keys. Please reply with your forwarding address so your landlord can send your deposit statement and refund.`);
     if (!input.fromOwner) await tellOwner(ctx, 'owner', input.ownerId, `${names} ${tenants.length > 1 ? 'are' : 'is'} moving out of ${address}${asked ? `. They asked for ${niceDate(asked, today)}, but the lease ends ${niceDate(date, today)}; please tell them which date works` : ` on ${niceDate(date, today)}`}. I'll get the listing ready so it can go up early.`);
     await ctx.emit('listing.requested', { ownerId: input.ownerId, propertyId: lease.propertyId, availableFrom: addDays(date, 3) });
-    await ctx.step('walkthrough-task', () => store.insert('tasks', { ownerId: input.ownerId, title: `Move-out walkthrough: ${address}`, detail: `Do the walkthrough on ${date} and take photos of every room. Compare with move-in photos. Normal wear and tear can't be charged.`, dueAt: date + 'T17:00:00Z', status: 'open' }));
+    const moveInReport = await ctx.step('move-in-report', () => !!store.find('conditionReports', (r) => r.propertyId === lease.propertyId && r.kind === 'move_in' && r.status === 'done'));
+    const reportNote = moveInReport ? ' The move-in condition report is under Homes, and you can start the move-out report there to compare room by room.' : '';
+    await ctx.step('walkthrough-task', () => store.insert('tasks', { ownerId: input.ownerId, title: `Move-out walkthrough: ${address}`, detail: `Do the walkthrough on ${date} and take photos of every room.${reportNote} Compare with move-in photos. Normal wear and tear can't be charged.`, dueAt: date + 'T17:00:00Z', status: 'open' }));
 
     await ctx.sleepUntil(addDays(date, -1) + 'T16:00:00Z', 'Waiting until the day before move-out');
     for (const t of tenants) await noticeTenant(ctx, `tomorrow:${t.id}`, t, `Reminder: move-out is tomorrow (${niceDate(date)}). Please leave keys inside and lock up. ${t.forwardingAddress || store.get('tenants', t.id)?.forwardingAddress ? 'Thank you!' : "And if you haven't yet, reply with your forwarding address for your deposit."}`);
@@ -162,7 +165,7 @@ export const moveOut: WorkflowDef<Services, { ownerId: string; tenantId: string;
     const howTo = 'To take deductions, reply NO with the code and list each one, like "NO code carpet cleaning $150, broken blinds $40". Only damage beyond normal wear and tear, unpaid rent or unpaid utilities can be deducted.';
     let d = await ctx.approval({
       kind: 'deposit', title: `Deposit for ${address}: ${money(held)}`,
-      body: `Return the full deposit, or take deductions. ${howTo} Colorado deadline: ${niceDate(deadline)}.`,
+      body: `Return the full deposit, or take deductions. ${howTo} Colorado deadline: ${niceDate(deadline)}.${moveInReport ? ' Your condition reports are under Homes.' : ''}`,
       options: ['return_full', 'deductions_entered'], data: { deductions: [] }, timeoutMs: 21 * DAY,
     });
     if (!d) {
@@ -198,5 +201,34 @@ export const tenantWelcome: WorkflowDef<Services, { tenantId: string }> = {
     await noticeTenant(ctx, 'welcome', t, `Hi ${firstName(t.name)}! Your landlord now uses ${ctx.svc.brand.name} for ${address}. Text this number anytime for repairs (send a photo) or questions. You'll keep paying rent to your landlord the same way; we'll just send you a reminder before it's due. Reply STOP to opt out of texts.`);
     await ctx.log('tenant.welcomed', `${t.name} invited.`);
     return { ok: true };
+  },
+};
+
+/** Who hears what as a condition report moves along (src/api/condition.ts holds the report itself). */
+export const conditionNotice: WorkflowDef<Services, { reportId: string; what: 'sent' | 'submitted' | 'final'; n?: number }> = {
+  name: 'condition-notice',
+  title: 'Condition report notices',
+  description: 'Asks tenants to fill in a condition report, tells the owner when it is ready to review, and tells tenants when it is final.',
+  trigger: { event: 'condition.notice', dedupeKey: (p) => `${p.reportId}:${p.what}:${p.n ?? 0}` },
+  async run(ctx, { reportId, what }) {
+    const store = ctx.store;
+    const r = store.get('conditionReports', reportId);
+    if (!r) return { status: 'gone' };
+    ctx.setOwner(r.ownerId);
+    const address = propertyName(store, r.propertyId);
+    const name = r.kind === 'move_in' ? 'move-in' : 'move-out';
+    if (what === 'submitted') {
+      await ctx.step('review-task', () => store.insert('tasks', { ownerId: r.ownerId, title: `Review the ${name} report: ${address}`, detail: `${r.tenantAck?.name ?? 'Your tenant'} finished their side. Open it under Homes, add your notes and photos, then finish the report.`, status: 'open' }));
+      await tellOwner(ctx, 'review', r.ownerId, `${r.tenantAck?.name ?? 'Your tenant'} finished the ${name} condition report for ${address}. Please review it under Homes in the app.`);
+      return { status: 'told_owner' };
+    }
+    const tenants = r.tenantIds.map((id) => store.get('tenants', id)!).filter((t) => t && t.status !== 'former');
+    for (const t of tenants) {
+      const url = await ctx.step(`link:${t.id}`, () => myHomeUrl(store, t.id, ctx.svc.cfg.publicUrl));
+      await noticeTenant(ctx, `report:${t.id}`, t, what === 'sent'
+        ? `Please fill in the ${name} condition report for ${address}: ${url} Go room by room and add photos. It keeps a record for you and your landlord.`
+        : `The ${name} condition report for ${address} is final. Your copy is on your My Home page: ${url}`);
+    }
+    return { status: 'told_tenants' };
   },
 };
