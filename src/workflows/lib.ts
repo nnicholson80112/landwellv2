@@ -136,6 +136,17 @@ export function buildFacts(store: Store, ownerId: string, propertyId?: string, p
   return facts;
 }
 
+/** Home guide facts, for the people living in the home only: guides can hold gate codes and contacts. */
+export function guideFacts(p: Property | undefined): Fact[] {
+  const g = p?.homeGuide;
+  if (!g) return [];
+  return [
+    ...(g.rules ? [{ label: 'House rules', value: g.rules }] : []),
+    ...Object.entries(g.contacts ?? {}).map(([k, v]) => ({ label: `Contact: ${k}`, value: v })),
+    ...Object.entries(g.tips ?? {}).map(([k, v]) => ({ label: k, value: v })),
+  ];
+}
+
 export function hourLabel(hhmm: string): string {
   const [h, m] = hhmm.split(':').map(Number);
   const h12 = h % 12 || 12;

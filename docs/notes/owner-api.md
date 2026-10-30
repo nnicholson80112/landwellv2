@@ -122,6 +122,7 @@ integer **cents**. **Dates**: `YYYY-MM-DD`; timestamps ISO UTC. **Lists** defaul
   Colorado only (ZIP 80xxx/81xxx). Same address + ZIP twice → 409. `status: "listed"` is refused (use `POST /api/listings/:propertyId`, which checks the ad).
 - `PATCH /api/properties/:id` (same fields, any subset) → 200. Moving a listed home to another status takes the listing down.
 - `DELETE /api/properties/:id` → `{ok, id}`. 409 while it has a live lease, current tenants, open applications, booked showings or an open repair.
+- `PATCH /api/properties/:id` also takes `homeGuide: { welcome?, contacts?, rules?, tips? }`. It's shown on My Home and given to the AI for that home's tenants only, never for prospects, and it goes through the fair housing check.
 
 ### Tenants
 - `GET /api/tenants?status=active|former|future` → `[Tenant + { propertyAddress, lease: {id, startDate, endDate, rent, deposit} | null, textsOff }]`
@@ -132,6 +133,7 @@ integer **cents**. **Dates**: `YYYY-MM-DD`; timestamps ISO UTC. **Lists** defaul
 - `PATCH /api/tenants/:id` `{ name?, phone?, email?, preferredChannel?, language?, autopay?, forwardingAddress? }` (home and status can't change here).
 - `POST /api/tenants/:id/former` `{ forwardingAddress? }` → marks them former. When everyone on the lease is former,
   the lease is marked ended (rent reminders stop) and an occupied home becomes `turnover`.
+- `POST /api/tenants/:id/my-home` `{ fresh? }` → `{ url }`, the tenant's private My Home link. `fresh: true` replaces it and turns the old one off. Former tenants get a 400, and their old link stops working.
 
 ### Vendors
 - `GET /api/vendors` → `[Vendor]`

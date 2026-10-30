@@ -21,7 +21,7 @@ import type { Approval, Channel, Owner, Tenant, Urgency } from '../domain/types.
 import type { AIResult, Intent, SenderRole } from '../ai/types.ts';
 import { SAFE_REPLY, postcheck, precheck } from '../ai/guardrails.ts';
 import { guessTrade, summarize } from '../ai/rules.ts';
-import { addressKey, buildFacts, contactOf, firstName, identify, money, propertyName, quote, send, tellOwner, type C } from './lib.ts';
+import { addressKey, buildFacts, contactOf, firstName, guideFacts, identify, money, propertyName, quote, send, tellOwner, type C } from './lib.ts';
 import { optionLabel, replyHint } from './owner.ts';
 import { fmtTime, slotPrefs } from './showings-listings.ts';
 import { routeUnknownSender } from '../ops/lines.ts';
@@ -274,6 +274,7 @@ export const inboundMessage: WorkflowDef<Services, InboundPayload> = {
       .map((x) => ({ direction: x.direction, body: x.body }));
     const facts = buildFacts(store, ownerId, propertyId, svc.cfg.publicUrl);
     if (tenant) {
+      facts.push(...guideFacts(store.get('properties', tenant.propertyId)));
       const open = store.list('workOrders', (w) => w.tenantId === tenant.id && !['paid', 'cancelled', 'completed'].includes(w.status));
       for (const w of open) {
         const v = w.vendorId ? store.get('vendors', w.vendorId) : undefined;

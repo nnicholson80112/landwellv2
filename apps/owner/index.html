@@ -685,12 +685,12 @@ function onSubmit(form, fn, working = 'Saving...') {
 const invalid = (message, fieldName) => new ApiError(message, 400, fieldName);
 
 /** Rows of name + value (home details, facts the assistant may quote). */
-function factsEditor(name, facts, label, help) {
+function factsEditor(name, facts, label, help, hint = ['Parking', 'One-car garage plus street parking']) {
   const rows = h('div', { class: 'rows-ed' });
   const addRow = (k = '', v = '') => {
     const row = h('div', { class: 'row-ed', role: 'group', 'aria-label': 'Detail' },
-      field({ label: 'Name', name: name + '-k', value: k, placeholder: 'Parking', maxlength: 60 }),
-      field({ label: 'Details', name: name + '-v', value: v, placeholder: 'One-car garage plus street parking', maxlength: 300 }),
+      field({ label: 'Name', name: name + '-k', value: k, placeholder: hint[0], maxlength: 60 }),
+      field({ label: 'Details', name: name + '-v', value: v, placeholder: hint[1], maxlength: 300 }),
       btn('Remove', () => row.remove()));
     rows.append(row);
     return row;
@@ -1292,10 +1292,12 @@ function homeCard(p, tenants) {
     h('p', { class: 'meta' }, LOCK[(p.lock && p.lock.kind) || 'none']),
     p.lease ? h('p', null, `Lease: ${day(p.lease.startDate, { year: true })} to ${day(p.lease.endDate, { year: true })} at ${money(p.lease.rent)} a month`) : h('p', { class: 'meta' }, 'No active lease on file.'),
     facts.length ? kv(facts.map(([k, v]) => [k, v])) : null,
+    p.homeGuide && Object.keys(p.homeGuide).length ? null : h('p', { class: 'meta' }, 'No home guide yet. Add one so tenants and KeyHelm have the answers.'),
     h('h4', null, 'Tenants'),
     tenants.length ? h('ul', { class: 'plain tenants' }, tenants.map(tenantRow)) : h('p', { class: 'meta' }, 'No tenants on file.'),
     h('div', { class: 'row-actions' },
       btn('Edit home', () => homeForm(p)),
+      btn('Home guide', () => guideForm(p)),
       btn([icon('plus'), 'Add a tenant'], () => tenantForm(null, p.id)),
       p.canDelete ? btn('Remove home', () => removeHome(p), 'danger') : null));
 }
@@ -1306,6 +1308,7 @@ function tenantRow(t) {
     h('p', { class: 'meta' }, [t.phone ? phoneText(t.phone) : null, t.email, t.preferredChannel === 'email' ? 'Prefers email' : 'Prefers texts'].filter(Boolean).join(' · ')),
     h('div', { class: 'row-actions' },
       key ? h('a', { class: 'btn ghost', href: pathFor('messages', key), 'data-nav': '' }, icon('chat'), 'Message') : null,
+      btn('My Home link', () => myHomeSheet(t)),
       btn('Edit', () => tenantForm(t)),
       btn('Moved out', () => formerForm(t))));
 }
@@ -1370,6 +1373,40 @@ function homeForm(p) {
     refresh();
   });
   openSheet(editing ? 'Edit home' : 'Add a home', form);
+}
+function guideForm(p) {
+  const g = p.homeGuide || {};
+  const form = h('form', { class: 'form', novalidate: true },
+    h('p', { class: 'help' }, 'Tenants at this home see this on their private My Home page, and KeyHelm can answer their questions from it. People asking about the home for rent never see it.'),
+    field({ label: 'Welcome note', name: 'welcome', type: 'textarea', rows: 4, value: g.welcome, maxlength: 2000, optional: true, placeholder: 'Welcome home! Keys are in the lockbox by the side door.' }),
+    factsEditor('contacts', g.contacts, 'Who to contact', 'HOA office, utility companies, trash service.', ['HOA office', '303-555-0100, Monday to Friday']),
+    field({ label: 'House rules', name: 'rules', type: 'textarea', rows: 5, value: g.rules, maxlength: 2000, optional: true, placeholder: 'Quiet hours, parking, trash and HOA rules.' }),
+    factsEditor('tips', g.tips, 'Good to know', 'Water shut-off, breaker box, furnace filter size.', ['Water shut-off', 'Basement, behind the furnace']),
+    actions('Save home guide'));
+  onSubmit(form, async () => {
+    await api('PATCH', `/api/properties/${id(p.id)}`, { homeGuide: { welcome: val(form, 'welcome'), contacts: readFacts(form, 'contacts'), rules: val(form, 'rules'), tips: readFacts(form, 'tips') } });
+    closeSheet();
+    toast('Home guide saved.');
+    refresh();
+  });
+  openSheet(`Home guide: ${p.address}`, form);
+}
+async function myHomeSheet(t, fresh) {
+  let url;
+  try { url = (await post(`/api/tenants/${id(t.id)}/my-home`, { fresh: !!fresh })).url; } catch (e) { if (e.status !== 401) toast(e.message, 'error'); return; }
+  const to = t.textsOff || !t.phone ? t.email : t.phone;
+  const send = btn('Send it to them', null, 'primary big');
+  send.addEventListener('click', () => busy(send, 'Sending...', async () => {
+    const body = `Your private page for ${t.propertyAddress} is ready: ${url} It has your home guide, lease details and how to reach us. Please don't share this link.`;
+    try { await post('/api/messages/send', { to, channel: to === t.email ? 'email' : 'sms', body }); closeSheet(); toast(`Sent to ${t.name}.`); } catch (e) { if (e.status !== 401) toast(e.message, 'error'); }
+  }));
+  openSheet(`My Home link: ${t.name}`,
+    h('p', null, 'Their private page with the home guide, lease details and how to reach you. No login or app needed.'),
+    field({ label: 'Link', name: 'myHomeUrl', value: url, readOnly: true }),
+    to ? null : h('p', { class: 'note info' }, 'They replied STOP to texts and have no email on file. Copy the link and give it to them yourself.'),
+    h('div', { class: 'actions' }, to ? send : null, btn('Copy link', () => copyText(url, 'Link copied.')), btn('Open their page', () => window.open(url, '_blank', 'noopener'))),
+    h('p', { class: 'help' }, 'Think the link got out? Make a new one. The old one stops working.'),
+    h('div', { class: 'actions' }, btn('Make a new link', () => myHomeSheet(t, true))));
 }
 function removeHome(p) {
   const yes = btn('Remove home', null, 'danger big');
