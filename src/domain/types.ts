@@ -358,6 +358,32 @@ export interface Task {
   draft?: { to: string; channel: Channel; body: string };
 }
 
+export interface ConditionEntry {
+  condition?: 'good' | 'fair' | 'damaged';
+  note?: string;
+  photos: string[]; // file names, see src/api/condition.ts
+}
+export interface ConditionRoom {
+  id: string;
+  name: string;
+  tenant?: ConditionEntry; // each side's entries are separate: neither can change the other's
+  owner?: ConditionEntry;
+}
+export interface ConditionReport {
+  id: ID;
+  ownerId: ID;
+  propertyId: ID;
+  leaseId?: ID;
+  tenantIds: ID[];
+  kind: 'move_in' | 'move_out';
+  status: 'draft' | 'with_tenant' | 'with_owner' | 'done';
+  rooms: ConditionRoom[];
+  createdAt: ISO;
+  sends?: number;
+  tenantAck?: { tenantId: ID; name: string; at: ISO };
+  ownerAck?: { name: string; at: ISO; withoutTenant?: boolean };
+}
+
 /** Table name → record type, used by the Store. */
 export interface Tables {
   owners: Owner;
@@ -379,5 +405,6 @@ export interface Tables {
   audit: AuditEntry;
   tasks: Task;
   offers: Offer;
+  conditionReports: ConditionReport;
 }
 export type TableName = keyof Tables;

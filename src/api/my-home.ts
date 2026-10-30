@@ -5,7 +5,7 @@
 import { randomBytes } from 'node:crypto';
 import type { Services } from '../services.ts';
 import type { Store } from '../store/store.ts';
-import type { Lease, Tenant } from '../domain/types.ts';
+import type { ConditionReport, Lease, Tenant } from '../domain/types.ts';
 import type { SignRequest } from '../adapters/esign-native.ts';
 import { firstName, money, ordinal } from '../workflows/lib.ts';
 
@@ -47,6 +47,15 @@ const STYLE = `<style>dl{margin:0}dt{font-weight:700;margin-top:12px}dt:first-ch
 const card = (title: string, inner: string) => `<section class="card"><h2>${esc(title)}</h2>${inner}</section>`;
 const list = (rows: [string, string][]) => `<dl>${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`;
 
+function reportsCard(store: Store, t: Tenant, token: string): string {
+  const mine = store.list('conditionReports', (r) => r.tenantIds.includes(t.id) && r.status !== 'draft').sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  if (!mine.length) return '';
+  const name = (r: ConditionReport) => (r.kind === 'move_in' ? 'move-in' : 'move-out');
+  return card('Condition reports', mine.map((r) => `<p>${r.status === 'with_tenant'
+    ? `<a class="cta" href="/my-home/${esc(token)}/condition/${esc(r.id)}">Fill in your ${name(r)} report</a>`
+    : `<a href="/my-home/${esc(token)}/condition/${esc(r.id)}">Your ${name(r)} report${r.status === 'done' ? ' (final)' : ' (with your landlord)'}</a>`}</p>`).join(''));
+}
+
 export function myHomePage(svc: Services, t: Tenant, token: string): { title: string; inner: string } {
   const { store } = svc;
   const p = store.get('properties', t.propertyId)!;
@@ -70,6 +79,7 @@ export function myHomePage(svc: Services, t: Tenant, token: string): { title: st
     + (g.welcome ? card('Welcome', `<p class="text">${esc(g.welcome)}</p>`) : '')
     + card('Need something?', `<p>For a repair or a question, reply to any ${esc(svc.brand.name)} text or email. Send a photo if you can.</p><p><strong>Gas smell, fire, smoke or someone hurt? Call 911 first.</strong></p>`)
     + card('Your lease', list(leaseRows) + (signed ? `<a class="cta" href="/my-home/${esc(token)}/lease">Read your signed lease</a>` : `<p class="muted">Need a copy of your lease? Ask your landlord.</p>`))
+    + reportsCard(store, t, token)
     + (contacts.length ? card('Who to contact', list(contacts)) : '')
     + (g.rules ? card('House rules', `<p class="text">${esc(g.rules)}</p>`) : '')
     + (tips.length ? card('Good to know', list(tips)) : '')

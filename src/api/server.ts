@@ -16,6 +16,8 @@
 
 import { registerMoreRoutes } from './owner-more.ts';
 import { myHomeLease, myHomePage, myHomeTenant } from './my-home.ts';
+import { addPhoto, conditionPage, readPhoto, removePhoto, saveEntry } from './condition.ts';
+import { Invalid, body, fail, text } from './owner-data.ts';
 import { allows } from '../billing/entitlements.ts';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
@@ -39,7 +41,7 @@ import { BRAND } from '../config/brand.ts';
 import { BUSINESS } from '../config/business.ts';
 import { RateLimiter, StaticCache, clientIp, limitsFromEnv, safeEqual, securityHeaders, tooMany } from './guard.ts';
 import { POLICY_LINKS, accessibilityStatement, cookiePolicy, privacyPolicy, refundPolicy, smsProgram, termsOfService } from './legal.ts';
-import type { TableName } from '../domain/types.ts';
+import type { ConditionReport, TableName, Tenant } from '../domain/types.ts';
 import { callerEmergencyOwner, ownerForLine as lineOwner } from '../ops/lines.ts';
 import { registerOpsRoutes } from '../ops/routes.ts';
 import { noteTick, ops, startOps } from '../ops/index.ts';
@@ -201,6 +203,57 @@ route('GET', '/my-home/:token/lease', (req, res, svc) => {
   const v = t && myHomeLease(svc, t, req.params.token);
   if (!v) return privatePage(res, 404, noMyHome());
   privatePage(res, 200, page(v.title, v.inner));
+});
+
+/** The report this tenant may see, or a plain error reply. */
+function tenantReport(svc: Services, token: string, id: string) {
+  const t = myHomeTenant(svc.store, token);
+  const r = t ? svc.store.get('conditionReports', id) : undefined;
+  return t && r && r.tenantIds.includes(t.id) && r.status !== 'draft' ? { t, r } : undefined;
+}
+/** Runs a tenant's change while their side is open. Bad input answers like the owner API: { error, field }. */
+function tenantChange(res: ServerResponse, svc: Services, token: string, id: string, fn: (t: Tenant, r: ConditionReport) => unknown, code = 200) {
+  const found = tenantReport(svc, token, id);
+  if (!found) return json(res, 404, { error: 'not found' });
+  if (found.r.status !== 'with_tenant') return json(res, 409, { error: 'This report has already been sent, so it can\'t be changed.' });
+  try { json(res, code, fn(found.t, found.r)); } catch (e) {
+    if (e instanceof Invalid) return json(res, e.status, { error: e.message, field: e.field });
+    throw e;
+  }
+}
+
+route('GET', '/my-home/:token/condition/:id', (req, res, svc) => {
+  const found = tenantReport(svc, req.params.token, req.params.id);
+  if (!found) return privatePage(res, 404, noMyHome());
+  const v = conditionPage(svc, found.r, found.t, req.params.token);
+  privatePage(res, 200, page(v.title, v.inner));
+});
+route('GET', '/my-home/:token/condition/:id/photos/:name', (req, res, svc) => {
+  const found = tenantReport(svc, req.params.token, req.params.id);
+  const bytes = found && readPhoto(found.r, req.params.name);
+  if (!bytes) return privatePage(res, 404, noMyHome());
+  res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer', 'x-robots-tag': 'noindex' });
+  res.end(bytes);
+});
+route('POST', '/my-home/:token/condition/:id/rooms/:room', (req, res, svc) =>
+  tenantChange(res, svc, req.params.token, req.params.id, (_t, r) => saveEntry(svc, r, req.params.room, 'tenant', body(req.body))));
+route('POST', '/my-home/:token/condition/:id/rooms/:room/photos', (req, res, svc) =>
+  tenantChange(res, svc, req.params.token, req.params.id, (_t, r) => ({ name: addPhoto(svc, r, req.params.room, 'tenant', body(req.body).data) }), 201));
+route('DELETE', '/my-home/:token/condition/:id/rooms/:room/photos/:name', (req, res, svc) =>
+  tenantChange(res, svc, req.params.token, req.params.id, (_t, r) => { removePhoto(svc, r, req.params.room, 'tenant', req.params.name); return { ok: true }; }));
+route('POST', '/my-home/:token/condition/:id/submit', async (req, res, svc) => {
+  await tenantChange(res, svc, req.params.token, req.params.id, (t, r) => {
+    const b = body(req.body);
+    const name = text(b.name, { field: 'name', label: 'your name', max: 120, required: true })!;
+    if (b.consent !== true) fail('Please tick the box to confirm.', 'consent');
+    const missing = r.rooms.filter((x) => !x.tenant?.condition).map((x) => x.name);
+    if (missing.length) fail(`Please rate every room first. Still open: ${missing.join(', ')}.`, 'rooms');
+    svc.store.update('conditionReports', r.id, { status: 'with_owner', tenantAck: { tenantId: t.id, name, at: svc.clock.now().toISOString() } });
+    svc.engine.audit({ ownerId: r.ownerId, actor: 'tenant', action: 'condition.submitted', detail: `${name} finished their side of the condition report.` });
+    svc.engine.emit('condition.notice', { reportId: r.id, what: 'submitted' });
+    return { ok: true };
+  });
+  await svc.engine.drain();
 });
 
 /* ======================= WEBHOOKS ======================= */
@@ -504,8 +557,8 @@ export function createApp(svc: Services) {
         const denied = roleProblem(who.role, method!, url.pathname);
         if (denied) return json(res, 403, { error: denied });
       }
-      // Signed-in owners may upload lease templates; everything else is small.
-      req.raw = method === 'GET' ? '' : await readBody(req, r.auth ? 2_000_000 : 256_000);
+      // Signed-in owners may upload lease templates and tenants may add report photos; everything else is small.
+      req.raw = method === 'GET' ? '' : await readBody(req, r.auth || /^\/my-home\/[^/]+\/condition\/[^/]+\/rooms\/[^/]+\/photos$/.test(url.pathname) ? 2_000_000 : 256_000);
       const ct = String(req.headers['content-type'] ?? '');
       try {
         req.body = !req.raw ? {} : ct.includes('json') ? JSON.parse(req.raw) : ct.includes('urlencoded') ? Object.fromEntries(new URLSearchParams(req.raw)) : { text: req.raw };

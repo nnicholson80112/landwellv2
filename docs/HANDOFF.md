@@ -135,12 +135,13 @@ node scripts/live-check.mjs <url> [--conversations]   # check a live deploy from
 | Path | What it is |
 | --- | --- |
 | `src/engine/` | Durable workflow engine (waits for people, dates and events; survives restarts; prunes old runs) |
-| `src/workflows/` | The 16 workflows (`docs/WORKFLOWS.md`) |
+| `src/workflows/` | The 17 workflows (`docs/WORKFLOWS.md`) |
 | `src/ai/` | Guardrails, prompt, providers (Claude via raw fetch), model routing (`route.ts`), cost math (`cost.ts`), rule-based fallback |
 | `src/ai-service/server.ts` | The in-house AI service (`/respond`, `/stats` with cost per message) |
 | `src/api/server.ts` | HTTP server, webhooks (Twilio SMS + voice, Postmark, screening, identity), apply form, signing page, `/play`, `/health` |
 | `src/api/auth.ts`, `totp.ts`, `owner-routes.ts`, `owner-data.ts`, `owner-pages.ts` | Owner sign-in (scrypt passwords, hashed sessions, one-time links, CSRF, two-step codes, team roles, devices) and the full owner API |
 | `src/api/my-home.ts` | My Home: each tenant's private, read-only page at `/my-home/<token>` (home guide, lease basics, signed lease). No login. Ends when they move out. The guide also feeds the AI, for that home's tenants only |
+| `src/api/condition.ts` | Condition reports: rooms, each side's entries, photos as JPEG files in `PHOTO_DIR` (default: a `photos` folder beside `DATA_FILE`). The daily backup covers the data file, not the photos |
 | `src/api/owner-more.ts`, `src/leases/` | Leasing, calendar, books and the 50-state + DC document library (`state-docs.ts`, `state-rules.json`) |
 | `src/billing/entitlements.ts` | What each plan includes, checked on the server |
 | `src/api/billing-routes.ts`, `src/billing/` | Signup, checkout, webhook, billing portal, offers, Stripe self-setup |

@@ -39,7 +39,7 @@ export const newId = (prefix = ''): string => (prefix ? prefix + '_' : '') + ran
 const PREFIX: Record<TableName, string> = {
   owners: 'own', rules: 'rul', properties: 'prp', tenants: 'ten', leases: 'lse', leaseTemplates: 'tpl',
   vendors: 'ven', workOrders: 'wo', charges: 'chg', payments: 'pay', expenses: 'exp', prospects: 'pro',
-  applications: 'app', showings: 'shw', messages: 'msg', approvals: 'apv', audit: 'aud', tasks: 'tsk', offers: 'off',
+  applications: 'app', showings: 'shw', messages: 'msg', approvals: 'apv', audit: 'aud', tasks: 'tsk', offers: 'off', conditionReports: 'cnd',
 };
 
 /** The JSON file format (DATA_FILE). */
