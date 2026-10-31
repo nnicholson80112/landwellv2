@@ -4,7 +4,13 @@
 //   POST /api/admin/owners/:id/line   { "lineNumber": "+17205550123" } gives an owner their own texting
 //                                     number (bought by hand in Twilio first; see docs/notes/ops.md).
 //                                     "" or null (or the shared TWILIO_FROM) puts them back on the shared number.
+//   POST /api/admin/backup            make today's backup now, replacing today's if there is one
+//   GET  /api/admin/backup            the backups and photo copies on hand
+//   GET  /api/admin/backup/data/:date one day's backup (private: names, phones and sign-in records)
+//   GET  /api/admin/backup/photos/:report/:name   one photo copy
 
+import { createReadStream, existsSync } from 'node:fs';
+import { join } from 'node:path';
 import type { ServerResponse } from 'node:http';
 import type { Handler, Req } from '../api/server.ts';
 import type { Services } from '../services.ts';
@@ -13,6 +19,8 @@ import { addressKey, normalizePhone } from '../workflows/lib.ts';
 import { opsStatus } from './status.ts';
 import { sharedNumber } from './lines.ts';
 import { ops } from './state.ts';
+import { runDailyBackup } from './index.ts';
+import { backupDir, listBackups, listPhotoBackups, photoBackupDir } from './backup.ts';
 
 interface Kit {
   route: (method: string, path: string, h: Handler, auth?: boolean) => void;
@@ -29,6 +37,40 @@ export function registerOpsRoutes({ route, json }: Kit): void {
   route('GET', '/api/admin/status', (req, res, svc) => {
     if (!isAdmin(req, svc)) return json(res, 401, { error: 'admin only' });
     json(res, 200, opsStatus(svc));
+  });
+
+  route('POST', '/api/admin/backup', async (req, res, svc) => {
+    if (!isAdmin(req, svc)) return json(res, 401, { error: 'admin only' });
+    const r = await runDailyBackup(svc, { force: true });
+    if (!r) return json(res, 409, { error: 'There is no data file path to back up beside.' });
+    json(res, r.status === 'failed' ? 500 : 200, r.status === 'failed' ? { error: r.error } : { status: r.status });
+  });
+
+  route('GET', '/api/admin/backup', (req, res, svc) => {
+    if (!isAdmin(req, svc)) return json(res, 401, { error: 'admin only' });
+    const { dataFile } = ops(svc);
+    if (!dataFile) return json(res, 200, { backups: [], photos: [] });
+    json(res, 200, { backups: listBackups(dataFile).map(({ date, bytes, at }) => ({ date, bytes, at })), photos: listPhotoBackups(dataFile) });
+  });
+
+  const sendFile = (res: ServerResponse, file: string, type: string) => {
+    if (!existsSync(file)) return json(res, 404, { error: 'Not found.' });
+    res.writeHead(200, { 'content-type': type, 'cache-control': 'no-store' });
+    createReadStream(file).pipe(res);
+  };
+
+  route('GET', '/api/admin/backup/data/:date', (req, res, svc) => {
+    if (!isAdmin(req, svc)) return json(res, 401, { error: 'admin only' });
+    const { dataFile } = ops(svc);
+    if (!dataFile || !/^\d{4}-\d{2}-\d{2}$/.test(req.params.date)) return json(res, 404, { error: 'Not found.' });
+    sendFile(res, join(backupDir(dataFile), `keyhelm-${req.params.date}.json`), 'application/json');
+  });
+
+  route('GET', '/api/admin/backup/photos/:report/:name', (req, res, svc) => {
+    if (!isAdmin(req, svc)) return json(res, 401, { error: 'admin only' });
+    const { dataFile } = ops(svc);
+    if (!dataFile || !/^[A-Za-z0-9_]+$/.test(req.params.report) || !/^[a-f0-9]{24}\.jpg$/.test(req.params.name)) return json(res, 404, { error: 'Not found.' });
+    sendFile(res, join(photoBackupDir(dataFile), req.params.report, req.params.name), 'image/jpeg');
   });
 
   route('POST', '/api/admin/owners/:id/line', (req, res, svc) => {

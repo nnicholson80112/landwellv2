@@ -7,7 +7,7 @@ number, sends a real message from a test, or touches rent, deposits or vendor pa
 | --- | --- |
 | Admin alerts (limits, channels, what triggers them) | `src/ops/alerts.ts` |
 | One shared texting number for every owner | `src/ops/lines.ts` |
-| Daily backups of the JSON data file | `src/ops/backup.ts` |
+| Daily backups of the data and the photos | `src/ops/backup.ts`, `scripts/pull-backup.mjs` |
 | `GET /api/admin/status`, `POST /api/admin/owners/:id/line` | `src/ops/routes.ts`, `src/ops/status.ts` |
 | Wiring (install hooks, the every-minute ops check, last tick) | `src/ops/index.ts`, `src/ops/state.ts` |
 | Tests (13) | `tests/ops.test.ts` |
@@ -96,18 +96,31 @@ A Messaging Service id (`MG...`) in `TWILIO_FROM` works too: owners whose line i
 
 Their tenants and vendors keep working either way: known people route by who they are on any KeyHelm number.
 
-## 3. Daily backups (JSON file store only)
+## 3. Daily backups (file store and Postgres)
 
 - Once a day (the date in `TZ_DEFAULT`, America/Denver): `<folder of DATA_FILE>/backups/keyhelm-YYYY-MM-DD.json`,
   e.g. `/data/backups/keyhelm-2026-10-20.json` on Railway. The first one is made about 5 seconds after boot.
-- The store is saved first, then the file is copied to a temp file, read back to check it is KeyHelm data,
-  and renamed into place (atomic). A damaged data file never replaces a good backup.
+- File store: the store is saved, then the file is copied. Postgres: everything in the store is written out in the same
+  format. Either way it goes to a temp file, is read back to check it is KeyHelm data, and is renamed into place
+  (atomic). A damaged file never replaces a good backup. `DATA_FILE` stays set under Postgres: it picks the folder.
 - The newest 14 are kept; older ones are deleted.
-- Skipped when `DATABASE_URL` is set (Postgres keeps the data then; use the database's own backups).
+- Condition report photos are copied to `backups/photos/<report>/<name>`. Only new ones are copied. Copies are never
+  deleted, even when the photo is, so they count against the volume's size.
 - Never throws. A failure is logged (`[backup] FAILED`) and sends a `backup_failed` alert.
-- **Limit:** the backups sit on the same Railway volume as the data. They protect against a bad deploy or a
-  damaged file, not against losing the volume. Restoring is a manual step: with the api service stopped,
-  copy the chosen backup over `DATA_FILE`, then start it again.
+- **Limit:** the backups sit on the api volume. Under Postgres they survive losing the database, but not losing
+  the volume. For a copy off Railway, run this on your own computer. It makes a fresh backup, then saves it and any new
+  photos in `~/keyhelm-backups` (private: it has names, phones and sign-in records):
+
+  ```bash
+  ADMIN_API_TOKEN=$(pbpaste) npm run backup:pull -- https://api-production-66895.up.railway.app
+  ```
+
+  It runs only when you run it. Copy `ADMIN_API_TOKEN` from Railway first, so it's on the clipboard.
+
+**Restoring.** File store: with the api service stopped, copy the chosen backup over `DATA_FILE`, then start it again.
+Postgres: with the api service stopped, drop the tables `kh_records`, `kh_kv` and `kh_meta`, copy the chosen backup over
+`DATA_FILE`, then start it. An empty database imports the file once, as on the first boot. Photos: copy them back to
+`<folder of DATA_FILE>/photos/<report>/<name>`.
 
 ## 4. `GET /api/admin/status`
 
@@ -141,7 +154,7 @@ New:
 
 Already there and read here: `ADMIN_API_TOKEN` (admin routes), `TWILIO_FROM` (the shared number),
 `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` (alert texts go out through Twilio), `POSTMARK_TOKEN` / `EMAIL_FROM`
-(alert emails go out through Postmark), `DATA_FILE` (what is backed up), `DATABASE_URL` (backups skipped),
+(alert emails go out through Postmark), `DATA_FILE` (what is backed up), `DATABASE_URL` (backups come from the store),
 `TZ_DEFAULT` (the backup date), `RAILWAY_GIT_COMMIT_SHA` / `GIT_COMMIT` (commit on the status page).
 
 **Setup clicks:** Railway, the `api` service, Variables, New Variable: `ADMIN_ALERT_PHONE` = your mobile with +1,
@@ -170,5 +183,5 @@ Postmark (`POSTMARK_TOKEN`, `EMAIL_FROM`); until then alerts appear in the Deplo
 - Alert limits are per kind, not per item: a second new customer within 10 minutes arrives in the next alert or
   the summary, not on its own.
 - The status page is API-only; the `/admin` console doesn't show it yet.
-- Backups share the data volume (see above). Postgres has no backup here (use the provider's backups).
+- Backups share the api volume (see above). Copies off Railway only happen when `backup:pull` is run.
 - `owner.signed_up` is watched by wrapping `engine.emit` (the engine has no event listeners), in `installOps`.

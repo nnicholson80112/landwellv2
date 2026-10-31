@@ -8,7 +8,7 @@
 import type { Services } from '../services.ts';
 import { localParts } from '../engine/clock.ts';
 import { alertAdmin, checkPastDue, flushHeldAlerts, newCustomerAlert, watchAI } from './alerts.ts';
-import { backupDataFile, type BackupResult } from './backup.ts';
+import { backupDataFile, backupPhotos, backupSnapshot, type BackupResult } from './backup.ts';
 import { pruneLineAsks } from './lines.ts';
 import { configureOps, ops, track, type OpsState } from './state.ts';
 
@@ -33,17 +33,29 @@ export function installOps(svc: Services): void {
   };
 }
 
-/** The daily backup of the JSON data file (nothing to do for Postgres or without a data file). */
+/** The daily backup of the data and the photos (nothing to do without a data file path). */
 export async function runDailyBackup(svc: Services, o: { force?: boolean } = {}): Promise<BackupResult | undefined> {
   const st = ops(svc);
-  if (!st.dataFile || st.storeKind === 'postgres') return undefined;
+  if (!st.dataFile) return undefined;
   try {
     svc.store.flush(); // the copy gets the latest changes
   } catch (e) {
     st.log(`[backup] saving before the backup failed: ${(e as Error).message}`);
   }
   const now = svc.clock.now();
-  const r = backupDataFile({ dataFile: st.dataFile, date: localParts(now, svc.cfg.tz).date, env: st.env, force: o.force });
+  const date = localParts(now, svc.cfg.tz).date;
+  const snapshot = st.storeKind === 'postgres' ? svc.store.snapshot?.bind(svc.store) : undefined;
+  let r: BackupResult = snapshot
+    ? backupSnapshot({ dataFile: st.dataFile, date, snapshot, force: o.force })
+    : backupDataFile({ dataFile: st.dataFile, date, env: st.env, force: o.force });
+  if (r.status === 'saved') {
+    try {
+      const photos = backupPhotos({ dataFile: st.dataFile, env: st.env });
+      st.log(`[backup] photos: ${photos.copied} copied, ${photos.total} in all`);
+    } catch (e) {
+      r = { status: 'failed', error: `photos: ${(e as Error).message}` };
+    }
+  }
   st.backup.lastResult = r.status === 'skipped' ? `skipped: ${r.reason}` : r.status;
   if (r.status === 'saved') {
     Object.assign(st.backup, { lastAt: now.toISOString(), lastFile: r.file });
