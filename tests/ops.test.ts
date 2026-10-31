@@ -4,7 +4,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
@@ -13,11 +13,12 @@ import { FakeClock, MIN, DAY, addDays, localParts } from '../src/engine/clock.ts
 import { createServices, type Services } from '../src/services.ts';
 import { install } from '../src/workflows/index.ts';
 import { seed } from '../src/sim/seed.ts';
+import { spawn } from 'node:child_process';
 import { createApp } from '../src/api/server.ts';
 import { alertAdmin, flushHeldAlerts, checkPastDue, type AlertRecord } from '../src/ops/alerts.ts';
 import { configureOps, noteTick, opsCheck, opsSettled, runDailyBackup } from '../src/ops/index.ts';
 import { ownerForLine, ownerByHome, lineCandidates } from '../src/ops/lines.ts';
-import { backupDataFile, listBackups, BACKUP_KEEP } from '../src/ops/backup.ts';
+import { backupDataFile, listBackups, listPhotoBackups, BACKUP_KEEP } from '../src/ops/backup.ts';
 import { opsStatus } from '../src/ops/status.ts';
 import type { Owner } from '../src/domain/types.ts';
 
@@ -456,8 +457,27 @@ test('backups: one atomic copy per day, newest 14 kept, skipped for Postgres, ne
     assert.equal(st.backup.enabled, true);
     assert.equal(st.backup.last?.date, '2026-10-19');
     assert.ok((st.store.dataFileBytes ?? 0) > 100);
-    configureOps(svc, { storeKind: 'postgres' });
-    assert.equal(await runDailyBackup(svc), undefined, 'nothing to back up with Postgres');
+
+    // Postgres has no data file to copy, so the backup is written from the store. It also copies photos.
+    const pgDataFile = join(dir, 'gone.json');
+    const photoDir = join(dir, 'pics');
+    mkdirSync(join(photoDir, 'cnd_1'), { recursive: true });
+    writeFileSync(join(photoDir, 'cnd_1', 'a.jpg'), 'first');
+    configureOps(svc, { storeKind: 'postgres', dataFile: pgDataFile, env: { PHOTO_DIR: photoDir } });
+    assert.equal((await runDailyBackup(svc, { force: true }))?.status, 'saved'); // today already has the file store's backup
+    const pgCopy = JSON.parse(readFileSync(join(dir, 'backups', `keyhelm-${day}.json`), 'utf8'));
+    assert.equal(Object.keys(pgCopy.tables.owners).length, 1);
+    assert.ok(!existsSync(pgDataFile), 'no data file is made');
+    assert.equal(opsStatus(svc).backup.enabled, true);
+    assert.equal((await runDailyBackup(svc))?.status, 'skipped', 'once a day');
+    assert.deepEqual(listPhotoBackups(pgDataFile), ['cnd_1/a.jpg']);
+
+    // A copy is never overwritten, and it outlives the photo.
+    writeFileSync(join(photoDir, 'cnd_1', 'b.jpg'), 'second');
+    rmSync(join(photoDir, 'cnd_1', 'a.jpg'));
+    assert.equal((await runDailyBackup(svc, { force: true }))?.status, 'saved');
+    assert.deepEqual(listPhotoBackups(pgDataFile).sort(), ['cnd_1/a.jpg', 'cnd_1/b.jpg']);
+    assert.equal(readFileSync(join(dir, 'backups', 'photos', 'cnd_1', 'a.jpg'), 'utf8'), 'first');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -476,6 +496,41 @@ test('backups: a failed backup is logged and alerts the admin', async () => {
     assert.ok(t.logs.some((l) => l.startsWith('[backup] FAILED')));
     assert.match(opsStatus(t.svc).backup.lastError?.error ?? '', /doesn't read back as KeyHelm data/);
   } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('backups: the admin routes hand over a backup and photos, admin token only, and the pull script saves them', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'kh-ops-backup-pull-'));
+  const t = setup();
+  const name = `${'a'.repeat(24)}.jpg`;
+  mkdirSync(join(dir, 'photos', 'cnd_1'), { recursive: true });
+  writeFileSync(join(dir, 'photos', 'cnd_1', name), 'jpeg bytes');
+  configureOps(t.svc, { dataFile: join(dir, 'keyhelm.json'), storeKind: 'postgres', env: { ADMIN_API_TOKEN: TOKEN } });
+  const server = createApp(t.svc).listen(0);
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const admin = { headers: { authorization: `Bearer ${TOKEN}` } };
+  try {
+    for (const path of ['/api/admin/backup', '/api/admin/backup/data/2026-10-31', `/api/admin/backup/photos/cnd_1/${name}`]) assert.equal((await fetch(base + path)).status, 401, path);
+    assert.equal((await fetch(`${base}/api/admin/backup`, { method: 'POST' })).status, 401);
+    assert.equal((await fetch(`${base}/api/admin/backup/photos/cnd_1/secret.json`, admin)).status, 404);
+    assert.equal((await fetch(`${base}/api/admin/backup/data/nope`, admin)).status, 404);
+
+    const out = join(dir, 'home');
+    const pull = await new Promise<{ code: number; text: string }>((done) => {
+      const p = spawn(process.execPath, ['scripts/pull-backup.mjs', base, out], { env: { ...process.env, ADMIN_API_TOKEN: TOKEN } });
+      let text = '';
+      p.stdout.on('data', (d) => (text += d));
+      p.stderr.on('data', (d) => (text += d));
+      p.on('close', (code) => done({ code: code ?? 1, text }));
+    });
+    assert.equal(pull.code, 0, pull.text);
+    assert.ok(!pull.text.includes(TOKEN), 'the token is not printed');
+    const day = readdirSync(out).find((f) => f.startsWith('keyhelm-'))!;
+    assert.ok(Object.keys(JSON.parse(readFileSync(join(out, day), 'utf8')).tables.owners).length > 0);
+    assert.equal(readFileSync(join(out, 'photos', 'cnd_1', name), 'utf8'), 'jpeg bytes');
+  } finally {
+    await new Promise((r) => server.close(r));
     rmSync(dir, { recursive: true, force: true });
   }
 });

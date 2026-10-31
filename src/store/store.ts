@@ -21,6 +21,8 @@ export interface Store {
   kvList<T>(ns: string): T[];
   kvDelete(ns: string, key: string): void;
   flush(): void;
+  /** Everything in the store, in the DATA_FILE format (what a backup saves). */
+  snapshot?(): Snapshot;
   /** Where data is kept and whether everything is saved (shown on /health). */
   health?(): StoreHealth;
 }
@@ -129,14 +131,18 @@ export class MemoryStore implements Store {
   }
   flush(): void {
     if (!this.file || !this.dirty) return;
-    const snap: Snapshot = { tables: {}, kv: {} };
-    for (const [t, m] of Object.entries(this.tables)) snap.tables[t] = Object.fromEntries(m);
-    for (const [n, m] of Object.entries(this.kv)) snap.kv[n] = Object.fromEntries(m);
+    const snap = this.snapshot();
     mkdirSync(dirname(this.file), { recursive: true });
     const tmp = this.file + '.tmp';
     writeFileSync(tmp, JSON.stringify(snap));
     renameSync(tmp, this.file); // atomic replace
     this.dirty = false;
+  }
+  snapshot(): Snapshot {
+    const snap: Snapshot = { tables: {}, kv: {} };
+    for (const [t, m] of Object.entries(this.tables)) snap.tables[t] = Object.fromEntries(m);
+    for (const [n, m] of Object.entries(this.kv)) snap.kv[n] = Object.fromEntries(m);
+    return snap;
   }
   health(): StoreHealth {
     return { kind: this.file ? 'file' : 'memory' };

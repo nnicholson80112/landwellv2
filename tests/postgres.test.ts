@@ -20,6 +20,7 @@ import { randomBytes } from 'node:crypto';
 import { PgClient, PgError, md5Password, parsePgUrl, redactUrl, scramClientFinal, scramClientFirst, toPgJson } from '../src/store/pg.ts';
 import { PgStore, type PgStoreOptions } from '../src/store/pg-store.ts';
 import { openStore } from '../src/store/open-store.ts';
+import { backupSnapshot } from '../src/ops/backup.ts';
 import { MemoryStore, type Store } from '../src/store/store.ts';
 import { DATA_VERSION } from '../src/store/data-version.ts';
 import { SystemClock } from '../src/engine/clock.ts';
@@ -705,6 +706,31 @@ for (const t of targets) {
         assert.ok(existsSync(file));
         assert.ok(logs.some((l) => l.includes('was not imported')), logs.join('\n'));
         await again.close();
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  test(`[${t.name}] backup: a backup made from Postgres restores through the first-boot import`, T, async () => {
+    await withSchema(t.url, async (schema) => {
+      const dir = mkdtempSync(join(tmpdir(), 'kh-restore-'));
+      try {
+        const file = join(dir, 'keyhelm.json');
+        const first = await openStore({ dataFile: file, env: { DATABASE_URL: t.url }, log: quiet, pg: { schema, log: quiet } });
+        const s = seed(first.store, {});
+        first.store.kvSet('meta', 'dataVersion', DATA_VERSION);
+        first.store.kvSet('tokens', 'dev-token', s.owner.id);
+        const saved = backupSnapshot({ dataFile: file, date: '2026-10-31', snapshot: () => first.store.snapshot!() });
+        assert.equal(saved.status, 'saved');
+        const want = dump(first.store);
+        await first.close();
+        await withSchema(t.url, async (fresh) => {
+          copyFileSync(join(dir, 'backups', 'keyhelm-2026-10-31.json'), file);
+          const back = await openStore({ dataFile: file, env: { DATABASE_URL: t.url }, log: quiet, pg: { schema: fresh, log: quiet } });
+          assert.deepEqual(dump(back.store), want);
+          await back.close();
+        });
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }

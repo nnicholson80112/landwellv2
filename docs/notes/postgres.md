@@ -90,7 +90,8 @@ The **ai** service is unchanged.
      (old test data; the demo reseeds), or nothing extra if there was no data file.
 4. Open `https://<your api domain>/health`. It should show `"storage":{"kind":"postgres","unsaved":0,"failing":false,...}`.
 5. Keep the **/data** volume on api. It holds the imported file's backup.
-6. If the Postgres service offers backups on your Railway plan, turn them on.
+6. The app makes its own daily backup under Postgres (`docs/notes/ops.md`, section 3). Railway's own new or scheduled
+   backups need its Pro plan.
 
 To go back to the JSON file: delete `DATABASE_URL` from the api variables. The app then uses
 `DATA_FILE` again; anything saved only in Postgres stays in Postgres (rename the `.bak` back to

@@ -40,7 +40,7 @@ export function opsStatus(svc: Services) {
   try {
     if (st.dataFile && existsSync(st.dataFile)) dataFileBytes = statSync(st.dataFile).size;
   } catch { /* unreadable: shown as null */ }
-  const backups = st.dataFile && kind !== 'postgres' ? listBackups(st.dataFile) : [];
+  const backups = st.dataFile ? listBackups(st.dataFile) : [];
   const shared = sharedNumber(env);
 
   return {
@@ -75,7 +75,7 @@ export function opsStatus(svc: Services) {
     engine: { lastTickAt: st.lastTickAt ?? null, secondsSinceTick: st.lastTickAt ? Math.round((nowMs - Date.parse(st.lastTickAt)) / 1000) : null },
     store: { kind, health, dataFile: st.dataFile ?? null, dataFileBytes },
     backup: {
-      enabled: kind === 'file' && !!st.dataFile && !env.DATABASE_URL?.trim(),
+      enabled: !!st.dataFile && (kind === 'postgres' || (kind === 'file' && !env.DATABASE_URL?.trim())),
       last: backups[0] ?? null,
       count: backups.length,
       lastResult: st.backup.lastResult ?? null,
